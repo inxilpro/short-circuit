@@ -34,7 +34,7 @@ struct SidebarView: View {
 }
 
 #Preview {
-    let store = KindStore(provider: SampleKindProvider())
+    let store = KindStore(provider: SampleKindProvider(), writer: SimulatedHandlerWriter.preview)
     SidebarView()
         .environment(store)
         .task { await store.refresh() }

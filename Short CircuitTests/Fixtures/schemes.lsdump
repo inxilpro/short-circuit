@@ -1,0 +1,444 @@
+Checking data integrity...
+...done.
+Database is seeded.
+Status:                     Preferences are loaded.
+Seeded System Version:      26.6.2 (25G83)
+Seeded Model Code:          J516cAP/Mac15,9
+CacheGUID:                  0232F398-4C84-45DC-A45C-7863F1D8CDAB
+CacheSequenceNum:           21148
+Date Initialized:           2026-08-22 16:45 (POSIX 1787431539, 𝛥 3wks 5days 20hr 52min 50sec)
+xcode-select Version:       2416
+Path:                       /var/folders/kq/k3kqzttx6274njn2x_bjk7100000gn/0/com.apple.LaunchServices.dv/com.apple.LaunchServices-20971545-v2.csstore
+DB Object:                  <LSDatabase 0x101426330> { userID = 501, path = '/var/folders/kq/k3kqzttx6274njn2x_bjk7100000gn/0/com.apple.LaunchServices.dv/com.apple.LaunchServices-20971545-v2.csstore' }
+DB Bundle:                  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework (v 1141.1)
+Store Object:               <_CSStore 0x101426a30> { p = 0x105810000, gen = 2430551, length = 17825792/17818084/17366112 }
+Store Bundle:               /System/Library/PrivateFrameworks/CoreServicesStore.framework (v 1141.1)
+0x00000000 00000000:	6264736c 0200f392 57162500 e4e10f01    bdsl····W·%·····
++++++++++++++++++++++++++++++++ Structure Sizes ++++++++++++++++++++++++++++++++
+sizeof(Data):                      100 ( 100 bytes) -----
+sizeof(Table):                      80 (  80 bytes) -----
+sizeof(Unit):                        8 (   8 bytes) -----
+sizeof(IdentifierCache):             4 (   4 bytes) -----
++++++++++++++++++++++++++++++++ Memory by Table ++++++++++++++++++++++++++++++++
+<array>:                       1985562 (      2 MB) 41175 units (≅48 bytes/unit)
+<dictionary>:                     6256 (      6 KB) 391 units (≅16 bytes/unit)
+<string>:                      3001052 (      3 MB) 78653 units (≅38 bytes/unit)
+ActivityTypeBinding:             65296 (     65 KB) 1 units
+Alias:                         2191144 (    2.2 MB) 2265 units (≅967 bytes/unit)
+BindableKeyMap:                 130576 (    131 KB) 1 units
+BindingList:                    211428 (    211 KB) 7363 units (≅28 bytes/unit)
+BluetoothVendorProductIDBinding:       4096 (      4 KB) 1 units
+--------------------------------------------------------------------------------
+bundle id:                  Safari (0x4b4)
+container:                  /System/Volumes/Preboot (0x8)
+mount state:                mounted
+isOnRootVolume:             false
+isSystemManaged:            true 
+isOnPrebootVolume:          true 
+path:                       /System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app (0x13bc)
+directory:                  /System/Applications
+name:                       Safari
+displayName:                Safari
+localizedNames:             "ar" = "سفاري", "Base" = ?, "ca" = "Safari", "cs" = "Safari", "da" = "Safari", "de" = "Safari", "el" = "Safari", "en" = "Safari", "en_AU" = "Safari", "en_GB" = "Safari", "es" = "Safari", "es_419" = "Safari", "es_US" = "Safari", "fi" = "Safari", "fr" = "Safari", "fr_CA" = "Safari", "he" = "Safari", "hi" = "Safari", "hr" = "Safari", "hu" = "Safari", "id" = "Safari", "it" = "Safari", "ja" = "Safari", "ko" = "Safari", "LSDefaultLocalizedValue" = "Safari", "ms" = "Safari", "nl" = "Safari", "no" = "Safari", "pl" = "Safari", "pt" = "Safari", "pt_PT" = "Safari", "ro" = "Safari", "ru" = "Safari", "sk" = "Safari", "sl" = "Safari", "sv" = "Safari", "th" = "Safari", "tr" = "Safari", "uk" = "Safari", "vi" = "Safari", "zh_CN" = "Safari浏览器", "zh_HK" = "Safari", "zh_TW" = "Safari"
+localizedShortNames:        "ar" = "سفاري", "Base" = ?, "ca" = "Safari", "cs" = "Safari", "da" = "Safari", "de" = "Safari", "el" = "Safari", "en" = "Safari", "en_AU" = "Safari", "en_GB" = "Safari", "es" = "Safari", "es_419" = "Safari", "es_US" = "Safari", "fi" = "Safari", "fr" = "Safari", "fr_CA" = "Safari", "he" = "Safari", "hi" = "Safari", "hr" = "Safari", "hu" = "Safari", "id" = "Safari", "it" = "Safari", "ja" = "Safari", "ko" = "Safari", "LSDefaultLocalizedValue" = "Safari", "ms" = "Safari", "nl" = "Safari", "no" = "Safari", "pl" = "Safari", "pt" = "Safari", "pt_PT" = "Safari", "ro" = "Safari", "ru" = "Safari", "sk" = "Safari", "sl" = "Safari", "sv" = "Safari", "th" = "Safari", "tr" = "Safari", "uk" = "Safari", "vi" = "Safari", "zh_CN" = "Safari浏览器", "zh_HK" = "Safari", "zh_TW" = "Safari"
+teamID:                     0000000000
+identifier:                 com.apple.Safari
+version:                    21624.5.1 ({length = 32, bytes = 0x78540000 00000000 05000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.Safari
+platform:                   native
+executable:                 Contents/MacOS/Safari
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  secured-system-content  redactable
+Mach-O UUIDs:               1326575E-9877-380F-9ACD-A9B3D13AB910, DC959A03-797C-3E27-9608-49E9F0F61A17
+execSDK ver:                26.6.1 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             29 values (19932 (0x4ddc))
+entitlements:               162 values (19936 (0x4de0))
+Intents:                    0 values (19940 (0x4de4))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1204
+category:                   public.app-category.productivity (0xbe04)
+canonical id:               com.apple.safari
+versionString:              21624.5.1.11.3
+displayVersion:             26.6.2
+mod date:                   2026-08-12 19:45 (POSIX 1786578314, 𝛥 1mth 5days 17hr 53min 16sec)
+exec mod date:              2026-08-12 19:45 (POSIX 1786578314, 𝛥 1mth 5days 17hr 53min 16sec)
+reg date:                   2026-08-22 16:45 (POSIX 1787431558, 𝛥 3wks 5days 20hr 52min 32sec)
+rec mod date:               2026-08-22 16:45 (POSIX 1787431558, 𝛥 3wks 5days 20hr 52min 32sec)
+type code:                  'APPL' (4150504c)
+creator code:               'sfri' (73667269)
+bundle flags:               has-display-name  quarantined  handles-file-url  is-containerized (0000004008000402)
+more flags:                 web-browser  on-cryptex
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden  services (000000000030088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable (0000000000000001)
+safeAperture app fullscreen: capable (0000000000000001)
+safeAperture windowed:      capable (0000000000000001)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   AppIcon
+iconDict:                   1 values (19928 (0x4dd8))
+icons:                      Contents/Resources/AppIcon.icns
+inode:                      741849
+exec inode:                 742733
+min version:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+activityTypes:              ua-9c0e37c2deb108, pv-e8b5b45432bbe9, NOTIFICATION#:com.apple.Safari, NSUserActivityTypeBrowsingWeb
+trustedCodeSignatures:      03da9670a30cf44a24ce07290067d942e4e59059, 03da9670a30cf44a24ce07290067d942e4e59059, be54104e62f82c628730077ba8b4d9e835996de4
+claimed UTIs:               public.plain-text, com.apple.safari.history, com.apple.traditional-mac-plain-text, public.tiff, public.jpeg-xl, com.apple.web-internet-location, com.apple.safari.bookmark, com.adobe.pdf, public.jpeg, public.avif, com.apple.safari.extension, com.netscape.javascript-source, public.svg-image, com.apple.webarchive, public.html, org.webmproject.webp, public.css, com.compuserve.gif, public.xml, com.microsoft.ico, public.xhtml, com.apple.default-app.web-browser, public.png, public.heic, dyn.ah62d4qmuhk2x43dts71g255bqu (.download), dyn.ah62d4rv4ge81u2xq (.xbl), dyn.ah62d4rv4ge81u65q (.xsl), dyn.ah62d4rv4ge81u65qsu (.xslt), dyn.ah62d4rv4gk8ywu4tea ('ICO '), dyn.ah62d4rv4gq80c6durvy0g2pyrf106p52fz30c3xbsmyw43p2svw0665mr71a (MIME application/x-safari-extension), dyn.ah62d4rv4gq80c6durvy0g2pyrf106p52fzzgc7xbsrv1e4pusu (MIME application/x-javascript), dyn.ah62d4rv4gq80w5pbq7ww88brrfv085u (MIME image/x-icon), com.microsoft.internet-shortcut
+claimed schemes:            file:, http:, https:, prefs:, x-safari-https:, x-webkit-app-launch:
+plugin Identifiers:         com.apple.Safari.SafariWidgetExtension, com.apple.Safari.CacheDeleteExtension, com.apple.Safari.DiagnosticExtension, com.apple.Safari.SafariQuickLookPreview, com.apple.Safari.SafariLinkExtension
+
+--------------------------------------------------------------------------------
+claim id:                   HTML document (0x1004)
+localizedNames:             "ar" = "مستند HTML", "Base" = ?, "ca" = "Document HTML", "cs" = "Dokument HTML", "da" = "HTML-dokument", "de" = "HTML-Dokument", "el" = "Έγγραφο HTML", "en" = "HTML document", "en_AU" = "HTML document", "en_GB" = "HTML document", "es" = "Documento HTML", "es_419" = "Documento HTML", "es_US" = "Documento HTML", "fi" = "HTML-dokumentti", "fr" = "Document HTML", "fr_CA" = "Document HTML", "he" = "מסמך HTML", "hi" = "HTML दस्तावेज़", "hr" = "HTML dokument", "hu" = "HTML-dokumentum", "id" = "Dokumen HTML", "it" = "Documento HTML", "ja" = "HTML書類", "ko" = "HTML 문서", "LSDefaultLocalizedValue" = "HTML document", "ms" = "Dokumen HTML", "nl" = "HTML-document", "no" = "HTML-dokument", "pl" = "dokument HTML", "pt" = "Documento HTML", "pt_PT" = "Documento HTML", "ro" = "Document HTML", "ru" = "Документ HTML", "sk" = "HTML dokument", "sl" = "Dokument HTML", "sv" = "HTML-dokument", "th" = "เอกสาร HTML", "tr" = "HTML belgesi", "uk" = "Документ HTML", "vi" = "Tài liệu HTML", "zh_CN" = "HTML文稿", "zh_HK" = "HTML文件", "zh_TW" = "HTML文件"
+rank:                       Default
+bundle:                     Safari (0x4b4)
+flags:                      apple-default  apple-internal  doc-type  resolves-icloud-conflicts (0000000000000225)
+roles:                      Viewer (0000000000000002)
+bindings:                   public.html, .html, .htm, .shtml, .jhtml, 'HTML', text/html
+
+--------------------------------------------------------------------------------
+claim id:                   Web site URL (0x1040)
+localizedNames:             "LSDefaultLocalizedValue" = "Web site URL"
+rank:                       Default
+bundle:                     Safari (0x4b4)
+flags:                      apple-default  apple-internal  url-type (0000000000000045)
+roles:                      Viewer (0000000000000002)
+bindings:                   http:, https:
+
+--------------------------------------------------------------------------------
+bundle id:                  Mail (0x408)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /System/Applications/Mail.app (0x1250)
+directory:                  /System/Applications
+name:                       Mail
+localizedShortNames:        "ar" = "البريد", "Base" = ?, "ca" = "Mail", "cs" = "Mail", "da" = "Mail", "de" = "Mail", "el" = "Mail", "en" = "Mail", "en_AU" = "Mail", "en_GB" = "Mail", "es" = "Mail", "es_419" = "Mail", "es_US" = "Mail", "fi" = "Mail", "fr" = "Mail", "fr_CA" = "Mail", "he" = "דואר", "hi" = "मेल", "hr" = "Mail", "hu" = "Mail", "id" = "Mail", "it" = "Mail", "ja" = "メール", "ko" = "Mail", "LSDefaultLocalizedValue" = "Mail", "ms" = "Mail", "nl" = "Mail", "no" = "Mail", "pl" = "Poczta", "pt_BR" = "Mail", "pt_PT" = "Mail", "ro" = "Mail", "ru" = "Почта", "sk" = "Mail", "sl" = "Pošta", "sv" = "Mail", "th" = "เมล", "tr" = "Mail", "uk" = "Пошта", "vi" = "Mail", "zh_CN" = "邮件", "zh_HK" = "郵件", "zh_TW" = "郵件"
+teamID:                     0000000000
+identifier:                 com.apple.mail
+version:                    3864.700.51 ({length = 32, bytes = 0x180f0000 00000000 bc020000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.mail
+platform:                   native
+executable:                 Contents/MacOS/Mail
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  link-enabled  secured-system-content  redactable
+Mach-O UUIDs:               A2CB7804-1257-381C-ADAB-C2BF094A4C28, E2DAEB27-8A4B-3B06-89C9-9543888EB223
+execSDK ver:                26.6.1 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             23 values (18728 (0x4928))
+entitlements:               101 values (18732 (0x492c))
+Intents:                    0 values (18736 (0x4930))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1032
+category:                   public.app-category.productivity (0xbe04)
+versionString:              3864.700.51.1.1
+displayVersion:             16.0
+mod date:                   2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 35sec)
+exec mod date:              2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 35sec)
+reg date:                   2026-08-22 16:45 (POSIX 1787431557, 𝛥 3wks 5days 20hr 52min 33sec)
+rec mod date:               2026-08-22 16:45 (POSIX 1787431557, 𝛥 3wks 5days 20hr 52min 33sec)
+type code:                  'APPL' (4150504c)
+creator code:               'emal' (656d616c)
+bundle flags:               has-display-name  wildcard  is-containerized (0000004010000002)
+more flags:                 mail-client
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden  services (000000000030088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable (0000000000000001)
+safeAperture app fullscreen: capable (0000000000000001)
+safeAperture windowed:      capable (0000000000000001)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   ApplicationIcon
+iconDict:                   1 values (18724 (0x4924))
+icons:                      Contents/Resources/ApplicationIcon.icns
+inode:                      7383 (1152921500311887063)
+exec inode:                 7388 (1152921500311887068)
+min version:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+activityTypes:              :com.apple.mail.attachment, ua-a0a865f454dbde, NOTIFICATION#:com.apple.mail, ua-86f6a0732b418e, :com.apple.mail.compose, :com.apple.mail.mailbox, pv-de8f6a361b4b98, :com.apple.mail.message, ua-9d98584545c05e, ua-a564c399758208
+trustedCodeSignatures:      81523d38357b28ebd84fe2e1de763d7a87a9311f, 81523d38357b28ebd84fe2e1de763d7a87a9311f, 32290b1a6f3defe5c5146d4d2604ca47d4704300
+claimed UTIs:               com.apple.mail.imapmbox, com.apple.mail.emlx, com.apple.mail.ewsmbox, com.apple.mail.mbox, com.apple.mail.email, com.apple.default-app.mail-client, public.item
+claimed schemes:            mail-pref-pane:, mailto:, message:
+plugin Identifiers:         com.apple.mail.MailNotificationContentExtension, com.apple.mail.MailQuickLookExtension, com.apple.MailShareExtension, com.apple.STMExtension.Mail, com.apple.MailCacheDelete, com.apple.mail.SpotlightIndexExtension
+
+--------------------------------------------------------------------------------
+claim id:                   Email Address URL (0xd90)
+localizedNames:             "LSDefaultLocalizedValue" = "Email Address URL"
+rank:                       Default
+bundle:                     Mail (0x408)
+flags:                      apple-default  apple-internal  url-type (0000000000000045)
+roles:                      Viewer (0000000000000002)
+bindings:                   mailto:
+
+--------------------------------------------------------------------------------
+bundle id:                  balenaEtcher (0x3ee8)
+Bundle node not found on disk: Error Domain=NSOSStatusErrorDomain Code=-43 "fnfErr: File not found" UserInfo={_LSLine=1488, _LSFunction=_LSBundleCreateNode, _LSFile=LSBundle.mm, _LSErrorMessage=fnfErr}
+container:                  /Volumes/balenaEtcher (0x34)
+mount state:                not mounted
+isOnRootVolume:             false
+isSystemManaged:            false
+isOnPrebootVolume:          false
+path:                       /Volumes/balenaEtcher/balenaEtcher.app (0x5250)
+directory:                  Other (255)
+name:                       balenaEtcher
+displayName:                balenaEtcher
+localizedNames:             "af" = ?, "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "balenaEtcher", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "ur" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+localizedShortNames:        "af" = ?, "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "balenaEtcher", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "ur" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+MicUsage:                   "af" = ?, "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "This app needs access to the microphone", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "ur" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+teamID:                     66H43P8FRG
+identifier:                 io.balena.etcher
+version:                    2.1.6 ({length = 32, bytes = 0x02000000 00000000 01000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 io.balena.etcher
+platform:                   native
+executable:                 Contents/MacOS/balenaEtcher
+slices:                     arm64 (0000000000000080)
+Mach-O UUIDs:               4C4C44E6-5555-3144-A1DD-E0F8A7D10309
+execSDK ver:                15.4 ({length = 32, bytes = 0x0f000000 00000000 04000000 00000000 ... 00000000 00000000 })
+infoDictionary:             25 values (79112 (0x13508))
+entitlements:               9 values (79116 (0x1350c))
+Intents:                    0 values (79120 (0x13510))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                16104
+category:                   public.app-category.developer-tools (0xbd88)
+versionString:              2.1.6
+displayVersion:             2.1.6
+mod date:                   2026-05-13 12:05 (POSIX 1778688320, 𝛥 4mths 1wk 1day 2hr 33min 9sec)
+exec mod date:              2026-05-13 12:05 (POSIX 1778688320, 𝛥 4mths 1wk 1day 2hr 33min 9sec)
+reg date:                   2026-09-11 12:47 (POSIX 1789145276, 𝛥 1wk 50min 33sec)
+rec mod date:               2026-09-11 12:47 (POSIX 1789145276, 𝛥 1wk 50min 33sec)
+uid:                        501
+type code:                  'APPL' (4150504c)
+creator code:               '????' (3f3f3f3f)
+bundle flags:               has-display-name  launch-disabled (0000000000000082)
+plist flags:                has-environment  has-custom-bindings (0000000000010001)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  extension-hidden (000000000010008e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  explicit (0000000000000003)
+safeAperture app fullscreen: capable  explicit (0000000000000003)
+safeAperture windowed:      capable  explicit (0000000000000003)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (79108 (0x13504))
+icons:                      Contents/Resources/electron.icns
+inode:                      22
+exec inode:                 28
+min version:                11.0 ({length = 32, bytes = 0x0b000000 00000000 00000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               11.0 ({length = 32, bytes = 0x0b000000 00000000 00000000 00000000 ... 00000000 00000000 })
+activityTypes:              NOTIFICATION#66H43P8FRG:io.balena.etcher, pv-f9ce43cf2d62ef
+trustedCodeSignatures:      83bdb841e6f72a915e1f287e89d1ac825ed5f279
+claimed schemes:            etcher:
+
+--------------------------------------------------------------------------------
+claim id:                   etcher (0x6d5c)
+localizedNames:             "LSDefaultLocalizedValue" = "etcher"
+rank:                       Default
+bundle:                     balenaEtcher (0x3ee8)
+flags:                      url-type (0000000000000040)
+roles:                      Viewer (0000000000000002)
+bindings:                   etcher:
+
+--------------------------------------------------------------------------------
+claim id:                   etcher (0x6d68)
+localizedNames:             "LSDefaultLocalizedValue" = "etcher"
+rank:                       Default
+bundle:                     balenaEtcher (0x3f84)
+flags:                      url-type (0000000000000040)
+roles:                      Viewer (0000000000000002)
+bindings:                   etcher:
+
+--------------------------------------------------------------------------------
+claim id:                   etcher (0x6d6c)
+localizedNames:             "LSDefaultLocalizedValue" = "etcher"
+rank:                       Default
+bundle:                     balenaEtcher (0x3f88)
+flags:                      url-type (0000000000000040)
+roles:                      Viewer (0000000000000002)
+bindings:                   etcher:
+
+--------------------------------------------------------------------------------
+claim id:                   etcher (0x6d88)
+localizedNames:             "LSDefaultLocalizedValue" = "etcher"
+rank:                       Default
+bundle:                     balenaEtcher (0x3fa8)
+flags:                      url-type (0000000000000040)
+roles:                      Viewer (0000000000000002)
+bindings:                   etcher:
+
+--------------------------------------------------------------------------------
+type id:                    public.html (0xb4f8)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.html
+localizedDescription:       "ar" = "نص HTML", "ca" = "Text HTML", "cs" = "HTML text", "da" = "HTML-tekst", "de" = "HTML-Text", "el" = "Κείμενο HTML", "en" = "HTML text", "en_AU" = "HTML text", "en_GB" = "HTML text", "es" = "Texto HTML", "es_419" = "Texto HTML", "es_US" = "Texto HTML", "fi" = "HTML-teksti", "fr" = "Texte HTML", "fr_CA" = "Texte HTML", "he" = "מלל HTML", "hi" = "HTML टेक्स्ट", "hr" = "HTML tekst", "hu" = "HTML szöveg", "id" = "Teks HTML", "it" = "Testo HTML", "ja" = "HTMLテキスト", "ko" = "HTML 텍스트", "LSDefaultLocalizedValue" = "HTML text", "ms" = "Teks HTML", "nl" = "HTML-tekst", "no" = "HTML-tekst", "pl" = "tekst HTML", "pt_BR" = "Texto HTML", "pt_PT" = "Texto HTML", "ro" = "text HTML", "ru" = "Текст HTML", "sk" = "HTML text", "sl" = "Besedilo HTML", "sv" = "HTML-text", "th" = "ข้อความ HTML", "tr" = "HTML metni", "uk" = "Текст HTML", "vi" = "Văn bản HTML", "zh_CN" = "HTML文本", "zh_HK" = "HTML文字", "zh_TW" = "HTML文字"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+icons:                      1 values (96636 (0x1797c))
+                            {
+                                ISDocumentIconConfiguration =     {
+                                    ISSymbolName = "chevron.left.forwardslash.chevron.right";
+                                };
+                            }
+conforms to:                public.text
+tags:                       .html, .htm, .shtml, .shtm, 'HTML', text/html, "Apple HTML pasteboard type"
+
+--------------------------------------------------------------------------------
+type id:                    public.xhtml (0xb500)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.xhtml
+localizedDescription:       "LSDefaultLocalizedValue" = "XHTML"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+conforms to:                public.xml
+tags:                       .xhtml, .xhtm, .xht, application/xhtml+xml
+
+--------------------------------------------------------------------------------
+claim id:                    (0x1ca8)
+localizedNames:             "LSDefaultLocalizedValue" = ""
+rank:                       Default
+bundle:                     zoom.us (0x694)
+flags:                      url-type (0000000000000040)
+roles:                      Viewer (0000000000000002)
+bindings:                   sip:
+
+--------------------------------------------------------------------------------
+claim id:                   JavaScript script (0x2a54)
+localizedNames:             "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "JavaScript script", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+rank:                       Default
+bundle:                     Chromium (0x22d4)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Viewer (0000000000000002)
+iconFiles:                  Contents/Resources/document.icns
+bindings:                   com.netscape.javascript-​source
+
+--------------------------------------------------------------------------------
+type id:                    com.apple.iphone-11-1 (0xc194)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        com.apple.iphone-11-1
+localizedDescription:       "en" = ?, "LSDefaultLocalizedValue" = "iPhone 11"
+flags:                      active  apple-internal  exported  core  trusted (0000000000000075)
+iconFiles:                  com.apple.iphone-11-1.icns
+delegate:                   MobileDevices.bundle/
+conforms to:                com.apple.homebuttonless-iphone
+tags:                       N104AP, iPhone12,1, iPhone
+
+--------------------------------------------------------------------------------
+plugin id:                  Maps (0x978)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /System/Applications/Maps.app/Contents/PlugIns/MapsDiagnostic.appex (0x12f4)
+directory:                  /System/Applications
+name:                       MapsDiagnostic
+displayName:                Maps
+localizedNames:             "en" = ?, "LSDefaultLocalizedValue" = "Maps"
+localizedShortNames:        "en" = ?, "LSDefaultLocalizedValue" = "Maps"
+teamID:                     0000000000
+identifier:                 com.apple.Maps.DEMapsExtension
+version:                    1.0 ({length = 32, bytes = 0x01000000 00000000 00000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.Maps.DEMapsExtension
+platform:                   Mac Catalyst
+executable:                 MapsDiagnostic
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  secured-system-content  redactable
+Mach-O UUIDs:               6C2D6443-834A-32F3-AFAE-80485F861395, E777B7CB-B4E7-3F5A-9190-2A688CE7B3DA
+execSDK ver:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             24 values (19356 (0x4b9c))
+                            {
+                                BuildMachineOSBuild = 23A344017;
+
+--------------------------------------------------------------------------------
+extensionpoint id:          com.apple.Photos.MacMusicPickerExtension (0x51c)
+Extension Point ID:         com.apple.Photos.MacMusicPickerExtension
+Platform:                   native
+Type:                       internal
+Name:                       com.apple.Photos.MacMusicPickerExtension
+Parent Bundle ID:           Photos (0x47c)
+TCC Policy:                 deny
+reg date:                   2026-08-22 16:45 (POSIX 1787431558, 𝛥 3wks 5days 20hr 52min 35sec)
+SDKDict:                    8 values (19436 (0x4bec))
+                            {
+                                EXAppExtensionClass = "PhotosMacMusicPickerExtension.MacMusicPickerExtension";
+                                EXExtensionIconPersonality = self;
+
+--------------------------------------------------------------------------------
+service id:                 Open URL (0x78)
+menu:                       Open URL
+port:                       SystemUIServer
+message:                    openURL
+timeout:                    -1
+send types:                 "NSURLPboardType", "NSStringPboardType"
+flags:                      denylist-restricted (0000000000000002)
+
+--------------------------------------------------------------------------------
+container id:               / (0x4)
+path:                       / (0x4)
+flags:                      local  root  sys-managed (0000000000000013)
+state:                      mounted
+last checked:               2026-09-11 16:23 (POSIX 1789158181, 𝛥 6days 21hr 15min 31sec)
+volume:                     6571367
+
+--------------------------------------------------------------------------------
+values:                     {
+		"MicUsage": 0x18cdc
+	}
+count:                      1
+
+--------------------------------------------------------------------------------
+handlerpref id:             public.pax-archive (0x5f4)
+all roles:                  cx.c3.theunarchiver
+mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             http (0x5c0)
+unknown:                    http
+all roles:                  company.thebrowser.browser
+mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             com.apple.default-app.web-browser (0x5cc)
+unknown:                    com.apple.default-app.web-browser (0xbe44)
+all roles:                  company.thebrowser.browser
+mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             com.apple.default-app.mail-client (0x5d0)
+unknown:                    com.apple.default-app.mail-client (0xbe48)
+all roles:                  com.mimestream.mimestream
+mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             etcher (0x5a4)
+unknown:                    etcher
+all roles:                  io.balena.etcher
+mod date:                   2026-09-11 15:02 (POSIX 1789153367, 𝛥 6days 22hr 35min 46sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             iterm2 (0x5b0)
+unknown:                    iterm2
+all roles:                  com.googlecode.iterm2
+mod date:                   2026-09-11 19:51 (POSIX 1789170701, 𝛥 6days 17hr 46min 52sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             lnk (0x5d8)
+extension:                  lnk
+all roles:                  com.parallels.sharedapplink.agent
+mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
+
+--------------------------------------------------------------------------------
+handlerpref id:             net.daringfireball.markdown (0x754)
+unknown:                    net.daringfireball.markdown (0x4cac)
+all roles:                  com.sublimetext.4
+mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
+

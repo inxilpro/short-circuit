@@ -24,7 +24,17 @@ final class KindStore {
         case failed(String)
     }
 
+    struct PendingChange: Identifiable {
+        var id = UUID()
+        var kindID: Kind.ID
+        var kindName: String
+        var app: AppRef
+        var targets: [KindMember.Target]
+        var promptCount: Int
+    }
+
     private let provider: any KindProviding
+    let writer: any HandlerWriting
     private var loadGeneration = 0
     private var messageTask: Task<Void, Never>?
 
@@ -36,9 +46,13 @@ final class KindStore {
     var layout: BrowserLayout = .grid
     var isInspectorPresented = true
     private(set) var transientMessage: String?
+    private(set) var applyingKindIDs: Set<Kind.ID> = []
+    private(set) var results: [Kind.ID: [MemberResult]] = [:]
+    var pendingChange: PendingChange?
 
-    init(provider: any KindProviding) {
+    init(provider: any KindProviding, writer: any HandlerWriting) {
         self.provider = provider
+        self.writer = writer
     }
 
     var kinds: [Kind] {
@@ -98,6 +112,7 @@ final class KindStore {
         do {
             let loaded = try await provider.loadKinds(forceRefresh: force)
             guard generation == loadGeneration else { return }
+            results = [:]
             state = .loaded(loaded.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
             if let selectedKindID, !loaded.contains(where: { $0.id == selectedKindID }) {
                 self.selectedKindID = nil
@@ -131,6 +146,81 @@ final class KindStore {
         }
         selectedKindID = kind.id
         isInspectorPresented = true
+    }
+
+    func isApplying(_ kind: Kind) -> Bool {
+        applyingKindIDs.contains(kind.id)
+    }
+
+    func results(for kind: Kind) -> [MemberResult] {
+        results[kind.id] ?? []
+    }
+
+    func setDefault(_ app: AppRef, for kind: Kind) {
+        requestChange(app, targets: kind.members.map(\.target), in: kind)
+    }
+
+    func setDefault(_ app: AppRef, for target: KindMember.Target, in kind: Kind) {
+        requestChange(app, targets: [target], in: kind)
+    }
+
+    func fixSplit(_ kind: Kind) {
+        guard let majority = kind.majorityApp else { return }
+        requestChange(majority, targets: kind.members.map(\.target), in: kind)
+    }
+
+    /// Every changed member costs the user a system consent prompt, so anything beyond one is
+    /// confirmed first.
+    private func requestChange(_ app: AppRef, targets: [KindMember.Target], in kind: Kind) {
+        guard !isApplying(kind) else { return }
+        let known = Dictionary(kind.members.map { ($0.target, $0.defaultApp?.url) }, uniquingKeysWith: { first, _ in first })
+        let plan = WritePlan(app: app.url, targets: targets) { known[$0] ?? nil }
+        guard plan.promptCount > 0 else {
+            showMessage("\(kind.name) already opens with \(app.name).")
+            return
+        }
+
+        let change = PendingChange(kindID: kind.id, kindName: kind.name, app: app, targets: targets, promptCount: plan.promptCount)
+        if plan.promptCount > 1 {
+            pendingChange = change
+        } else {
+            Task { await apply(change) }
+        }
+    }
+
+    func confirmPendingChange() async {
+        guard let change = pendingChange else { return }
+        pendingChange = nil
+        await apply(change)
+    }
+
+    func apply(_ change: PendingChange) async {
+        guard !applyingKindIDs.contains(change.kindID) else { return }
+        applyingKindIDs.insert(change.kindID)
+        results[change.kindID] = nil
+        defer { applyingKindIDs.remove(change.kindID) }
+
+        let outcome = await writer.apply(app: change.app, to: change.targets)
+        results[change.kindID] = outcome
+        await reloadHandlers(forKindID: change.kindID)
+    }
+
+    /// Re-reads every member from the system rather than trusting the writer's outcome, since a
+    /// Kind can end up partially applied.
+    private func reloadHandlers(forKindID id: Kind.ID) async {
+        guard var kind = kinds.first(where: { $0.id == id }) else { return }
+        for memberIndex in kind.members.indices {
+            kind.members[memberIndex].defaultApp = await writer.currentHandler(for: kind.members[memberIndex].target)
+        }
+        for app in kind.members.compactMap(\.defaultApp) where !kind.candidates.contains(where: { $0.url == app.url }) {
+            kind.candidates.append(app)
+        }
+
+        // The reads above suspend, so merge into whatever is loaded now rather than a stale copy.
+        guard case .loaded(var all) = state, let latestIndex = all.firstIndex(where: { $0.id == id }) else { return }
+        all[latestIndex] = kind
+        IconCache.invalidate(typeIdentifiers: kind.utis)
+        state = .loaded(all)
     }
 
     func showMessage(_ message: String) {

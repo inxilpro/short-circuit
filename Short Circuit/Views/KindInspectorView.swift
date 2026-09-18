@@ -1,13 +1,21 @@
 import SwiftUI
 
+/// Everything the inspector needs to change handlers. Passing nil keeps the inspector read-only.
+struct KindEditing {
+    var isApplying = false
+    var results: [MemberResult] = []
+    var setDefault: (AppRef) -> Void
+    var setMemberDefault: (AppRef, KindMember.Target) -> Void
+    var fixSplit: () -> Void
+}
+
 struct KindInspectorView: View {
     let kind: Kind?
-    /// Nil until the write path exists; every editing control disables itself when it is.
-    var onSetDefault: ((AppRef, Kind) -> Void)?
+    var editing: KindEditing?
 
     var body: some View {
         if let kind {
-            KindInspectorForm(kind: kind, onSetDefault: onSetDefault)
+            KindInspectorForm(kind: kind, editing: editing)
         } else {
             ContentUnavailableView(
                 "No Selection",
@@ -20,9 +28,19 @@ struct KindInspectorView: View {
 
 private struct KindInspectorForm: View {
     let kind: Kind
-    let onSetDefault: ((AppRef, Kind) -> Void)?
+    let editing: KindEditing?
 
-    private var canEdit: Bool { onSetDefault != nil }
+    private var canEdit: Bool { editing != nil && editing?.isApplying == false }
+
+    private var resultsByTarget: [KindMember.Target: MemberResult] {
+        Dictionary((editing?.results ?? []).map { ($0.target, $0) }, uniquingKeysWith: { _, last in last })
+    }
+
+    /// A member's handler can be an app that no longer claims the type, so it must still appear.
+    private var choices: [AppRef] {
+        var seen = Set<URL>()
+        return (kind.candidates + kind.members.compactMap(\.defaultApp)).filter { seen.insert($0.url).inserted }
+    }
 
     var body: some View {
         Form {
@@ -31,15 +49,33 @@ private struct KindInspectorForm: View {
             }
 
             Section("Opens With") {
-                OpensWithPicker(kind: kind, onSetDefault: onSetDefault)
+                OpensWithPicker(kind: kind, choices: choices, isEnabled: canEdit) { app in
+                    editing?.setDefault(app)
+                }
+                if editing?.isApplying == true {
+                    ApplyingNotice()
+                } else if let results = editing?.results, !results.isEmpty {
+                    ResultSummary(results: results)
+                }
                 if kind.isSplit {
-                    SplitNotice(kind: kind, onSetDefault: onSetDefault)
+                    SplitNotice(kind: kind, isEnabled: canEdit) {
+                        editing?.fixSplit()
+                    }
                 }
             }
 
             Section("Members") {
                 ForEach(kind.members) { member in
-                    MemberRow(member: member, isOddOneOut: kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url)
+                    MemberRow(
+                        kindName: kind.name,
+                        member: member,
+                        isOddOneOut: kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url,
+                        result: resultsByTarget[member.target],
+                        choices: choices,
+                        isEnabled: canEdit
+                    ) { app in
+                        editing?.setMemberDefault(app, member.target)
+                    }
                 }
             }
 
@@ -76,20 +112,22 @@ private struct KindInspectorForm: View {
     }
 }
 
+private enum AppChoice: Hashable {
+    case none
+    case app(URL)
+    case other
+}
+
 private struct OpensWithPicker: View {
     let kind: Kind
-    let onSetDefault: ((AppRef, Kind) -> Void)?
-
-    /// A member's handler can be an app that no longer claims the type, so it must still appear.
-    private var choices: [AppRef] {
-        var seen = Set<URL>()
-        return (kind.candidates + kind.members.compactMap(\.defaultApp)).filter { seen.insert($0.url).inserted }
-    }
+    let choices: [AppRef]
+    let isEnabled: Bool
+    let onChoose: (AppRef) -> Void
 
     var body: some View {
         Picker("Default app", selection: selection) {
             if kind.defaultApp == nil {
-                Text(kind.isSplit ? "Mixed" : "None").tag(AppRef?.none)
+                Text(kind.isSplit ? "Mixed" : "None").tag(AppChoice.none)
                 Divider()
             }
             ForEach(choices) { app in
@@ -98,26 +136,87 @@ private struct OpensWithPicker: View {
                 } icon: {
                     AppIconView(app: app, size: 16)
                 }
-                .tag(Optional(app))
+                .tag(AppChoice.app(app.url))
             }
+            Divider()
+            Text("Other…").tag(AppChoice.other)
         }
-        .disabled(onSetDefault == nil)
-        .help(onSetDefault == nil ? "Changing the default app isn’t available yet." : "")
+        .disabled(!isEnabled)
     }
 
-    private var selection: Binding<AppRef?> {
+    private var selection: Binding<AppChoice> {
         Binding(
-            get: { kind.defaultApp },
-            set: { app in
-                if let app { onSetDefault?(app, kind) }
+            get: { kind.defaultApp.map { .app($0.url) } ?? .none },
+            set: { choice in
+                switch choice {
+                case .none:
+                    break
+                case .app(let url):
+                    if let app = choices.first(where: { $0.url == url }) { onChoose(app) }
+                case .other:
+                    chooseOtherApp(forOpening: kind.name, then: onChoose)
+                }
             }
         )
     }
 }
 
+/// Deferred so the modal panel doesn't run inside a SwiftUI binding update.
+private func chooseOtherApp(forOpening kindName: String, then onChoose: @escaping (AppRef) -> Void) {
+    Task { @MainActor in
+        if let app = ApplicationChooser.chooseApplication(forOpening: kindName) {
+            onChoose(app)
+        }
+    }
+}
+
+private struct ApplyingNotice: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Waiting for macOS — confirm each prompt to apply the change.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct ResultSummary: View {
+    let results: [MemberResult]
+
+    var body: some View {
+        let changed = results.filter { $0.outcome == .changed }.count
+        let notChanged = results.filter(\.outcome.isNotChanged).count
+        let failed = results.filter(\.outcome.isFailure).count
+
+        HStack(spacing: 12) {
+            if changed > 0 {
+                Label("\(changed) changed", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            }
+            if notChanged > 0 {
+                Label("\(notChanged) declined", systemImage: "hand.raised.fill")
+                    .foregroundStyle(.secondary)
+            }
+            if failed > 0 {
+                Label("\(failed) failed", systemImage: "xmark.octagon.fill")
+                    .foregroundStyle(.red)
+            }
+            if changed + notChanged + failed == 0 {
+                Label("Nothing needed changing", systemImage: "checkmark.circle")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .font(.callout)
+    }
+}
+
 private struct SplitNotice: View {
     let kind: Kind
-    let onSetDefault: ((AppRef, Kind) -> Void)?
+    let isEnabled: Bool
+    let onFix: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -127,18 +226,21 @@ private struct SplitNotice: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let majority = kind.majorityApp {
-                Button("Fix Split — Use \(majority.name) for All") {
-                    onSetDefault?(majority, kind)
-                }
-                .disabled(onSetDefault == nil)
+                Button("Fix Split — Use \(majority.name) for All", action: onFix)
+                    .disabled(!isEnabled)
             }
         }
     }
 }
 
 private struct MemberRow: View {
+    let kindName: String
     let member: KindMember
     let isOddOneOut: Bool
+    let result: MemberResult?
+    let choices: [AppRef]
+    let isEnabled: Bool
+    let onChoose: (AppRef) -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -170,8 +272,101 @@ private struct MemberRow: View {
                 }
                 .font(.callout)
                 .foregroundStyle(.secondary)
+
+                if let result {
+                    MemberResultLabel(result: result)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            memberMenu
+        }
+    }
+
+    private var memberMenu: some View {
+        Menu {
+            Section("Open \(member.target.displayName) With") {
+                ForEach(choices) { app in
+                    Button {
+                        onChoose(app)
+                    } label: {
+                        Label {
+                            Text(app.name)
+                        } icon: {
+                            AppIconView(app: app, size: 16)
+                        }
+                    }
+                    .disabled(app.url == member.defaultApp?.url)
+                }
+            }
+            Divider()
+            Button("Other…") {
+                chooseOtherApp(forOpening: "\(member.target.displayName) (\(kindName))", then: onChoose)
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(!isEnabled)
+        .help(WritePlan.browserRole.contains(member.target)
+              ? "Set just this member. macOS changes all web page types together."
+              : "Set just this member")
+    }
+}
+
+private struct MemberResultLabel: View {
+    let result: MemberResult
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            label
+            if result.viaBrowserRole, result.outcome == .changed {
+                note("Changed with the http scheme; macOS keeps web page types together.")
+            }
+            if result.usedFileFallback {
+                note(result.outcome == .changed
+                     ? "Applied through a sample file because the type setter was rejected."
+                     : "Setting it through a sample file didn’t work either.")
             }
         }
+        .font(.caption)
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        switch result.outcome {
+        case .changed:
+            Label("Changed", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .unchangedAfterSuccess:
+            Label("Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
+                .foregroundStyle(.secondary)
+        case .declined:
+            Label("Declined", systemImage: "hand.raised.fill")
+                .foregroundStyle(.secondary)
+        case .failed(let domain, let code, let message):
+            Label("Failed: \(message) (\(Self.shortDomain(domain)) \(code))", systemImage: "xmark.octagon.fill")
+                .foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        case .skipped(.alreadyDefault):
+            Label("Already set", systemImage: "checkmark.circle")
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .foregroundStyle(.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private static func shortDomain(_ domain: String) -> String {
+        domain == NSCocoaErrorDomain ? "Cocoa" : domain
     }
 }
 
@@ -198,17 +393,42 @@ private extension KindMember.Target {
     }
 }
 
-#Preview("Split") {
-    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "markdown" })
-        .frame(width: 320, height: 600)
+private extension MemberResult.Outcome {
+    var isNotChanged: Bool {
+        self == .unchangedAfterSuccess || self == .declined
+    }
+
+    var isFailure: Bool {
+        if case .failed = self { true } else { false }
+    }
 }
 
-#Preview("Web page") {
+private func previewEditing(results: [MemberResult] = [], isApplying: Bool = false) -> KindEditing {
+    KindEditing(isApplying: isApplying, results: results, setDefault: { _ in }, setMemberDefault: { _, _ in }, fixSplit: {})
+}
+
+#Preview("Split") {
+    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "markdown" }, editing: previewEditing())
+        .frame(width: 320, height: 640)
+}
+
+#Preview("Partially applied") {
+    KindInspectorView(
+        kind: SampleKindProvider.kinds.first { $0.id == "markdown" },
+        editing: previewEditing(results: [
+            MemberResult(target: .uti("net.daringfireball.markdown"), outcome: .changed, handlerAfter: .safari),
+            MemberResult(target: .uti("public.markdown"), outcome: .failed(domain: NSCocoaErrorDomain, code: 256, message: "The file couldn’t be opened."), handlerAfter: .safari),
+        ])
+    )
+    .frame(width: 320, height: 640)
+}
+
+#Preview("Applying") {
+    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "web-page" }, editing: previewEditing(isApplying: true))
+        .frame(width: 320, height: 640)
+}
+
+#Preview("Read-only") {
     KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "web-page" })
         .frame(width: 320, height: 600)
-}
-
-#Preview("Empty") {
-    KindInspectorView(kind: nil)
-        .frame(width: 320, height: 400)
 }

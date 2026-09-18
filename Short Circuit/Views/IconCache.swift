@@ -20,6 +20,12 @@ enum IconCache {
         return icon
     }
 
+    static func invalidate(typeIdentifiers: [String]) {
+        for identifier in typeIdentifiers {
+            typeIcons[identifier] = nil
+        }
+    }
+
     static func invalidate() {
         typeIcons.removeAll()
         appIcons.removeAll()

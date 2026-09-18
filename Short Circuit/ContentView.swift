@@ -16,8 +16,22 @@ struct ContentView: View {
                 .searchable(text: $store.searchText, placement: .toolbar, prompt: "Name, .ext, MIME, UTI, or scheme:")
                 .toolbar { toolbar }
                 .inspector(isPresented: $store.isInspectorPresented) {
-                    KindInspectorView(kind: store.selectedKind)
+                    KindInspectorView(kind: store.selectedKind, editing: store.selectedKind.map(editing(for:)))
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
+                }
+                .confirmationDialog(
+                    store.pendingChange.map { "Open \($0.kindName) with \($0.app.name)?" } ?? "",
+                    isPresented: isConfirmingChange,
+                    presenting: store.pendingChange
+                ) { _ in
+                    Button("Continue") {
+                        Task { await store.confirmPendingChange() }
+                    }
+                    Button("Cancel", role: .cancel) {
+                        store.pendingChange = nil
+                    }
+                } message: { change in
+                    Text("macOS will ask you to confirm each of \(change.promptCount) changes.")
                 }
         }
         .frame(minWidth: 820, minHeight: 480)
@@ -42,6 +56,23 @@ struct ContentView: View {
             await DebugSnapshotter.run(store: store)
             #endif
         }
+    }
+
+    private var isConfirmingChange: Binding<Bool> {
+        Binding(
+            get: { store.pendingChange != nil },
+            set: { if !$0 { store.pendingChange = nil } }
+        )
+    }
+
+    private func editing(for kind: Kind) -> KindEditing {
+        KindEditing(
+            isApplying: store.isApplying(kind),
+            results: store.results(for: kind),
+            setDefault: { store.setDefault($0, for: kind) },
+            setMemberDefault: { store.setDefault($0, for: $1, in: kind) },
+            fixSplit: { store.fixSplit(kind) }
+        )
     }
 
     @ToolbarContentBuilder
@@ -107,6 +138,6 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environment(KindStore(provider: SampleKindProvider()))
+        .environment(KindStore(provider: SampleKindProvider(), writer: SimulatedHandlerWriter.preview))
         .frame(width: 1100, height: 640)
 }

@@ -1,0 +1,67 @@
+import AppKit
+import Foundation
+import UniformTypeIdentifiers
+
+/// Live default-handler lookups through NSWorkspace. Launch Services answers these from its own
+/// database, so they reflect the current state even when the parsed snapshot is stale.
+nonisolated struct HandlerService: Sendable {
+    // MARK: - Reads
+
+    func defaultApplicationURL(forContentType identifier: String) -> URL? {
+        guard let type = UTType(identifier) else { return nil }
+        return NSWorkspace.shared.urlForApplication(toOpen: type)
+    }
+
+    func applicationURLs(forContentType identifier: String) -> [URL] {
+        guard let type = UTType(identifier) else { return [] }
+        return NSWorkspace.shared.urlsForApplications(toOpen: type)
+    }
+
+    func defaultApplicationURL(forScheme scheme: String) -> URL? {
+        guard let probe = Self.probeURL(forScheme: scheme) else { return nil }
+        return NSWorkspace.shared.urlForApplication(toOpen: probe)
+    }
+
+    func applicationURLs(forScheme scheme: String) -> [URL] {
+        guard let probe = Self.probeURL(forScheme: scheme) else { return [] }
+        return NSWorkspace.shared.urlsForApplications(toOpen: probe)
+    }
+
+    func defaultApplication(forContentType identifier: String) -> AppRef? {
+        defaultApplicationURL(forContentType: identifier).map(Self.appRef(for:))
+    }
+
+    func applications(forContentType identifier: String) -> [AppRef] {
+        applicationURLs(forContentType: identifier).map(Self.appRef(for:))
+    }
+
+    func defaultApplication(forScheme scheme: String) -> AppRef? {
+        defaultApplicationURL(forScheme: scheme).map(Self.appRef(for:))
+    }
+
+    func applications(forScheme scheme: String) -> [AppRef] {
+        applicationURLs(forScheme: scheme).map(Self.appRef(for:))
+    }
+
+    /// Launch Services resolves scheme handlers from the scheme alone, so a bare `scheme:` URL is enough.
+    static func probeURL(forScheme scheme: String) -> URL? {
+        URL(string: "\(scheme):")
+    }
+
+    static func appRef(for url: URL) -> AppRef {
+        let info = Bundle(url: url)?.infoDictionary ?? [:]
+        let name = (info["CFBundleDisplayName"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? (info["CFBundleName"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? url.deletingPathExtension().lastPathComponent
+        return AppRef(
+            url: url,
+            bundleID: info["CFBundleIdentifier"] as? String,
+            name: name,
+            version: info["CFBundleShortVersionString"] as? String ?? info["CFBundleVersion"] as? String
+        )
+    }
+
+    // MARK: - Writes
+    // Milestone 3: setDefaultApplication(at:toOpen:) and setDefaultApplication(at:toOpenURLsWithScheme:),
+    // followed by a delayed re-read because the call returns before the user answers the consent prompt.
+}

@@ -61,13 +61,69 @@ enum DebugSnapshotter {
             store.revealKind(forFileAt: unknown)
             await snapshot("drop-unknown-\(suffix)", to: directory)
         }
+        await runWriteStates(store: store, directory: directory)
         NSApp.terminate(nil)
+    }
+
+    private static func runWriteStates(store: KindStore, directory: URL) async {
+        // Refuse outright rather than risk driving the real setter from an unattended run.
+        guard store.writer is SimulatedHandlerWriter else {
+            print("DebugSnapshotter: skipping write states; the store does not use the simulated writer.")
+            return
+        }
+        func kind(_ id: Kind.ID) -> Kind? { store.kinds.first { $0.id == id } }
+
+        NSApp.appearance = NSAppearance(named: .aqua)
+        store.searchText = ""
+        store.layout = .grid
+        store.sidebarSelection = .all
+        store.isInspectorPresented = true
+
+        if let phone = kind("phone-call") {
+            store.selectedKindID = phone.id
+            store.setDefault(.messages, for: phone)
+            await snapshot("write-confirm-light", to: directory)
+            let confirming = Task { await store.confirmPendingChange() }
+            await snapshot("write-applying-light", to: directory)
+            await confirming.value
+            await snapshot("write-results-light", to: directory)
+        }
+
+        if let markdown = kind("markdown") {
+            store.selectedKindID = markdown.id
+            store.pendingChange = nil
+            store.setDefault(.preview, for: markdown)
+            await store.confirmPendingChange()
+            await snapshot("write-partial-failure-light", to: directory)
+            NSApp.appearance = NSAppearance(named: .darkAqua)
+            await snapshot("write-partial-failure-dark", to: directory)
+            NSApp.appearance = NSAppearance(named: .aqua)
+        }
+
+        if let heic = kind("heic") {
+            store.selectedKindID = heic.id
+            store.fixSplit(heic)
+            await waitUntilIdle(store)
+            await snapshot("write-declined-light", to: directory)
+        }
+
+        if let web = kind("web-page") {
+            store.selectedKindID = web.id
+            store.setDefault(.textEdit, for: web)
+            await waitUntilIdle(store)
+            await snapshot("write-browser-role-light", to: directory)
+        }
+    }
+
+    private static func waitUntilIdle(_ store: KindStore) async {
+        try? await Task.sleep(for: .milliseconds(100))
+        while !store.applyingKindIDs.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
     }
 
     private static func snapshot(_ name: String, to directory: URL) async {
         try? await Task.sleep(for: .milliseconds(700))
-        guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil }),
-              let image = captureWindow(CGWindowID(window.windowNumber))
+        guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil && $0.sheetParent == nil }),
+              let image = capture(window)
         else { return }
         let rep = NSBitmapImageRep(cgImage: image)
         try? rep.representation(using: .png, properties: [:])?.write(to: directory.appending(path: "\(name).png"))
@@ -77,12 +133,20 @@ enum DebugSnapshotter {
 
     /// The SDK marks CGWindowListCreateImage unavailable, but it still captures the app's own
     /// windows without Screen Recording permission, which ScreenCaptureKit does not.
-    private static func captureWindow(_ windowID: CGWindowID) -> CGImage? {
+    private static func capture(_ window: NSWindow) -> CGImage? {
         guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage") else { return nil }
         let capture = unsafeBitCast(symbol, to: WindowCapture.self)
+        let optionOnScreenBelowWindow: UInt32 = 1 << 2
         let optionIncludingWindow: UInt32 = 1 << 3
         let imageOptionBoundsIgnoreFraming: UInt32 = 1 << 0
-        return capture(.null, optionIncludingWindow, windowID, imageOptionBoundsIgnoreFraming)?.takeRetainedValue()
+
+        // A sheet is its own window, so capture the parent's area from the sheet downward.
+        if let sheet = window.attachedSheet, let screen = NSScreen.screens.first {
+            let frame = window.frame
+            let rect = CGRect(x: frame.minX, y: screen.frame.maxY - frame.maxY, width: frame.width, height: frame.height)
+            return capture(rect, optionOnScreenBelowWindow | optionIncludingWindow, CGWindowID(sheet.windowNumber), imageOptionBoundsIgnoreFraming)?.takeRetainedValue()
+        }
+        return capture(.null, optionIncludingWindow, CGWindowID(window.windowNumber), imageOptionBoundsIgnoreFraming)?.takeRetainedValue()
     }
 }
 #endif

@@ -64,7 +64,7 @@ private struct EmptyKindsView: View {
 }
 
 #Preview("Loaded") {
-    let store = KindStore(provider: SampleKindProvider())
+    let store = KindStore(provider: SampleKindProvider(), writer: SimulatedHandlerWriter.preview)
     KindBrowserView()
         .environment(store)
         .task { await store.refresh() }
@@ -72,7 +72,7 @@ private struct EmptyKindsView: View {
 }
 
 #Preview("Failed") {
-    let store = KindStore(provider: SampleKindProvider(failure: "lsregister exited with status 1."))
+    let store = KindStore(provider: SampleKindProvider(failure: "lsregister exited with status 1."), writer: SimulatedHandlerWriter.preview)
     KindBrowserView()
         .environment(store)
         .task { await store.refresh() }
