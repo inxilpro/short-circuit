@@ -24,7 +24,7 @@ Everything here came from your hands-on session or from a review.
 
 ## Current numbers on this Mac
 
-932 types, 56 in Common, 4 fixable splits (Web browser via XHTML, SQL source, Tab-separated table, MIME HTML), 202 apps. 201 unit tests pass; no build warnings. First load from cache under a second; a full `lsregister -dump` takes about 6 seconds. A stale cache is detected through the Launch Services sequence number (about 30 ms to read).
+932 types, 56 in Common, 4 fixable splits (Web browser via XHTML, SQL source, Tab-separated table, MIME HTML), 202 apps. 211 unit tests pass; no build warnings. First load from cache under a second; a full `lsregister -dump` takes about 6 seconds. A stale cache is detected through the Launch Services sequence number (about 30 ms to read).
 
 ## New since checkpoint 1
 
@@ -49,6 +49,12 @@ Implemented from `Documentation/reviews/mac-assed-review-1.md`, which now has a 
 - No Settings window, on purpose: every candidate preference is already covered by remembered state.
 
 201 unit tests pass. **No screenshots of this pass were reviewed**: the screen was locked while the agent ran, so its captures came out blank. Its manual QA list is at the end of the review file.
+
+## Codex review 3 (of the Mac-conventions pass)
+
+`Documentation/reviews/codex-review-3.md`. Two serious bugs, both fixed with tests: "Other…" did nothing after a pick (the sheet's target was cleared on dismissal, the same trap as the old dialog), and Undo could overwrite a change made after the one being undone. Undo now re-reads each type first, passes the normal eligibility checks, keeps its entry while the app is busy, and says what a browser undo cannot restore when http, https and HTML weren't on one app before. Codex confirmed that menus, context menus, app drops and batches all pass the single-write gate, and that live snapshot mode cannot write or undo. 211 unit tests pass.
+
+Not done, held for a decision: opening files dropped on the Dock icon and a Services entry. Both need document-type declarations, which could list Short Circuit in every "Open With" menu.
 
 ## Waiting on you
 
