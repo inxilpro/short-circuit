@@ -31,6 +31,17 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
     /// no prompt, and a Kind's candidates are a union, so not every candidate fits every member.
     /// Nil when unknown, which places no restriction.
     var candidateURLs: Set<URL>? = nil
+    /// Extensions whose files macOS resolves to this type. Several types can declare `.docx`, but
+    /// only one wins it, and only the winner's handler decides what opens the file. Nil when unknown.
+    var governedExtensions: [String]? = nil
+
+    /// True when this member's handler can affect what opens something: a URL scheme, or a type
+    /// that wins at least one extension.
+    var isEffective: Bool {
+        guard isSettable else { return false }
+        if case .scheme = target { return true }
+        return governedExtensions.map { !$0.isEmpty } ?? true
+    }
 
     func accepts(_ app: AppRef) -> Bool {
         guard isSettable else { return false }
@@ -78,13 +89,30 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
         members.filter(\.isSettable)
     }
 
-    var isSplit: Bool {
-        Set(settableMembers.map(\.defaultApp?.url)).count > 1
+    /// The members whose handlers decide what actually opens. Falls back to every settable member
+    /// when none wins an extension, as with types that have no extensions at all.
+    var effectiveMembers: [KindMember] {
+        let effective = members.filter(\.isEffective)
+        return effective.isEmpty ? settableMembers : effective
     }
 
-    /// Nil when the Kind is split or nothing handles it.
+    /// Apps every effective member accepts, in candidate order.
+    var unifyingCandidates: [AppRef] {
+        candidates.filter { app in effectiveMembers.allSatisfy { $0.accepts(app) } }
+    }
+
+    var hasMixedHandlers: Bool {
+        Set(effectiveMembers.map(\.defaultApp?.url)).count > 1
+    }
+
+    /// A split is a mismatch the user could fix. Members that no file resolves to don't count, and
+    /// neither does a mismatch no single app could resolve, such as facetime: and facetime-audio:.
+    var isSplit: Bool {
+        hasMixedHandlers && !unifyingCandidates.isEmpty
+    }
+
     var defaultApp: AppRef? {
-        isSplit ? nil : settableMembers.first?.defaultApp
+        hasMixedHandlers ? nil : effectiveMembers.first?.defaultApp
     }
 }
 
