@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 nonisolated enum LaunchServicesIndexError: Error, LocalizedError {
     case lsregisterFailed(status: Int32, message: String)
@@ -80,33 +81,52 @@ actor LaunchServicesIndex {
         }
     }
 
-    /// Runs `lsregister -dump` on a background thread. Output must be drained while the process runs,
-    /// otherwise it blocks once the pipe buffer fills.
     @Sendable static func runDump() async throws -> Data {
+        try await run(lsregisterURL, arguments: ["-dump"])
+    }
+
+    /// Runs a process on background threads and returns its stdout. Both pipes are drained at the same
+    /// time: reading one to EOF first would let a child that fills the other pipe block forever.
+    static func run(_ executable: URL, arguments: [String]) async throws -> Data {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
-                process.executableURL = lsregisterURL
-                process.arguments = ["-dump"]
+                process.executableURL = executable
+                process.arguments = arguments
                 let output = Pipe()
                 let errors = Pipe()
                 process.standardOutput = output
                 process.standardError = errors
                 do {
                     try process.run()
-                    let data = output.fileHandleForReading.readDataToEndOfFile()
-                    let errorData = errors.fileHandleForReading.readDataToEndOfFile()
-                    process.waitUntilExit()
-                    if process.terminationStatus == 0 {
-                        continuation.resume(returning: data)
-                    } else {
-                        let message = String(decoding: errorData, as: UTF8.self)
-                        continuation.resume(throwing: LaunchServicesIndexError.lsregisterFailed(status: process.terminationStatus, message: message))
-                    }
                 } catch {
                     continuation.resume(throwing: error)
+                    return
+                }
+
+                let errorData = ErrorBuffer()
+                let drained = DispatchGroup()
+                drained.enter()
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let data = errors.fileHandleForReading.readDataToEndOfFile()
+                    errorData.data.withLock { $0 = data }
+                    drained.leave()
+                }
+                let data = output.fileHandleForReading.readDataToEndOfFile()
+                drained.wait()
+                process.waitUntilExit()
+
+                if process.terminationStatus == 0 {
+                    continuation.resume(returning: data)
+                } else {
+                    let message = errorData.data.withLock { String(decoding: $0, as: UTF8.self) }
+                    continuation.resume(throwing: LaunchServicesIndexError.lsregisterFailed(status: process.terminationStatus, message: message))
                 }
             }
         }
+    }
+
+    private final class ErrorBuffer: Sendable {
+        let data = Mutex(Data())
     }
 }

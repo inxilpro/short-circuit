@@ -16,47 +16,60 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
     }
 
     struct Call: Hashable, Sendable {
-        enum Kind: Hashable, Sendable {
-            case target(KindMember.Target)
-            case file(extension: String)
-        }
-
-        var kind: Kind
+        var target: KindMember.Target
         var app: URL
     }
 
     private struct State {
         var handlers: [KindMember.Target: URL]
         var calls: [Call] = []
+        var inFlight = 0
+        var maxInFlight = 0
     }
 
     private let state: Mutex<State>
     private let behaviors: [KindMember.Target: Behavior]
-    private let fileFallbackSucceeds: Bool
+    private let browserFollowers: Set<KindMember.Target>
     private let latency: Duration
 
+    /// `browserFollowers` are the targets an accepted `http` call also changes. Real coupling is
+    /// only partly known (`public.xhtml` is unverified), so tests choose it explicitly.
     init(
         handlers: [KindMember.Target: URL],
         behaviors: [KindMember.Target: Behavior] = [:],
-        fileFallbackSucceeds: Bool = false,
+        browserFollowers: Set<KindMember.Target> = WritePlan.browserRole,
         latency: Duration = .zero
     ) {
         state = Mutex(State(handlers: handlers))
         self.behaviors = behaviors
-        self.fileFallbackSucceeds = fileFallbackSucceeds
+        self.browserFollowers = browserFollowers
         self.latency = latency
     }
 
-    convenience init(kinds: [Kind], behaviors: [KindMember.Target: Behavior] = [:], fileFallbackSucceeds: Bool = false, latency: Duration = .zero) {
+    convenience init(
+        kinds: [Kind],
+        behaviors: [KindMember.Target: Behavior] = [:],
+        browserFollowers: Set<KindMember.Target> = WritePlan.browserRole,
+        latency: Duration = .zero
+    ) {
         var handlers: [KindMember.Target: URL] = [:]
         for member in kinds.flatMap(\.members) {
             handlers[member.target] = member.defaultApp?.url
         }
-        self.init(handlers: handlers, behaviors: behaviors, fileFallbackSucceeds: fileFallbackSucceeds, latency: latency)
+        self.init(handlers: handlers, behaviors: behaviors, browserFollowers: browserFollowers, latency: latency)
     }
 
     var calls: [Call] {
         state.withLock { $0.calls }
+    }
+
+    var maxConcurrentCalls: Int {
+        state.withLock { $0.maxInFlight }
+    }
+
+    /// Changes a handler behind the app's back, like another app or System Settings would.
+    func changeExternally(_ target: KindMember.Target, to app: URL?) {
+        state.withLock { $0.handlers[target] = app }
     }
 
     func currentHandler(for target: KindMember.Target) async -> URL? {
@@ -64,7 +77,12 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
     }
 
     func setHandler(_ app: URL, for target: KindMember.Target) async throws {
-        state.withLock { $0.calls.append(Call(kind: .target(target), app: app)) }
+        state.withLock { state in
+            state.calls.append(Call(target: target, app: app))
+            state.inFlight += 1
+            state.maxInFlight = max(state.maxInFlight, state.inFlight)
+        }
+        defer { state.withLock { $0.inFlight -= 1 } }
         if latency > .zero {
             try? await Task.sleep(for: latency)
         }
@@ -73,10 +91,9 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         case .accept:
             state.withLock { state in
                 state.handlers[target] = app
-                // Mirrors macOS locking the browser types together behind the http scheme.
-                if WritePlan.browserRole.contains(target) {
-                    for member in WritePlan.browserRole {
-                        state.handlers[member] = app
+                if target == WritePlan.browserCall {
+                    for follower in browserFollowers {
+                        state.handlers[follower] = app
                     }
                 }
             }
@@ -86,16 +103,6 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
             throw CocoaError(.userCancelled)
         case .rejectBeforeConsent:
             throw CocoaError(.fileReadUnknown)
-        }
-    }
-
-    func setHandler(_ app: URL, forFileAt file: URL) async throws {
-        state.withLock { $0.calls.append(Call(kind: .file(extension: file.pathExtension), app: app)) }
-        guard fileFallbackSucceeds else { throw CocoaError(.fileReadUnknown) }
-        state.withLock { state in
-            for (target, behavior) in behaviors where behavior == .rejectBeforeConsent {
-                state.handlers[target] = app
-            }
         }
     }
 }
@@ -109,7 +116,8 @@ nonisolated extension HandlerWriter where Backend == SimulatedHandlerBackend {
     }
 
     /// Shows every outcome the UI has to handle: Markdown's `public.markdown` is rejected like
-    /// on macOS 26.6, `sms` is declined, and everything else is accepted after a prompt-like pause.
+    /// on macOS 26.6, `sms` is declined, `public.heif` is cancelled, and everything else is
+    /// accepted after a prompt-like pause.
     static var demo: Self {
         HandlerWriter(
             backend: SimulatedHandlerBackend(

@@ -20,16 +20,96 @@ nonisolated struct MemberResult: Identifiable, Hashable, Sendable {
     var target: KindMember.Target
     var outcome: Outcome
     var handlerAfter: AppRef?
-    /// Set when the change was made through the `http` scheme because macOS locks the browser
-    /// types together.
+    /// Set when the member was changed as part of the browser-wide `http` call rather than on its own.
     var viaBrowserRole = false
-    var usedFileFallback = false
 
     var id: KindMember.Target { target }
 }
 
+/// The calls a change will make, built from live reads. The store shows this to the user and
+/// hands the same value back for execution, so what runs is what was reviewed.
+nonisolated struct WritePlan: Hashable, Sendable {
+    struct Step: Hashable, Sendable {
+        var call: KindMember.Target
+        var covers: [KindMember.Target]
+
+        var changesBrowser: Bool { call == WritePlan.browserCall }
+    }
+
+    static let browserCall = KindMember.Target.scheme("http")
+    /// macOS treats these as one "default browser" role. Whether `public.xhtml` really follows
+    /// the `http` call is unverified: live data on the dev Mac has it on a different app.
+    static let browserTargets: [KindMember.Target] = [
+        .scheme("http"), .scheme("https"), .uti("public.html"), .uti("public.xhtml"),
+    ]
+    static let browserRole = Set(browserTargets)
+
+    var app: URL
+    var requested: [KindMember.Target]
+    var steps: [Step]
+    var skipped: [KindMember.Target]
+
+    init(app: URL, targets: [KindMember.Target], currentHandler: (KindMember.Target) -> URL?) {
+        var seen = Set<KindMember.Target>()
+        let unique = targets.filter { seen.insert($0).inserted }
+        var steps: [Step] = []
+        var skipped: [KindMember.Target] = []
+        var browserHandled = false
+
+        for target in unique {
+            if Self.browserRole.contains(target) {
+                guard !browserHandled else { continue }
+                browserHandled = true
+                // The call changes every browser target, so the plan has to show all of them even
+                // when only one was asked for.
+                if Self.browserTargets.allSatisfy({ Self.sameApp(currentHandler($0), app) }) {
+                    skipped.append(contentsOf: unique.filter(Self.browserRole.contains))
+                } else {
+                    steps.append(Step(call: Self.browserCall, covers: Self.browserTargets))
+                }
+            } else if Self.sameApp(currentHandler(target), app) {
+                skipped.append(target)
+            } else {
+                steps.append(Step(call: target, covers: [target]))
+            }
+        }
+
+        self.app = app
+        self.requested = unique
+        self.steps = steps
+        self.skipped = skipped
+    }
+
+    var promptCount: Int { steps.count }
+
+    var changesBrowser: Bool { steps.contains(where: \.changesBrowser) }
+
+    var affectedTargets: [KindMember.Target] { steps.flatMap(\.covers) }
+
+    /// True when running `self` would make no call that `approved` didn't already include.
+    func isWithin(_ approved: WritePlan) -> Bool {
+        guard Self.sameApp(app, approved.app) else { return false }
+        return steps.allSatisfy { step in
+            approved.steps.contains { $0.call == step.call && Set(step.covers).isSubset(of: $0.covers) }
+        }
+    }
+
+    static func sameApp(_ lhs: URL?, _ rhs: URL?) -> Bool {
+        guard let lhs, let rhs else { return lhs == nil && rhs == nil }
+        return lhs.standardizedFileURL.resolvingSymlinksInPath().path == rhs.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+}
+
+nonisolated enum WriteExecution: Hashable, Sendable {
+    case completed([MemberResult])
+    /// The system changed since the plan was approved and running it now would make calls the
+    /// user never saw. Nothing was changed; the fresh plan needs its own approval.
+    case needsApproval(WritePlan)
+}
+
 nonisolated protocol HandlerWriting: Sendable {
-    func apply(app: AppRef, to members: [KindMember.Target]) async -> [MemberResult]
+    func plan(app: AppRef, targets: [KindMember.Target]) async -> WritePlan
+    func execute(_ approved: WritePlan) async -> WriteExecution
     func currentHandler(for target: KindMember.Target) async -> AppRef?
 }
 
@@ -38,58 +118,6 @@ nonisolated protocol HandlerWriting: Sendable {
 nonisolated protocol HandlerBackend: Sendable {
     func currentHandler(for target: KindMember.Target) async -> URL?
     func setHandler(_ app: URL, for target: KindMember.Target) async throws
-    func setHandler(_ app: URL, forFileAt file: URL) async throws
-}
-
-/// Groups targets into the setter calls that will actually be made. Each step costs at most one
-/// consent prompt.
-nonisolated struct WritePlan: Sendable {
-    struct Step: Hashable, Sendable {
-        var call: KindMember.Target
-        var covers: [KindMember.Target]
-    }
-
-    static let browserCall = KindMember.Target.scheme("http")
-    static let browserRole: Set<KindMember.Target> = [
-        .scheme("http"), .scheme("https"), .uti("public.html"), .uti("public.xhtml"),
-    ]
-
-    var steps: [Step]
-    var skipped: [KindMember.Target]
-
-    init(app: URL, targets: [KindMember.Target], currentHandler: (KindMember.Target) -> URL?) {
-        var steps: [Step] = []
-        var skipped: [KindMember.Target] = []
-        var seen = Set<KindMember.Target>()
-        let unique = targets.filter { seen.insert($0).inserted }
-
-        let browserTargets = unique.filter(Self.browserRole.contains)
-        let browserStepIndex = browserTargets.isEmpty ? nil : unique.firstIndex(where: Self.browserRole.contains)
-
-        for (index, target) in unique.enumerated() {
-            if Self.browserRole.contains(target) {
-                guard index == browserStepIndex else { continue }
-                if browserTargets.allSatisfy({ Self.sameApp(currentHandler($0), app) }) {
-                    skipped.append(contentsOf: browserTargets)
-                } else {
-                    steps.append(Step(call: Self.browserCall, covers: browserTargets))
-                }
-            } else if Self.sameApp(currentHandler(target), app) {
-                skipped.append(target)
-            } else {
-                steps.append(Step(call: target, covers: [target]))
-            }
-        }
-        self.steps = steps
-        self.skipped = skipped
-    }
-
-    var promptCount: Int { steps.count }
-
-    static func sameApp(_ lhs: URL?, _ rhs: URL?) -> Bool {
-        guard let lhs, let rhs else { return lhs == nil && rhs == nil }
-        return lhs.standardizedFileURL.resolvingSymlinksInPath().path == rhs.standardizedFileURL.resolvingSymlinksInPath().path
-    }
 }
 
 nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
@@ -101,41 +129,36 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
         await backend.currentHandler(for: target).map(HandlerService.appRef(for:))
     }
 
-    /// Runs one call at a time so macOS shows its consent prompts one after another.
-    func apply(app: AppRef, to members: [KindMember.Target]) async -> [MemberResult] {
-        var before: [KindMember.Target: URL?] = [:]
-        for target in members where before[target] == nil {
-            before[target] = await backend.currentHandler(for: target)
+    func plan(app: AppRef, targets: [KindMember.Target]) async -> WritePlan {
+        var current: [KindMember.Target: URL?] = [:]
+        for target in targets + WritePlan.browserTargets where current[target] == nil {
+            current[target] = await backend.currentHandler(for: target)
         }
-        let plan = WritePlan(app: app.url, targets: members) { before[$0] ?? nil }
+        return WritePlan(app: app.url, targets: targets) { current[$0] ?? nil }
+    }
 
-        var results: [KindMember.Target: MemberResult] = [:]
-        for target in plan.skipped {
-            results[target] = MemberResult(target: target, outcome: .skipped(.alreadyDefault), handlerAfter: before[target].flatMap { $0.map(HandlerService.appRef(for:)) })
+    /// Re-plans from live reads first and refuses to run anything wider than what was approved.
+    /// Calls run one at a time so macOS shows its consent prompts one after another.
+    func execute(_ approved: WritePlan) async -> WriteExecution {
+        let fresh = await plan(app: HandlerService.appRef(for: approved.app), targets: approved.requested)
+        guard fresh.isWithin(approved) else { return .needsApproval(fresh) }
+
+        var results: [MemberResult] = []
+        for target in fresh.skipped {
+            results.append(MemberResult(target: target, outcome: .skipped(.alreadyDefault), handlerAfter: await currentHandler(for: target)))
         }
-        for step in plan.steps {
-            for result in await perform(step, app: app.url) {
-                results[result.target] = result
-            }
+        for step in fresh.steps {
+            results.append(contentsOf: await perform(step, app: fresh.app))
         }
-        var seen = Set<KindMember.Target>()
-        return members.filter { seen.insert($0).inserted }.compactMap { results[$0] }
+        return .completed(results)
     }
 
     private func perform(_ step: WritePlan.Step, app: URL) async -> [MemberResult] {
         var callError: NSError?
-        var usedFileFallback = false
-
         do {
             try await backend.setHandler(app, for: step.call)
         } catch let error as NSError {
             callError = error
-            if Self.isRejectedBeforeConsent(error), case .uti(let identifier) = step.call,
-               let fallback = await setThroughFile(app, typeIdentifier: identifier) {
-                usedFileFallback = true
-                // Keep the original 256 error if the fallback fails too; it's the one that explains why.
-                if case .success = fallback { callError = nil }
-            }
         }
 
         var results: [MemberResult] = []
@@ -156,8 +179,7 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
                 target: target,
                 outcome: outcome,
                 handlerAfter: after.map(HandlerService.appRef(for:)),
-                viaBrowserRole: target != step.call,
-                usedFileFallback: usedFileFallback
+                viaBrowserRole: target != step.call
             ))
         }
         return results
@@ -174,27 +196,6 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
         return current
     }
 
-    /// Fallback for types whose content-type setter fails with Cocoa error 256 (seen for
-    /// `public.markdown`): set the handler for a sample file of that type instead. UNTESTED on a
-    /// real system — see Documentation/write-path.md. Nil when the type has no extension to build
-    /// a sample file from.
-    private func setThroughFile(_ app: URL, typeIdentifier: String) async -> Result<Void, NSError>? {
-        guard let ext = UTType(typeIdentifier)?.preferredFilenameExtension else { return nil }
-        let directory = FileManager.default.temporaryDirectory
-            .appending(path: "ShortCircuit-\(UUID().uuidString)", directoryHint: .isDirectory)
-        let file = directory.appending(path: "sample.\(ext)")
-        defer { try? FileManager.default.removeItem(at: directory) }
-
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try Data().write(to: file)
-            try await backend.setHandler(app, forFileAt: file)
-            return .success(())
-        } catch let error as NSError {
-            return .failure(error)
-        }
-    }
-
     static func isRejectedBeforeConsent(_ error: NSError) -> Bool {
         error.domain == NSCocoaErrorDomain && error.code == NSFileReadUnknownError
     }
@@ -203,7 +204,12 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
         if error.domain == NSCocoaErrorDomain && error.code == NSUserCancelledError {
             return .declined
         }
-        return .failed(domain: error.domain, code: error.code, message: error.localizedDescription)
+        // Cocoa's own text for 256 ("The file couldn't be opened") reads as a bug in this app.
+        // On macOS 26.6 it means Launch Services refused the type outright, before any prompt.
+        let message = isRejectedBeforeConsent(error)
+            ? "macOS rejected changing the default app for this type without asking. Nothing was changed."
+            : error.localizedDescription
+        return .failed(domain: error.domain, code: error.code, message: message)
     }
 }
 
@@ -228,10 +234,6 @@ nonisolated struct WorkspaceHandlerBackend: HandlerBackend {
         case .scheme(let scheme):
             try await NSWorkspace.shared.setDefaultApplication(at: app, toOpenURLsWithScheme: scheme)
         }
-    }
-
-    func setHandler(_ app: URL, forFileAt file: URL) async throws {
-        try await NSWorkspace.shared.setDefaultApplication(at: app, toOpenFileAt: file)
     }
 }
 

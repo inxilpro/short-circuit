@@ -5,21 +5,23 @@ import UniformTypeIdentifiers
 ///
 /// Merges drive batch default changes, so the rule prefers splitting over an uncertain merge.
 ///
-/// UTIs that at least one app can open are unioned only when they share a filename *extension* from their
-/// *active* declarations (inactive imports are often stale or sloppy). MIME types never create edges:
-/// apps attach broad ones such as `text/plain` to specific formats (MacWhisper exports Markdown with it),
-/// and vendor MIME types glue different formats (Excel workbook, template and workspace). An extension is
-/// ignored — "generic" — when
-///   - it is a wildcard,
-///   - more than `maxDeclarersPerTag` UTIs declare it, or
-///   - one declarer conforms to another declarer that is a broad base type (at least
-///     `baseTypeMinimumDescendants` known descendants), as with `.xml` (`public.xml` and Word XML) or
-///     `.plist`. Vendor aliases such as the two `.docx` UTIs still merge.
-/// Finally, a union is refused when it would put two different known categories (audio and movie via
-/// `.mp4`, DV movie and Excel DIF via `.dif`) or folders and flat files (`.ibooks` bundle vs. container)
-/// in one Kind.
+/// Nodes are UTIs an app can open: claimed directly, or reached through a bare extension or MIME claim
+/// that resolves to one declared type (an editor claiming `.css` makes `public.css` a node). A node needs
+/// at least one filename extension; abstract types such as `public.data` or pasteboard-only types such as
+/// `public.utf8-plain-text` never become Kinds, and `dyn.` types are never members.
 ///
-/// `dyn.` types are never members, and a UTI needs at least one extension or MIME tag to become a Kind.
+/// Two nodes are unioned only when they look like aliases of one format: each one's *preferred*
+/// extension (the first in an active declaration) appears among the other's active extensions.
+/// Sharing a secondary extension is not enough — Radiance (`.pic, .hdr`) and PICT (`.pict, .pct, .pic`)
+/// or CPIO (`.cpio, .pax`) and pax (`.pax`) stay apart, while the `.docx` or Markdown aliases merge.
+/// MIME types never create edges: apps attach broad ones such as `text/plain` to specific formats.
+/// An extension is also ignored for merging — "generic" — when it is a wildcard, more than
+/// `maxDeclarersPerTag` UTIs declare it, or one declarer conforms to another declarer that is a broad base
+/// type (at least `baseTypeMinimumDescendants` descendants), as with `.xml` and `.plist`.
+/// Finally, a union is refused when it would put two different specific categories (audio and movie via
+/// `.mp4`) or folders and flat files (`.ibooks` bundle vs. container) in one Kind.
+///
+/// Generic tags are only excluded from merging; they stay on Kinds for display and search.
 nonisolated struct KindBuilder: Sendable {
     struct Options: Sendable {
         var maxDeclarersPerTag = 10
@@ -29,15 +31,19 @@ nonisolated struct KindBuilder: Sendable {
     struct Output: Sendable {
         var kinds: [Kind]
         var genericTags: Set<String>
+        /// Bare extension or MIME claims that match no declared type, or several unrelated ones. They
+        /// have no UTI a setter could act on, so they don't become Kinds.
+        var unresolvedTags: Set<String>
     }
 
     static let webPageID = "web-page"
-
-    /// Too broad to describe a Kind; apps attach them to specific formats.
-    static let genericMIMETypes: Set<String> = [
-        "text/plain", "application/octet-stream", "application/xml", "text/xml", "application/zip", "application/json",
-    ]
     static let emailID = "email"
+
+    /// Schemes that name a transport or a local resource rather than something a person picks a handler for.
+    static let abstractSchemes: Set<String> = ["file", "about", "data", "blob", "javascript"]
+
+    /// Means "unknown binary", so it describes nothing.
+    static let meaninglessMIMETypes: Set<String> = ["application/octet-stream"]
 
     var options = Options()
     var describe: @Sendable (String) -> String? = { UTType($0)?.localizedDescription }
@@ -54,32 +60,32 @@ nonisolated struct KindBuilder: Sendable {
         let context = Context(snapshot: snapshot, options: options)
         let genericTags = context.genericTags()
 
-        let claimedUTIs = context.claimersByUTI.keys.filter { !context.displayTags($0).isEmpty }
-        var unionFind = UnionFind(claimedUTIs)
-        var declarersByTag: [String: [String]] = [:]
-        for uti in claimedUTIs {
-            for tag in context.mergeTags(uti) where tag.hasPrefix(".") && !genericTags.contains(tag) {
-                declarersByTag[tag, default: []].append(uti)
-            }
+        let tagClaims = context.resolveTagClaims()
+        var claimers = context.claimersByUTI
+        for claim in tagClaims.resolved where claim.utis.count == 1 || claim.areAliases {
+            for uti in claim.utis { claimers[uti, default: []].formUnion(claim.claimers) }
         }
+        let nodes = claimers.keys.filter { context.hasExtension($0) }.sorted()
 
+        var unionFind = UnionFind(nodes)
         var traits: [String: GroupTraits] = [:]
-        for uti in claimedUTIs {
+        var nodesByExtension: [String: [String]] = [:]
+        for uti in nodes {
             let lineage = lineage(uti, context: context)
             let category = Self.category(identifier: uti, lineage: lineage)
-            // A UTI no declaration gives any conformance (Word's `public.markdown`) has an unknown
-            // category and may join anything; one that only conforms to `public.data` is known "other".
-            let declaresConformance = context.decls[uti, default: []].contains { !$0.conformsTo.isEmpty }
             traits[uti] = GroupTraits(
-                categories: declaresConformance ? [category] : [],
+                categories: category == .other ? [] : [category],
                 isFolder: lineage.contains("public.folder") || lineage.contains("public.directory") ? [true] : [false]
             )
+            for tag in context.mergeTags(uti) where tag.hasPrefix(".") && !genericTags.contains(tag) {
+                nodesByExtension[tag, default: []].append(uti)
+            }
         }
-        for tag in declarersByTag.keys.sorted() {
-            let declarers = declarersByTag[tag, default: []].sorted()
-            // Every pair is tried, because a refused union with one declarer mustn't stop the rest from merging.
-            for (offset, uti) in declarers.enumerated() {
-                for earlier in declarers[..<offset] {
+        for tag in nodesByExtension.keys.sorted() {
+            let sharing = nodesByExtension[tag, default: []]
+            // Every pair is tried, because a refused union with one node mustn't stop the rest from merging.
+            for (offset, uti) in sharing.enumerated() {
+                for earlier in sharing[..<offset] where context.areAliases(earlier, uti) {
                     guard let lhs = unionFind.find(earlier), let rhs = unionFind.find(uti), lhs != rhs else { continue }
                     let merged = traits[lhs, default: .init()].merging(traits[rhs, default: .init()])
                     guard merged.isCoherent else { continue }
@@ -93,36 +99,72 @@ nonisolated struct KindBuilder: Sendable {
         let webUTIs = webRoots.flatMap { groups.removeValue(forKey: $0) ?? [] }
 
         var drafts: [Draft] = groups.values.map { utis in
-            Draft(id: "", utis: context.primaryOrder(utis), schemes: [])
+            let ordered = context.primaryOrder(utis, claimers: claimers)
+            return Draft(id: "uti:\(ordered[0])", utis: ordered, schemes: [])
         }
-        for index in drafts.indices { drafts[index].id = "uti:\(drafts[index].utis[0])" }
 
         let webSchemes = ["http", "https"].filter { context.claimersByScheme[$0] != nil }
         if !webUTIs.isEmpty || !webSchemes.isEmpty {
-            drafts.append(Draft(id: Self.webPageID, utis: context.primaryOrder(webUTIs), schemes: webSchemes, name: "Web page", category: .web))
+            let utis = context.primaryOrder(webUTIs, claimers: claimers)
+            drafts.append(Draft(id: Self.webPageID, utis: utis, schemes: webSchemes, name: "Web page", category: .web))
         }
         if context.claimersByScheme["mailto"] != nil {
             drafts.append(Draft(id: Self.emailID, utis: [], schemes: ["mailto"], name: "Email", category: .communication))
         }
-        for scheme in context.claimersByScheme.keys where !["http", "https", "mailto"].contains(scheme) {
-            drafts.append(Draft(id: "scheme:\(scheme)", utis: [], schemes: [scheme], name: Self.schemeName(scheme), category: Self.schemeCategory(scheme)))
+        for scheme in context.claimersByScheme.keys.sorted()
+        where !["http", "https", "mailto"].contains(scheme) && !Self.abstractSchemes.contains(scheme) {
+            let owners = context.claimersByScheme[scheme, default: []].compactMap { context.apps[$0] }
+            let isWellKnown = Self.schemeNames[scheme] != nil || Self.schemeCategory(scheme) != .other
+            drafts.append(Draft(
+                id: "scheme:\(scheme)",
+                utis: [],
+                schemes: [scheme],
+                name: Self.schemeName(scheme, owners: owners),
+                category: Self.schemeCategory(scheme),
+                isAppPrivate: !isWellKnown && Set(owners.map { $0.bundleID ?? $0.url.path }).count <= 1
+            ))
         }
 
-        let bareExtensions = context.bareExtensionOwners(drafts: drafts.map(\.utis))
+        // Tag claims whose candidate types ended up in one Kind add their apps to it (the `.md` editors).
+        var draftIndexByUTI: [String: Int] = [:]
+        for (index, draft) in drafts.enumerated() {
+            for uti in draft.utis { draftIndexByUTI[uti] = index }
+        }
+        var tagClaimers: [Int: Set<String>] = [:]
+        var unresolvedTags = tagClaims.unresolved
+        for claim in tagClaims.resolved {
+            let owners = Set(claim.utis.compactMap { draftIndexByUTI[$0] })
+            if owners.count == 1, let owner = owners.first {
+                tagClaimers[owner, default: []].formUnion(claim.claimers)
+            } else {
+                unresolvedTags.insert(claim.tag)
+            }
+        }
+
         var activeTagOwners: [String: Set<Int>] = [:]
         for (index, draft) in drafts.enumerated() {
             for uti in draft.utis {
                 for tag in context.mergeTags(uti) { activeTagOwners[tag, default: []].insert(index) }
             }
         }
-        let kinds = drafts.indices.map { index in
-            // An inactive import's tag is only shown when no other Kind actively declares it; Xcode's
-            // stale Markdown import lists `.text`, which belongs to plain text.
-            let isOwnTag: (String) -> Bool = { tag in activeTagOwners[tag].map { $0.contains(index) } ?? true }
-            return makeKind(drafts[index], context: context, genericTags: genericTags, bareExtensions: bareExtensions[index] ?? [], isOwnTag: isOwnTag)
+
+        var kinds = drafts.indices.map { index in
+            makeKind(
+                drafts[index],
+                context: context,
+                claimers: claimers,
+                extraClaimers: tagClaimers[index] ?? [],
+                showsTag: { tag, uti in
+                    // An inactive import's tag only shows when no other Kind actively declares it; Xcode's
+                    // stale Markdown import lists `.text`, which belongs to plain text.
+                    if let owners = activeTagOwners[tag], !owners.contains(index) { return false }
+                    return !context.isInheritedPollution(tag, on: uti)
+                }
+            )
         }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return Output(kinds: kinds, genericTags: genericTags)
+        Self.disambiguateNames(&kinds)
+        kinds.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        return Output(kinds: kinds, genericTags: genericTags, unresolvedTags: unresolvedTags)
     }
 
     // MARK: - Kind assembly
@@ -148,19 +190,20 @@ nonisolated struct KindBuilder: Sendable {
         var schemes: [String]
         var name: String?
         var category: KindCategory?
+        var isAppPrivate = false
     }
 
     private func makeKind(
         _ draft: Draft,
         context: Context,
-        genericTags: Set<String>,
-        bareExtensions: [String],
-        isOwnTag: (String) -> Bool
+        claimers: [String: Set<String>],
+        extraClaimers: Set<String>,
+        showsTag: (String, String) -> Bool
     ) -> Kind {
         var extensions: [String] = []
         var mimeTypes: [String] = []
         for uti in draft.utis {
-            for tag in context.displayTags(uti) where !genericTags.contains(tag) && !Self.genericMIMETypes.contains(tag) && isOwnTag(tag) {
+            for tag in context.displayTags(uti) where showsTag(tag, uti) && !Self.meaninglessMIMETypes.contains(tag) {
                 if tag.hasPrefix(".") {
                     let ext = String(tag.dropFirst())
                     if !extensions.contains(ext) { extensions.append(ext) }
@@ -170,15 +213,20 @@ nonisolated struct KindBuilder: Sendable {
             }
         }
 
-        var candidateKeys: Set<String> = []
-        for uti in draft.utis { candidateKeys.formUnion(context.claimersByUTI[uti] ?? []) }
-        for scheme in draft.schemes { candidateKeys.formUnion(context.claimersByScheme[scheme] ?? []) }
-        for ext in bareExtensions { candidateKeys.formUnion(context.claimersByExtension[ext] ?? []) }
-        let candidates = candidateKeys.compactMap { context.apps[$0] }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-
         let members = draft.utis.map { KindMember(target: .uti($0), defaultApp: context.defaultApp(forContentType: $0)) }
             + draft.schemes.map { KindMember(target: .scheme($0), defaultApp: context.defaultApp(forScheme: $0)) }
+
+        var candidateKeys = extraClaimers
+        for uti in draft.utis { candidateKeys.formUnion(claimers[uti] ?? []) }
+        for scheme in draft.schemes { candidateKeys.formUnion(context.claimersByScheme[scheme] ?? []) }
+        let defaults = Set(members.compactMap(\.defaultApp?.url))
+        let candidates = candidateKeys.compactMap { context.apps[$0] }
+            .sorted { lhs, rhs in
+                let lhsTier = defaults.contains(lhs.url) ? 0 : 1
+                let rhsTier = defaults.contains(rhs.url) ? 0 : 1
+                if lhsTier != rhsTier { return lhsTier < rhsTier }
+                return Self.alphabetical(lhs, rhs)
+            }
 
         return Kind(
             id: draft.id,
@@ -187,24 +235,73 @@ nonisolated struct KindBuilder: Sendable {
             members: members,
             extensions: extensions,
             mimeTypes: mimeTypes,
-            candidates: candidates
+            candidates: candidates,
+            isAppPrivate: draft.isAppPrivate
         )
     }
 
+    /// Capitalizes a leading all-lowercase word ("text" → "Text") but leaves deliberate casing such as
+    /// "iTunes Extra" or "macOS" alone.
+    static func sentenceCased(_ name: String) -> String {
+        let firstWord = name.prefix { !$0.isWhitespace }
+        guard let first = firstWord.first, first.isLowercase, firstWord.allSatisfy({ !$0.isUppercase }) else { return name }
+        return first.uppercased() + name.dropFirst()
+    }
+
+    static func alphabetical(_ lhs: AppRef, _ rhs: AppRef) -> Bool {
+        let order = lhs.name.localizedStandardCompare(rhs.name)
+        if order != .orderedSame { return order == .orderedAscending }
+        return lhs.url.path < rhs.url.path
+    }
+
+    /// A vendor type's system description that merely repeats a supertype's ("script" for TypeScript)
+    /// says nothing about the format, so the declaring app's own description or the extension is used
+    /// instead. `public.*` descriptions are Apple's canonical names even when a parent shares them.
     private func name(for utis: [String], extensions: [String], context: Context) -> String {
         for uti in utis {
-            if let description = describe(uti), !description.isEmpty, description != uti {
-                return description.capitalizingFirstLetter
-            }
+            guard let description = describe(uti), !description.isEmpty, description != uti else { continue }
+            if uti.hasPrefix("public.") { return Self.sentenceCased(description) }
+            let inherited = lineage(uti, context: context).subtracting([uti, "public.item", "public.data"])
+                .compactMap(describe).map { $0.lowercased() }
+            if !inherited.contains(description.lowercased()) { return Self.sentenceCased(description) }
         }
         for uti in utis {
             let decls = context.decls[uti, default: []].sorted { $0.isActive && !$1.isActive }
             if let description = decls.lazy.compactMap(\.localizedDescription).first(where: { !$0.isEmpty }) {
-                return description.capitalizingFirstLetter
+                return Self.sentenceCased(description)
             }
         }
         if let ext = extensions.first { return "\(ext.uppercased()) file" }
         return utis.first ?? "Unknown"
+    }
+
+    /// Kinds that share a name get the first extension the others lack (then a MIME type, then the
+    /// identifier) so "HEIF Image (.heic)" and "HEIF Image (.heif)" can be told apart.
+    static func disambiguateNames(_ kinds: inout [Kind]) {
+        let groups = Dictionary(grouping: kinds.indices, by: { kinds[$0].name.lowercased() }).values.filter { $0.count > 1 }
+        for group in groups {
+            var suffixes: [Int: String] = [:]
+            for index in group {
+                let others = group.filter { $0 != index }
+                let otherExtensions = Set(others.flatMap { kinds[$0].extensions })
+                let otherMIMETypes = Set(others.flatMap { kinds[$0].mimeTypes })
+                if let ext = kinds[index].extensions.first(where: { !otherExtensions.contains($0) }) {
+                    suffixes[index] = ".\(ext)"
+                } else if let mime = kinds[index].mimeTypes.first(where: { !otherMIMETypes.contains($0) }) {
+                    suffixes[index] = mime
+                } else {
+                    suffixes[index] = kinds[index].utis.first ?? kinds[index].schemes.first.map { "\($0):" } ?? kinds[index].id
+                }
+            }
+            if Set(suffixes.values).count < group.count {
+                for index in group {
+                    suffixes[index] = kinds[index].utis.first ?? kinds[index].schemes.first.map { "\($0):" } ?? kinds[index].id
+                }
+            }
+            for index in group {
+                if let suffix = suffixes[index] { kinds[index].name += " (\(suffix))" }
+            }
+        }
     }
 
     private func category(for utis: [String], context: Context) -> KindCategory {
@@ -215,29 +312,34 @@ nonisolated struct KindBuilder: Sendable {
         return .other
     }
 
+    private static let developerPrefixes = [
+        "com.apple.dt.", "com.apple.xcode.", "com.apple.instruments.", "com.apple.interfacebuilder.", "com.apple.coreml.",
+    ]
+
+    /// Office formats often declare only XML or data ancestry, and macro-enabled ones add
+    /// `public.executable`; their vendor namespace is the better signal.
+    private static let documentPrefixes = [
+        "com.microsoft.word.", "com.microsoft.excel.", "com.microsoft.powerpoint.", "org.openxmlformats.",
+        "org.oasis-open.opendocument.", "com.apple.iwork.",
+    ]
+
+    /// Checked in order; earlier rules win.
     private static let categoryRules: [(KindCategory, Set<String>)] = [
         (.web, ["public.html", "com.apple.webarchive"]),
+        (.documents, ["public.composite-content", "com.adobe.pdf", "public.presentation", "public.spreadsheet"]),
         (.code, ["public.source-code", "public.script", "public.shell-script", "public.json", "public.xml", "public.yaml"]),
         (.images, ["public.image"]),
         (.audio, ["public.audio"]),
         (.video, ["public.movie", "public.video", "public.audiovisual-content"]),
         (.archives, ["public.archive", "com.pkware.zip-archive", "public.disk-image", "com.apple.disk-image"]),
         (.communication, ["public.email-message", "public.message", "public.vcard", "public.contact", "public.calendar-event", "com.apple.ical.ics"]),
-        (.documents, ["public.text", "public.composite-content", "com.adobe.pdf", "public.presentation", "public.spreadsheet", "public.content"]),
-    ]
-
-    private static let developerPrefixes = [
-        "com.apple.dt.", "com.apple.xcode.", "com.apple.instruments.", "com.apple.interfacebuilder.", "com.apple.coreml.",
-    ]
-
-    private static let developerTypes: Set<String> = [
-        "public.executable", "public.unix-executable", "com.apple.mach-o-binary", "com.apple.property-list",
+        (.developer, ["public.executable", "public.unix-executable", "com.apple.mach-o-binary", "com.apple.property-list"]),
+        (.documents, ["public.text", "public.content"]),
     ]
 
     static func category(identifier: String, lineage: Set<String>) -> KindCategory {
-        if developerPrefixes.contains(where: identifier.hasPrefix) || !lineage.isDisjoint(with: developerTypes) {
-            return .developer
-        }
+        if developerPrefixes.contains(where: identifier.hasPrefix) { return .developer }
+        if documentPrefixes.contains(where: identifier.hasPrefix) { return .documents }
         for (category, markers) in categoryRules where !lineage.isDisjoint(with: markers) {
             return category
         }
@@ -246,32 +348,40 @@ nonisolated struct KindBuilder: Sendable {
 
     // MARK: - Schemes
 
-    private static let schemeNames: [String: String] = [
+    static let schemeNames: [String: String] = [
         "tel": "Phone call", "sms": "Text message", "facetime": "FaceTime", "facetime-audio": "FaceTime audio",
         "ftp": "FTP", "sftp": "SFTP", "ssh": "SSH", "telnet": "Telnet", "vnc": "Screen sharing (VNC)",
         "x-man-page": "Man page", "webcal": "Calendar subscription", "feed": "News feed", "feeds": "News feed (secure)",
         "news": "Newsgroup", "itms-apps": "App Store link", "maps": "Maps link", "message": "Mail message link",
-        "file": "File URL", "afp": "AFP server", "smb": "SMB server",
+        "afp": "AFP server", "smb": "SMB server", "sip": "SIP call", "slack": "Slack link", "zoommtg": "Zoom meeting",
+        "msteams": "Microsoft Teams link", "vscode": "VS Code link", "x-github-client": "GitHub Desktop link",
     ]
 
-    private static let webSchemes: Set<String> = ["ftp", "ftps", "sftp", "feed", "feeds", "rss", "ws", "wss", "gopher"]
+    private static let webSchemes: Set<String> = ["http", "https", "ftp", "ftps", "sftp", "feed", "feeds", "rss", "ws", "wss", "gopher"]
     private static let communicationSchemes: Set<String> = [
-        "tel", "sms", "facetime", "facetime-audio", "facetime-group", "imessage", "im", "xmpp", "sip", "sips", "callto",
-        "skype", "slack", "discord", "zoommtg", "zoomus", "msteams", "whatsapp", "tg", "sgnl", "message", "webcal",
+        "mailto", "tel", "sms", "facetime", "facetime-audio", "facetime-group", "imessage", "im", "xmpp", "sip", "sips",
+        "callto", "skype", "slack", "discord", "zoommtg", "zoomus", "zoomphonecall", "zoomphonesms", "msteams", "whatsapp",
+        "tg", "sgnl", "signal", "message", "webcal",
     ]
     private static let developerSchemes: Set<String> = [
         "ssh", "telnet", "x-man-page", "git", "xcode", "vscode", "vscode-insiders", "cursor", "iterm2", "docker-desktop",
-        "github-mac", "x-github-client", "jetbrains", "idea", "phpstorm", "fork", "tower", "sourcetree",
+        "github-mac", "jetbrains", "idea", "phpstorm", "fork", "tower", "sourcetree",
     ]
+    private static let developerSchemePrefixes = ["x-github", "xcode-", "x-xcode", "vscode-", "jetbrains-"]
 
-    static func schemeName(_ scheme: String) -> String {
-        schemeNames[scheme] ?? "\(scheme): link"
+    /// Well-known schemes get a fixed name; others are named after the app that registers them, with the
+    /// scheme itself in parentheses so people can recognise it in URLs.
+    static func schemeName(_ scheme: String, owners: [AppRef] = []) -> String {
+        if let name = schemeNames[scheme] { return name }
+        let names = Set(owners.map(\.name))
+        if names.count == 1, let app = names.first { return "\(app) link (\(scheme):)" }
+        return "\(scheme): link"
     }
 
     static func schemeCategory(_ scheme: String) -> KindCategory {
         if webSchemes.contains(scheme) { return .web }
         if communicationSchemes.contains(scheme) { return .communication }
-        if developerSchemes.contains(scheme) { return .developer }
+        if developerSchemes.contains(scheme) || developerSchemePrefixes.contains(where: scheme.hasPrefix) { return .developer }
         return .other
     }
 }
@@ -279,16 +389,28 @@ nonisolated struct KindBuilder: Sendable {
 // MARK: - Snapshot indexes
 
 nonisolated private struct Context {
+    struct TagClaim {
+        var tag: String
+        /// Declared types the tag most plausibly means; several only when none stands out.
+        var utis: [String]
+        var claimers: Set<String>
+        /// Several equally good declarers that are aliases of one format (Kaleidoscope's own `.css` type
+        /// next to `public.css`); they will merge, so each can become a node.
+        var areAliases = false
+    }
+
     let options: KindBuilder.Options
     var decls: [String: [TypeDecl]] = [:]
+    /// Keyed by standardized bundle path: two installs sharing a bundle ID are different candidates.
     var apps: [String: AppRef] = [:]
     var claimersByUTI: [String: Set<String>] = [:]
-    var claimersByExtension: [String: Set<String>] = [:]
+    var claimersByTag: [String: Set<String>] = [:]
     var claimersByScheme: [String: Set<String>] = [:]
-    private var bundleIDToAppKey: [String: String] = [:]
+    private var preferredAppByBundleID: [String: String] = [:]
     private var prefsByContentType: [String: String] = [:]
     private var prefsByScheme: [String: String] = [:]
     private var mergeTagsByUTI: [String: Set<String>] = [:]
+    private var preferredExtensionsByUTI: [String: Set<String>] = [:]
     private var displayTagsByUTI: [String: [String]] = [:]
     private var ancestorsByUTI: [String: Set<String>] = [:]
 
@@ -299,7 +421,9 @@ nonisolated private struct Context {
         }
         for (uti, all) in decls {
             let active = all.filter(\.isActive)
-            mergeTagsByUTI[uti] = Set((active.isEmpty ? all : active).flatMap(Self.tags))
+            let merging = active.isEmpty ? all : active
+            mergeTagsByUTI[uti] = Set(merging.flatMap(Self.tags))
+            preferredExtensionsByUTI[uti] = Set(merging.compactMap { $0.extensions.first.map { ".\($0)" } })
             var seen: Set<String> = []
             displayTagsByUTI[uti] = (active + all.filter { !$0.isActive }).flatMap(Self.tags).filter { seen.insert($0).inserted }
         }
@@ -313,29 +437,26 @@ nonisolated private struct Context {
             ancestorsByUTI[uti] = lineage
         }
 
-        var bestBundle: [String: BundleRecord] = [:]
         var appKeyByUnit: [String: String] = [:]
         for bundle in snapshot.bundles where bundle.isApplication {
-            guard let key = bundle.identifier ?? bundle.path else { continue }
-            if let unit = bundle.unitID { appKeyByUnit[unit] = key }
-            if let current = bestBundle[key], Self.pathPreference(current.path) <= Self.pathPreference(bundle.path) { continue }
-            bestBundle[key] = bundle
-        }
-        for (key, bundle) in bestBundle {
             guard let path = bundle.path else { continue }
-            apps[key] = AppRef(
-                url: URL(fileURLWithPath: path),
-                bundleID: bundle.identifier,
-                name: bundle.displayName ?? bundle.name,
-                version: bundle.version
-            )
-            if let identifier = bundle.identifier { bundleIDToAppKey[identifier.lowercased()] = key }
+            let url = URL(fileURLWithPath: path).standardizedFileURL
+            let key = url.path
+            if let unit = bundle.unitID { appKeyByUnit[unit] = key }
+            if apps[key] == nil {
+                apps[key] = AppRef(url: url, bundleID: bundle.identifier, name: bundle.displayName ?? bundle.name, version: bundle.version)
+            }
+            if let identifier = bundle.identifier?.lowercased() {
+                if let current = preferredAppByBundleID[identifier], Self.pathPreference(current) <= Self.pathPreference(key) { continue }
+                preferredAppByBundleID[identifier] = key
+            }
         }
 
         for claim in snapshot.claims where claim.canHandle {
-            guard let unit = claim.bundleUnitID, let key = appKeyByUnit[unit], apps[key] != nil else { continue }
+            guard let unit = claim.bundleUnitID, let key = appKeyByUnit[unit] else { continue }
             for uti in claim.utis where !uti.hasPrefix("dyn.") { claimersByUTI[uti, default: []].insert(key) }
-            for ext in claim.extensions { claimersByExtension[ext, default: []].insert(key) }
+            for ext in claim.extensions { claimersByTag[".\(ext)", default: []].insert(key) }
+            for mime in claim.mimeTypes { claimersByTag[mime, default: []].insert(key) }
             if !claim.flags.contains("private-scheme") {
                 for scheme in claim.schemes { claimersByScheme[scheme, default: []].insert(key) }
             }
@@ -357,9 +478,8 @@ nonisolated private struct Context {
         }
     }
 
-    /// Lower is better. Stale copies in DerivedData, the Trash, or mounted volumes lose to installed apps.
-    static func pathPreference(_ path: String?) -> Int {
-        guard let path else { return 10 }
+    /// Lower is better. Only used to pick which install a bundle-ID preference refers to.
+    static func pathPreference(_ path: String) -> Int {
         if path.contains("/DerivedData/") || path.contains("/.Trash/") || path.hasPrefix("/Volumes/") { return 9 }
         if path.hasPrefix("/Applications/") || path.hasPrefix("/System/Applications/") { return 0 }
         if path.contains("/Applications/") { return 1 }
@@ -376,7 +496,7 @@ nonisolated private struct Context {
     }
 
     private func app(forBundleID bundleID: String) -> AppRef? {
-        bundleIDToAppKey[bundleID.lowercased()].flatMap { apps[$0] }
+        preferredAppByBundleID[bundleID.lowercased()].flatMap { apps[$0] }
     }
 
     /// Tags used for grouping: active declarations only, unless nothing is active.
@@ -387,6 +507,29 @@ nonisolated private struct Context {
     /// Tags shown to people and used for search: every declaration, active ones first.
     func displayTags(_ uti: String) -> [String] {
         displayTagsByUTI[uti] ?? []
+    }
+
+    func hasExtension(_ uti: String) -> Bool {
+        displayTags(uti).contains { $0.hasPrefix(".") && $0 != ".*" }
+    }
+
+    /// Each type's preferred extension must be one the other declares.
+    func areAliases(_ lhs: String, _ rhs: String) -> Bool {
+        let lhsTags = mergeTags(lhs)
+        let rhsTags = mergeTags(rhs)
+        return preferredExtensionsByUTI[lhs, default: []].contains(where: rhsTags.contains)
+            && preferredExtensionsByUTI[rhs, default: []].contains(where: lhsTags.contains)
+    }
+
+    /// A tag a type repeats from its own base type (MacWhisper's Markdown export lists `text/plain`) is
+    /// noise on that type, unless it's the type's only tag of that kind (Word XML's only extension is `.xml`).
+    func isInheritedPollution(_ tag: String, on uti: String) -> Bool {
+        let lineage = ancestors(uti)
+        guard lineage.contains(where: { mergeTags($0).contains(tag) }) else { return false }
+        let isExtension = tag.hasPrefix(".")
+        return displayTags(uti).contains { other in
+            other != tag && other.hasPrefix(".") == isExtension && !lineage.contains { mergeTags($0).contains(other) }
+        }
     }
 
     private static func tags(_ decl: TypeDecl) -> [String] {
@@ -406,7 +549,7 @@ nonisolated private struct Context {
         }
 
         var generic: Set<String> = []
-        for tag in declarersByTag.keys where tag == ".*" || tag.contains("*") { generic.insert(tag) }
+        for tag in declarersByTag.keys where tag.contains("*") { generic.insert(tag) }
         for (tag, declarers) in declarersByTag where declarers.count > 1 {
             if declarers.count > options.maxDeclarersPerTag {
                 generic.insert(tag)
@@ -421,47 +564,47 @@ nonisolated private struct Context {
         return generic
     }
 
-    /// Decides which Kind each bare extension binding (e.g. an editor claiming `.md` without a UTI) joins,
-    /// keyed by draft index. When several Kinds list the extension, prefer ones declaring it actively, then
-    /// the one holding a base type the others inherit from; if that is still ambiguous the binding is dropped.
-    func bareExtensionOwners(drafts: [[String]]) -> [Int: [String]] {
-        var draftsByTag: [String: [Int]] = [:]
-        for (index, utis) in drafts.enumerated() {
-            var tags: Set<String> = []
-            for uti in utis { tags.formUnion(displayTags(uti)) }
-            for tag in tags where tag.hasPrefix(".") { draftsByTag[tag, default: []].append(index) }
+    /// Maps each bare extension or MIME claim to the declared type(s) it means. Among several declarers,
+    /// those whose preferred tag it is win; among those, a single base type the rest inherit from wins.
+    func resolveTagClaims() -> (resolved: [TagClaim], unresolved: Set<String>) {
+        var declarersByTag: [String: Set<String>] = [:]
+        var activeDeclarersByTag: [String: Set<String>] = [:]
+        for uti in decls.keys {
+            for tag in displayTags(uti) { declarersByTag[tag, default: []].insert(uti) }
+            for tag in mergeTags(uti) { activeDeclarersByTag[tag, default: []].insert(uti) }
         }
 
-        var result: [Int: [String]] = [:]
-        for ext in claimersByExtension.keys {
-            guard let owners = draftsByTag[".\(ext)"], !owners.isEmpty else { continue }
-            var owner: Int?
-            if owners.count == 1 {
-                owner = owners[0]
-            } else {
-                let active = owners.filter { drafts[$0].contains { mergeTags($0).contains(".\(ext)") } }
-                let pool = active.isEmpty ? owners : active
-                if pool.count == 1 {
-                    owner = pool[0]
-                } else {
-                    let bases = pool.filter { index in
-                        drafts[index].contains { base in
-                            pool.contains { other in other != index && drafts[other].contains { ancestors($0).contains(base) } }
-                        }
-                    }
-                    if bases.count == 1 { owner = bases[0] }
-                }
+        var resolved: [TagClaim] = []
+        var unresolved: Set<String> = []
+        for (tag, claimers) in claimersByTag where !tag.contains("*") {
+            guard var candidates = activeDeclarersByTag[tag] ?? declarersByTag[tag], !candidates.isEmpty else {
+                unresolved.insert(tag)
+                continue
             }
-            if let owner { result[owner, default: []].append(ext) }
+            if candidates.count > 1 {
+                let preferring = candidates.filter { uti in
+                    tag.hasPrefix(".") ? preferredExtensionsByUTI[uti, default: []].contains(tag) : decls[uti, default: []].contains { $0.mimeTypes.first == tag }
+                }
+                if !preferring.isEmpty { candidates = preferring }
+            }
+            if candidates.count > 1 {
+                let bases = candidates.filter { base in candidates.allSatisfy { $0 == base || ancestors($0).contains(base) } }
+                if bases.count == 1 { candidates = bases }
+            }
+            let sorted = candidates.sorted()
+            let areAliases = sorted.count > 1 && sorted.indices.allSatisfy { lhs in
+                sorted.indices.allSatisfy { rhs in lhs == rhs || self.areAliases(sorted[lhs], sorted[rhs]) }
+            }
+            resolved.append(TagClaim(tag: tag, utis: sorted, claimers: claimers, areAliases: areAliases))
         }
-        return result
+        return (resolved, unresolved)
     }
 
     /// Public types name Kinds best, then actively declared ones, then the most widely claimed.
-    func primaryOrder(_ utis: [String]) -> [String] {
+    func primaryOrder(_ utis: [String], claimers: [String: Set<String>]) -> [String] {
         utis.sorted { lhs, rhs in
-            let lhsKey = (lhs.hasPrefix("public.") ? 0 : 1, decls[lhs, default: []].contains(where: \.isActive) ? 0 : 1, -(claimersByUTI[lhs]?.count ?? 0))
-            let rhsKey = (rhs.hasPrefix("public.") ? 0 : 1, decls[rhs, default: []].contains(where: \.isActive) ? 0 : 1, -(claimersByUTI[rhs]?.count ?? 0))
+            let lhsKey = (lhs.hasPrefix("public.") ? 0 : 1, decls[lhs, default: []].contains(where: \.isActive) ? 0 : 1, -(claimers[lhs]?.count ?? 0))
+            let rhsKey = (rhs.hasPrefix("public.") ? 0 : 1, decls[rhs, default: []].contains(where: \.isActive) ? 0 : 1, -(claimers[rhs]?.count ?? 0))
             if lhsKey != rhsKey { return lhsKey < rhsKey }
             return lhs < rhs
         }
@@ -501,12 +644,5 @@ nonisolated private struct UnionFind {
             if let root = find(element) { result[root, default: []].append(element) }
         }
         return result
-    }
-}
-
-nonisolated private extension String {
-    var capitalizingFirstLetter: String {
-        guard let first else { return self }
-        return first.uppercased() + dropFirst()
     }
 }

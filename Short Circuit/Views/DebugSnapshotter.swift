@@ -78,7 +78,7 @@ enum DebugSnapshotter {
 
     private static func runWriteStates(store: KindStore, directory: URL) async {
         // Refuse outright rather than risk driving the real setter from an unattended run.
-        guard store.writer is SimulatedHandlerWriter else {
+        guard let simulated = store.writer as? SimulatedHandlerWriter else {
             print("DebugSnapshotter: skipping write states; the store does not use the simulated writer.")
             return
         }
@@ -92,7 +92,7 @@ enum DebugSnapshotter {
 
         if let phone = kind("phone-call") {
             store.selectedKindID = phone.id
-            store.setDefault(.messages, for: phone)
+            await store.setDefault(.messages, for: phone)
             await snapshot("write-confirm-light", to: directory)
             let confirming = Task { await store.confirmPendingChange() }
             await snapshot("write-applying-light", to: directory)
@@ -102,8 +102,7 @@ enum DebugSnapshotter {
 
         if let markdown = kind("markdown") {
             store.selectedKindID = markdown.id
-            store.pendingChange = nil
-            store.setDefault(.preview, for: markdown)
+            await store.setDefault(.preview, for: markdown)
             await store.confirmPendingChange()
             await snapshot("write-partial-failure-light", to: directory)
             NSApp.appearance = NSAppearance(named: .darkAqua)
@@ -113,16 +112,29 @@ enum DebugSnapshotter {
 
         if let heic = kind("heic") {
             store.selectedKindID = heic.id
-            store.fixSplit(heic)
-            await waitUntilIdle(store)
+            await store.fixSplit(heic)
             await snapshot("write-declined-light", to: directory)
         }
 
         if let web = kind("web-page") {
             store.selectedKindID = web.id
-            store.setDefault(.textEdit, for: web)
-            await waitUntilIdle(store)
+            await store.setDefault(.textEdit, for: .uti("public.xhtml"), in: web)
+            await snapshot("write-browser-confirm-light", to: directory)
+            await store.confirmPendingChange()
             await snapshot("write-browser-role-light", to: directory)
+        }
+
+        // Another app changes a member while the dialog is open, so the approved plan is too
+        // narrow and has to be shown again.
+        if let email = kind("email") {
+            store.selectedKindID = email.id
+            simulated.backend.changeExternally(.uti("com.apple.mail.email"), to: AppRef.textEdit.url)
+            simulated.backend.changeExternally(.uti("public.email-message"), to: AppRef.textEdit.url)
+            await store.setDefault(.mail, for: email)
+            simulated.backend.changeExternally(.scheme("mailto"), to: AppRef.textEdit.url)
+            await store.confirmPendingChange()
+            await snapshot("write-revised-confirm-light", to: directory)
+            store.cancelPendingChange()
         }
     }
 
@@ -236,10 +248,6 @@ enum DebugSnapshotter {
         try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
     }
 
-    private static func waitUntilIdle(_ store: KindStore) async {
-        try? await Task.sleep(for: .milliseconds(100))
-        while !store.applyingKindIDs.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
-    }
 
     private static func snapshot(_ name: String, to directory: URL, settle: Duration = .milliseconds(700)) async {
         try? await Task.sleep(for: settle)

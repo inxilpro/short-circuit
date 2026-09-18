@@ -8,22 +8,45 @@ private let preview = AppRef.preview.url
 private let safari = AppRef.safari.url
 private let textEdit = AppRef.textEdit.url
 
-private func writer(
+private func makeWriter(
     _ handlers: [KindMember.Target: URL],
     behaviors: [KindMember.Target: SimulatedHandlerBackend.Behavior] = [:],
-    fileFallbackSucceeds: Bool = false
+    browserFollowers: Set<KindMember.Target> = WritePlan.browserRole
 ) -> (SimulatedHandlerWriter, SimulatedHandlerBackend) {
-    let backend = SimulatedHandlerBackend(handlers: handlers, behaviors: behaviors, fileFallbackSucceeds: fileFallbackSucceeds)
+    let backend = SimulatedHandlerBackend(handlers: handlers, behaviors: behaviors, browserFollowers: browserFollowers)
     return (HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1), backend)
 }
 
-struct WritePlanTests {
-    @Test func browserRoleCollapsesIntoOneHTTPCall() {
-        let targets: [KindMember.Target] = [.scheme("https"), .uti("public.html"), .scheme("http"), .uti("public.xhtml")]
-        let plan = WritePlan(app: textEdit, targets: targets) { _ in safari }
+private func completedResults(_ execution: WriteExecution) -> [MemberResult] {
+    if case .completed(let results) = execution { results } else { [] }
+}
 
-        #expect(plan.steps == [WritePlan.Step(call: .scheme("http"), covers: targets)])
-        #expect(plan.promptCount == 1)
+/// Serves the sample Kinds with handlers read from the simulated system, like LiveKindProvider
+/// does from Launch Services.
+private struct SimulatedKindProvider: KindProviding {
+    let backend: SimulatedHandlerBackend
+    var delay: Duration = .zero
+
+    func loadKinds(forceRefresh: Bool) async throws -> [Kind] {
+        if delay > .zero { try await Task.sleep(for: delay) }
+        var kinds = SampleKindProvider.kinds
+        for kindIndex in kinds.indices {
+            for memberIndex in kinds[kindIndex].members.indices {
+                let target = kinds[kindIndex].members[memberIndex].target
+                kinds[kindIndex].members[memberIndex].defaultApp = await backend.currentHandler(for: target).map(HandlerService.appRef(for:))
+            }
+        }
+        return kinds
+    }
+}
+
+struct WritePlanTests {
+    @Test func anyBrowserTargetPlansTheWholeRole() {
+        let plan = WritePlan(app: textEdit, targets: [.uti("public.xhtml")]) { _ in safari }
+
+        #expect(plan.steps == [WritePlan.Step(call: .scheme("http"), covers: WritePlan.browserTargets)])
+        #expect(plan.changesBrowser)
+        #expect(plan.affectedTargets == WritePlan.browserTargets)
     }
 
     @Test func membersAlreadyOnTheAppAreSkipped() {
@@ -35,96 +58,136 @@ struct WritePlanTests {
         #expect(plan.steps.map(\.call) == [.uti("public.heif")])
     }
 
-    @Test func browserRoleIsSkippedOnlyWhenEveryMemberMatches() {
+    @Test func browserRoleIsSkippedOnlyWhenEveryBrowserTargetMatches() {
         let targets: [KindMember.Target] = [.scheme("http"), .uti("public.html")]
-        let partial = WritePlan(app: safari, targets: targets) { $0 == .scheme("http") ? safari : textEdit }
-        let complete = WritePlan(app: safari, targets: targets) { _ in safari }
+        let xhtmlElsewhere = WritePlan(app: safari, targets: targets) { $0 == .uti("public.xhtml") ? textEdit : safari }
+        let allSafari = WritePlan(app: safari, targets: targets) { _ in safari }
 
-        #expect(partial.promptCount == 1)
-        #expect(complete.promptCount == 0)
-        #expect(complete.skipped == targets)
+        #expect(xhtmlElsewhere.promptCount == 1)
+        #expect(allSafari.promptCount == 0)
+        #expect(allSafari.skipped == targets)
+    }
+
+    @Test func narrowerPlansFitInsideTheApprovedOneButWiderOnesDoNot() {
+        let targets: [KindMember.Target] = [.uti("public.heic"), .uti("public.heif")]
+        let both = WritePlan(app: preview, targets: targets) { _ in safari }
+        let one = WritePlan(app: preview, targets: targets) { $0 == .uti("public.heic") ? preview : safari }
+        let otherApp = WritePlan(app: textEdit, targets: targets) { _ in safari }
+
+        #expect(one.isWithin(both))
+        #expect(!both.isWithin(one))
+        #expect(!otherApp.isWithin(both))
     }
 }
 
 struct HandlerWriterTests {
-    @Test func appliesSequentiallyAndReportsChanges() async {
-        let (writer, backend) = writer([.uti("public.jpeg"): preview, .uti("public.png"): safari, .uti("public.heic"): safari])
+    @Test func executesSequentiallyAndReportsChanges() async {
+        let targets: [KindMember.Target] = [.uti("public.jpeg"), .uti("public.png"), .uti("public.heic")]
+        let (writer, backend) = makeWriter([.uti("public.jpeg"): preview, .uti("public.png"): safari, .uti("public.heic"): safari])
 
-        let results = await writer.apply(app: .preview, to: [.uti("public.jpeg"), .uti("public.png"), .uti("public.heic")])
+        let plan = await writer.plan(app: .preview, targets: targets)
+        let results = completedResults(await writer.execute(plan))
 
         #expect(results.map(\.outcome) == [.skipped(.alreadyDefault), .changed, .changed])
-        #expect(backend.calls.map(\.kind) == [.target(.uti("public.png")), .target(.uti("public.heic"))])
+        #expect(backend.calls.map(\.target) == [.uti("public.png"), .uti("public.heic")])
     }
 
     @Test func silentNoChangeIsReportedAsUnchangedAfterSuccess() async {
-        let (writer, _) = writer([.scheme("sms"): preview], behaviors: [.scheme("sms"): .declineSilently])
+        let (writer, _) = makeWriter([.scheme("sms"): preview], behaviors: [.scheme("sms"): .declineSilently])
 
-        let results = await writer.apply(app: .messages, to: [.scheme("sms")])
+        let results = completedResults(await writer.execute(await writer.plan(app: .messages, targets: [.scheme("sms")])))
 
         #expect(results.first?.outcome == .unchangedAfterSuccess)
         #expect(results.first?.handlerAfter?.url == preview)
     }
 
     @Test func userCancelledIsReportedAsDeclined() async {
-        let (writer, _) = writer([.uti("public.heif"): safari], behaviors: [.uti("public.heif"): .declineWithError])
+        let (writer, _) = makeWriter([.uti("public.heif"): safari], behaviors: [.uti("public.heif"): .declineWithError])
 
-        let results = await writer.apply(app: .preview, to: [.uti("public.heif")])
+        let results = completedResults(await writer.execute(await writer.plan(app: .preview, targets: [.uti("public.heif")])))
 
         #expect(results.first?.outcome == .declined)
     }
 
-    @Test func error256TriesTheFileFallbackAndKeepsTheOriginalErrorWhenItFails() async {
-        let (writer, backend) = writer(
+    /// R1: a 256 rejection is a plain failure. Nothing else is attempted, so no type outside the
+    /// approved plan (such as the one a sample `.md` file resolves to) can change.
+    @Test func error256IsReportedAsARejectionAndTouchesNothingElse() async throws {
+        let (writer, backend) = makeWriter(
             [.uti("public.markdown"): safari, .uti("net.daringfireball.markdown"): safari],
             behaviors: [.uti("public.markdown"): .rejectBeforeConsent]
         )
 
-        let results = await writer.apply(app: .textEdit, to: [.uti("net.daringfireball.markdown"), .uti("public.markdown")])
+        let results = completedResults(await writer.execute(await writer.plan(app: .textEdit, targets: [.uti("public.markdown")])))
 
-        #expect(results[0].outcome == .changed)
-        #expect(results[0].usedFileFallback == false)
-        guard case .failed(let domain, let code, _) = results[1].outcome else {
-            Issue.record("Expected a failure, got \(results[1].outcome)")
+        let result = try #require(results.first)
+        guard case .failed(let domain, let code, let message) = result.outcome else {
+            Issue.record("Expected a failure, got \(result.outcome)")
             return
         }
         #expect(domain == NSCocoaErrorDomain)
         #expect(code == 256)
-        #expect(results[1].usedFileFallback)
-        #expect(backend.calls.last?.kind == .file(extension: "md"))
+        #expect(message.contains("rejected"))
+        #expect(backend.calls.map(\.target) == [.uti("public.markdown")])
+        #expect(await backend.currentHandler(for: .uti("net.daringfireball.markdown")) == safari)
     }
 
-    @Test func error256FallbackThatWorksCountsAsChanged() async {
-        let (writer, _) = writer(
-            [.uti("public.markdown"): safari],
-            behaviors: [.uti("public.markdown"): .rejectBeforeConsent],
-            fileFallbackSucceeds: true
+    /// R3: the browser call is reported for every target it covers, and a target that doesn't
+    /// follow it is reported honestly rather than assumed changed.
+    @Test func browserChangeReportsEveryCoveredTargetFromLiveReads() async {
+        let (writer, backend) = makeWriter(
+            Dictionary(uniqueKeysWithValues: WritePlan.browserTargets.map { ($0, safari) }),
+            browserFollowers: [.scheme("https"), .uti("public.html")]
         )
 
-        let results = await writer.apply(app: .textEdit, to: [.uti("public.markdown")])
+        let results = completedResults(await writer.execute(await writer.plan(app: .textEdit, targets: [.uti("public.xhtml")])))
 
-        #expect(results.first?.outcome == .changed)
-        #expect(results.first?.usedFileFallback == true)
+        #expect(backend.calls.map(\.target) == [.scheme("http")])
+        #expect(results.map(\.target) == WritePlan.browserTargets)
+        #expect(results.map(\.outcome) == [.changed, .changed, .changed, .unchangedAfterSuccess])
+        #expect(results.map(\.viaBrowserRole) == [false, true, true, true])
     }
 
-    @Test func browserMembersFollowTheHTTPCall() async {
-        let targets: [KindMember.Target] = [.scheme("http"), .scheme("https"), .uti("public.html")]
-        let (writer, backend) = writer(Dictionary(uniqueKeysWithValues: targets.map { ($0, safari) }))
+    /// R2: if the system changed after approval so more calls are needed, nothing runs.
+    @Test func widerLivePlanNeedsNewApprovalAndMakesNoCalls() async {
+        let targets: [KindMember.Target] = [.uti("public.heic"), .uti("public.heif")]
+        let (writer, backend) = makeWriter([.uti("public.heic"): preview, .uti("public.heif"): safari])
+        let approved = await writer.plan(app: .preview, targets: targets)
+        #expect(approved.promptCount == 1)
 
-        let results = await writer.apply(app: .textEdit, to: targets)
+        backend.changeExternally(.uti("public.heic"), to: safari)
+        let execution = await writer.execute(approved)
 
-        #expect(backend.calls.map(\.kind) == [.target(.scheme("http"))])
-        #expect(results.map(\.outcome) == [.changed, .changed, .changed])
-        #expect(results.map(\.viaBrowserRole) == [false, true, true])
+        guard case .needsApproval(let fresh) = execution else {
+            Issue.record("Expected a request for new approval, got \(execution)")
+            return
+        }
+        #expect(fresh.promptCount == 2)
+        #expect(backend.calls.isEmpty)
+    }
+
+    @Test func narrowerLivePlanRunsWithoutAskingAgain() async {
+        let targets: [KindMember.Target] = [.uti("public.heic"), .uti("public.heif")]
+        let (writer, backend) = makeWriter([.uti("public.heic"): safari, .uti("public.heif"): safari])
+        let approved = await writer.plan(app: .preview, targets: targets)
+
+        backend.changeExternally(.uti("public.heic"), to: preview)
+        let results = completedResults(await writer.execute(approved))
+
+        #expect(backend.calls.map(\.target) == [.uti("public.heif")])
+        #expect(results.map(\.outcome) == [.skipped(.alreadyDefault), .changed])
     }
 }
 
 @MainActor
 struct KindStoreWriteTests {
-    private func loadedStore(
-        behaviors: [KindMember.Target: SimulatedHandlerBackend.Behavior] = [:]
+    private func makeStore(
+        behaviors: [KindMember.Target: SimulatedHandlerBackend.Behavior] = [:],
+        latency: Duration = .zero,
+        providerDelay: Duration = .zero
     ) async -> (KindStore, SimulatedHandlerBackend) {
-        let backend = SimulatedHandlerBackend(kinds: SampleKindProvider.kinds, behaviors: behaviors)
-        let store = KindStore(provider: SampleKindProvider(), writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
+        let backend = SimulatedHandlerBackend(kinds: SampleKindProvider.kinds, behaviors: behaviors, latency: latency)
+        let provider = SimulatedKindProvider(backend: backend, delay: providerDelay)
+        let store = KindStore(provider: provider, writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
         await store.refresh()
         return (store, backend)
     }
@@ -133,83 +196,185 @@ struct KindStoreWriteTests {
         try #require(store.kinds.first { $0.id == id })
     }
 
-    /// Single-prompt changes run in an unstructured Task, so poll until the results land.
-    private func waitUntilIdle(_ store: KindStore, kindID: Kind.ID) async {
-        for _ in 0..<200 {
-            let hasResults = store.kinds.first { $0.id == kindID }.map { !store.results(for: $0).isEmpty } ?? false
-            if hasResults && store.applyingKindIDs.isEmpty { return }
-            try? await Task.sleep(for: .milliseconds(10))
+    private func member(_ target: KindMember.Target, of id: Kind.ID, in store: KindStore) throws -> URL? {
+        try kind(id, in: store).members.first { $0.target == target }?.defaultApp?.url
+    }
+
+    private func waitFor(_ condition: () -> Bool) async {
+        for _ in 0..<300 where !condition() {
+            try? await Task.sleep(for: .milliseconds(5))
         }
     }
 
     @Test func multiplePromptsNeedConfirmationFirst() async throws {
-        let (store, backend) = await loadedStore()
+        let (store, backend) = await makeStore()
 
-        store.setDefault(.messages, for: try kind("phone-call", in: store))
+        await store.setDefault(.messages, for: try kind("phone-call", in: store))
 
         let pending = try #require(store.pendingChange)
-        #expect(pending.promptCount == 2)
+        #expect(pending.plan.promptCount == 2)
         #expect(backend.calls.isEmpty)
 
         await store.confirmPendingChange()
 
         #expect(store.pendingChange == nil)
         #expect(try kind("phone-call", in: store).defaultApp?.url == AppRef.messages.url)
-        #expect(try kind("phone-call", in: store).isSplit == false)
     }
 
     @Test func singlePromptAppliesWithoutConfirmation() async throws {
-        let (store, backend) = await loadedStore()
+        let (store, backend) = await makeStore()
 
-        store.setDefault(.photos, for: try kind("jpeg", in: store))
-        await waitUntilIdle(store, kindID: "jpeg")
+        await store.setDefault(.photos, for: try kind("jpeg", in: store))
 
         #expect(store.pendingChange == nil)
         #expect(backend.calls.count == 1)
         #expect(try kind("jpeg", in: store).defaultApp?.url == AppRef.photos.url)
     }
 
-    @Test func partialApplyLeavesTheKindSplitFromLiveReads() async throws {
-        let (store, _) = await loadedStore(behaviors: [.uti("public.markdown"): .rejectBeforeConsent])
+    /// R2: the displayed Kind says one change is needed but the system needs two, so the user
+    /// is asked about two.
+    @Test func confirmationIsBasedOnLiveReadsNotTheDisplayedKind() async throws {
+        let (store, backend) = await makeStore()
+        backend.changeExternally(.uti("public.heic"), to: AppRef.photos.url)
 
-        store.setDefault(.preview, for: try kind("markdown", in: store))
+        await store.setDefault(.preview, for: try kind("heic", in: store))
+
+        #expect(store.pendingChange?.plan.promptCount == 2)
+        #expect(backend.calls.isEmpty)
+    }
+
+    /// R2: a change made while the dialog was open widens the plan, so the user is asked again
+    /// and nothing runs on the stale approval.
+    @Test func widenedPlanAfterConfirmationAsksAgain() async throws {
+        let (store, backend) = await makeStore()
+        backend.changeExternally(.uti("com.apple.mail.email"), to: textEdit)
+        backend.changeExternally(.uti("public.email-message"), to: textEdit)
+
+        await store.setDefault(.mail, for: try kind("email", in: store))
+        #expect(store.pendingChange?.plan.promptCount == 2)
+
+        backend.changeExternally(.scheme("mailto"), to: textEdit)
+        await store.confirmPendingChange()
+
+        let revised = try #require(store.pendingChange)
+        #expect(revised.isRevised)
+        #expect(revised.plan.promptCount == 3)
+        #expect(backend.calls.isEmpty)
+    }
+
+    /// R2: when the system already matches, nothing runs and the display is corrected.
+    @Test func staleDisplayWithNothingToDoMakesNoCallsAndCorrectsTheDisplay() async throws {
+        let (store, backend) = await makeStore()
+        backend.changeExternally(.uti("public.jpeg"), to: AppRef.photos.url)
+
+        await store.setDefault(.photos, for: try kind("jpeg", in: store))
+
+        #expect(backend.calls.isEmpty)
+        #expect(store.pendingChange == nil)
+        #expect(try kind("jpeg", in: store).defaultApp?.url == AppRef.photos.url)
+    }
+
+    /// R3: a per-member request on a browser target is shown as the browser-wide change it is.
+    @Test func perMemberBrowserChangeIsConfirmedAsBrowserWide() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(.textEdit, for: .uti("public.xhtml"), in: try kind("web-page", in: store))
+
+        let pending = try #require(store.pendingChange)
+        #expect(pending.plan.promptCount == 1)
+        #expect(pending.plan.changesBrowser)
+        #expect(pending.plan.affectedTargets == WritePlan.browserTargets)
+        #expect(ChangeConfirmation.message(for: pending).contains("Default browser"))
+        #expect(backend.calls.isEmpty)
+
+        await store.confirmPendingChange()
+
+        #expect(backend.calls.map(\.target) == [.scheme("http")])
+        #expect(Set(store.results(for: try kind("web-page", in: store)).map(\.target)) == WritePlan.browserRole)
+    }
+
+    @Test func partialApplyLeavesTheKindSplitFromLiveReads() async throws {
+        let (store, _) = await makeStore(behaviors: [.uti("public.markdown"): .rejectBeforeConsent])
+
+        await store.setDefault(.preview, for: try kind("markdown", in: store))
         await store.confirmPendingChange()
 
         let markdown = try kind("markdown", in: store)
         #expect(markdown.isSplit)
-        #expect(markdown.members.first { $0.target == .uti("net.daringfireball.markdown") }?.defaultApp?.url == AppRef.preview.url)
-        #expect(markdown.members.first { $0.target == .uti("public.markdown") }?.defaultApp?.url == AppRef.safari.url)
-        #expect(markdown.candidates.contains { $0.url == AppRef.preview.url })
-        #expect(store.results(for: markdown).map(\.outcome.isChanged) == [true, false])
+        #expect(try member(.uti("net.daringfireball.markdown"), of: "markdown", in: store) == preview)
+        #expect(try member(.uti("public.markdown"), of: "markdown", in: store) == safari)
+        #expect(markdown.candidates.contains { $0.url == preview })
     }
 
     @Test func fixSplitOnlyTouchesMembersOffTheMajorityApp() async throws {
-        let (store, backend) = await loadedStore()
+        let (store, backend) = await makeStore()
         let heic = try kind("heic", in: store)
         let majority = try #require(heic.majorityApp)
 
-        store.fixSplit(heic)
-        await waitUntilIdle(store, kindID: "heic")
+        await store.fixSplit(heic)
 
-        let changed = heic.members.filter { $0.defaultApp?.url != majority.url }.map { SimulatedHandlerBackend.Call.Kind.target($0.target) }
-        #expect(backend.calls.map(\.kind) == changed)
+        #expect(backend.calls.map(\.target) == heic.members.filter { $0.defaultApp?.url != majority.url }.map(\.target))
         #expect(try kind("heic", in: store).isSplit == false)
     }
 
     @Test func perMemberChangeOnlyCallsThatMember() async throws {
-        let (store, backend) = await loadedStore()
+        let (store, backend) = await makeStore()
 
-        store.setDefault(.notes, for: .uti("com.apple.rtfd"), in: try kind("rtf", in: store))
-        await waitUntilIdle(store, kindID: "rtf")
+        await store.setDefault(.notes, for: .uti("com.apple.rtfd"), in: try kind("rtf", in: store))
 
-        let rtf = try kind("rtf", in: store)
         #expect(store.pendingChange == nil)
-        #expect(backend.calls.map(\.kind) == [.target(.uti("com.apple.rtfd"))])
-        #expect(rtf.isSplit)
-        #expect(store.results(for: rtf).map(\.target) == [.uti("com.apple.rtfd")])
+        #expect(backend.calls.map(\.target) == [.uti("com.apple.rtfd")])
+        #expect(try kind("rtf", in: store).isSplit)
     }
-}
 
-private extension MemberResult.Outcome {
-    var isChanged: Bool { self == .changed }
+    /// R7: while one change waits on its prompt, no other change can start anywhere.
+    @Test func writesAreSerializedAcrossKinds() async throws {
+        let (store, backend) = await makeStore(latency: .milliseconds(200))
+        let jpeg = try kind("jpeg", in: store)
+        let png = try kind("png", in: store)
+
+        let first = Task { await store.setDefault(.photos, for: jpeg) }
+        await waitFor { !backend.calls.isEmpty }
+        #expect(!store.canWrite)
+
+        await store.setDefault(.photos, for: png)
+        await first.value
+
+        #expect(backend.calls.map(\.target) == [.uti("public.jpeg")])
+        #expect(backend.maxConcurrentCalls == 1)
+        #expect(try kind("png", in: store).defaultApp?.url == preview)
+        #expect(store.canWrite)
+    }
+
+    /// R8: a refresh can't start mid-write, and one after the write keeps the verified handler
+    /// and the per-member results.
+    @Test func refreshDuringWriteIsRefusedAndLaterRefreshKeepsResults() async throws {
+        let (store, backend) = await makeStore(latency: .milliseconds(200))
+        let jpeg = try kind("jpeg", in: store)
+
+        let write = Task { await store.setDefault(.photos, for: jpeg) }
+        await waitFor { !backend.calls.isEmpty }
+        await store.refresh()
+        #expect(!store.isRefreshing)
+        await write.value
+
+        await store.refresh()
+
+        #expect(try kind("jpeg", in: store).defaultApp?.url == AppRef.photos.url)
+        #expect(store.results(for: try kind("jpeg", in: store)).map(\.outcome) == [.changed])
+    }
+
+    /// R8, other ordering: a write can't start while a refresh is reading handlers.
+    @Test func writeDuringRefreshIsRefused() async throws {
+        let (store, backend) = await makeStore(providerDelay: .milliseconds(200))
+        let jpeg = try kind("jpeg", in: store)
+
+        let refresh = Task { await store.refresh() }
+        await waitFor { store.isRefreshing }
+        await store.setDefault(.photos, for: jpeg)
+        await refresh.value
+
+        #expect(backend.calls.isEmpty)
+        #expect(try kind("jpeg", in: store).defaultApp?.url == preview)
+    }
 }

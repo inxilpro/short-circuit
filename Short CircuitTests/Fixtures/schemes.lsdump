@@ -442,3 +442,136 @@ unknown:                    net.daringfireball.markdown (0x4cac)
 all roles:                  com.sublimetext.4
 mod date:                   2000-12-31 19:00 (POSIX 978307200, 𝛥 25yrs 8mths 2wks 3days 18hr 38min 33sec)
 
+--------------------------------------------------------------------------------
+bundle id:                  Finder (0x208)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /System/Library/CoreServices/Finder.app (0xf70)
+directory:                  /System/Library/CoreServices
+name:                       Finder
+displayName:                Finder
+localizedNames:             "ar" = "فايندر", "Base" = ?, "ca" = "Finder", "cs" = "Finder", "da" = "Finder", "de" = "Finder", "el" = "Finder", "en" = "Finder", "en_AU" = "Finder", "en_GB" = "Finder", "es" = "Finder", "es_419" = "Finder", "fi" = "Finder", "fr" = "Finder", "fr_CA" = "Finder", "he" = "Finder", "hi" = "Finder", "hr" = "Finder", "hu" = "Finder", "id" = "Finder", "it" = "Finder", "ja" = "Finder", "ko" = "Finder", "LSDefaultLocalizedValue" = "Finder", "ms" = "Finder", "nl" = "Finder", "no" = "Finder", "pl" = "Finder", "pt_BR" = "Finder", "pt_PT" = "Finder", "ro" = "Finder", "ru" = "Finder", "sk" = "Finder", "sl" = "Finder", "sv" = "Finder", "th" = "Finder", "tr" = "Finder", "uk" = "Finder", "vi" = "Finder", "zh_CN" = "访达", "zh_HK" = "Finder", "zh_TW" = "Finder"
+localizedShortNames:        "ar" = "فايندر", "Base" = ?, "ca" = "Finder", "cs" = "Finder", "da" = "Finder", "de" = "Finder", "el" = "Finder", "en" = "Finder", "en_AU" = "Finder", "en_GB" = "Finder", "es" = "Finder", "es_419" = "Finder", "fi" = "Finder", "fr" = "Finder", "fr_CA" = "Finder", "he" = "Finder", "hi" = "Finder", "hr" = "Finder", "hu" = "Finder", "id" = "Finder", "it" = "Finder", "ja" = "Finder", "ko" = "Finder", "LSDefaultLocalizedValue" = "Finder", "ms" = "Finder", "nl" = "Finder", "no" = "Finder", "pl" = "Finder", "pt_BR" = "Finder", "pt_PT" = "Finder", "ro" = "Finder", "ru" = "Finder", "sk" = "Finder", "sl" = "Finder", "sv" = "Finder", "th" = "Finder", "tr" = "Finder", "uk" = "Finder", "vi" = "Finder", "zh_CN" = "访达", "zh_HK" = "Finder", "zh_TW" = "Finder"
+teamID:                     0000000000
+identifier:                 com.apple.finder
+version:                    1828.6.1 ({length = 32, bytes = 0x24070000 00000000 06000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.finder
+platform:                   native
+executable:                 Contents/MacOS/Finder
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  link-enabled  secured-system-content  redactable
+Mach-O UUIDs:               BB984413-6EC9-3D32-A819-C76F5C1FDD03, FA70F8E6-62B3-361E-8628-F4882492C488
+execSDK ver:                26.6.1 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             21 values (13236 (0x33b4))
+entitlements:               98 values (13240 (0x33b8))
+Intents:                    0 values (13244 (0x33bc))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                520
+category:                   public.app-category.productivity (0xbe04)
+versionString:              1828.6.1
+displayVersion:             26.4
+mod date:                   2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+exec mod date:              2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+reg date:                   2026-08-22 16:45 (POSIX 1787431553, 𝛥 3wks 5days 20hr 53min)
+rec mod date:               2026-08-22 16:45 (POSIX 1787431553, 𝛥 3wks 5days 20hr 53min)
+type code:                  'FNDR' (464e4452)
+creator code:               'MACS' (4d414353)
+bundle flags:               has-display-name  handles-file-url (0000000008000002)
+more flags:                 requires-native
+plist flags:                launch-with-label  has-custom-bindings (0000000000010080)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden  services (000000000030088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable (0000000000000001)
+safeAperture app fullscreen: capable (0000000000000001)
+safeAperture windowed:      capable (0000000000000001)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   Finder
+iconDict:                   1 values (13232 (0x33b0))
+icons:                      Contents/Resources/Finder.icns
+inode:                      206853 (1152921500312086533)
+exec inode:                 207224 (1152921500312086904)
+min version:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+library:                    Contents/Library/
+activityTypes:              pv-f5cae1b120dd0f, :com.apple.clouddocs.viewing, ua-8c70c1ebf68a26, NOTIFICATION#:com.apple.finder
+trustedCodeSignatures:      2ff5347d0294d90d3f1ff68e9014b02619aa63b6, 2ff5347d0294d90d3f1ff68e9014b02619aa63b6, 4d1a90d91534841580187ba31b34454737c91ecb
+claimed UTIs:               public.folder, com.apple.finder.predefined-search, com.apple.finder.pictclipping, com.apple.finder.smart-folder, public.volume, com.apple.finder.sound-clipping, com.apple.finder.textclipping, com.apple.finder.burn-folder, dyn.ah62d4rv4ge80665qrv10g (.nslloc), dyn.ah62d4rv4ge80c7dqr7vu (.atloc), dyn.ah62d4rv4ge80g5dmsb2gw5xh (.clipping), dyn.ah62d4rv4gk80w5dbsu ('ilat'), dyn.ah62d4rv4gk80w5dssq ('ilns')
+claimed schemes:            afp:, cifs:, file:, ftp:, nwnode:, smb:
+plugin Identifiers:         com.apple.siriplugin.FileSearch
+
+--------------------------------------------------------------------------------
+claim id:                   File URL (0x9b4)
+localizedNames:             "LSDefaultLocalizedValue" = "File URL"
+rank:                       Default
+bundle:                     Finder (0x208)
+flags:                      apple-default  apple-internal  url-type (0000000000000045)
+roles:                      Viewer (0000000000000002)
+bindings:                   file:
+
+--------------------------------------------------------------------------------
+bundle id:                  zoom.us (0x694)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Applications/zoom.us.app (0x1658)
+directory:                  /Applications
+name:                       zoom.us
+localizedShortNames:        "de" = ?, "en" = ?, "es" = ?, "fr" = ?, "id" = ?, "it" = ?, "ja" = ?, "ko-KR" = ?, "LSDefaultLocalizedValue" = "zoom.us", "nl" = ?, "pl" = ?, "pt-PT" = ?, "ru" = ?, "sv" = ?, "tr" = ?, "vi" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+MicUsage:                   "de" = "Damit Sie mit den Teilnehmern sprechen können, ist bei Zoom der Zugriff auf Ihr Mikrofon erforderlich.", "en" = "In order to speak to participants, Zoom requires access to your microphone.", "es" = "Para hablar con los participantes, Zoom requiere acceder a su micrófono.", "fr" = " Zoom nécessite un accès à votre microphone afin de pouvoir parler aux participants ", "id" = "Agar dapat berbicara ke peserta, Zoom membutuhkan akses ke mikrofon Anda.", "it" = "Per parlare con i partecipanti, Zoom richiede l’accesso al tuo microfono.", "ja" = "参加者と会話するには、Zoomにマイクへのアクセス権限が要求されます。", "ko-KR" = "참가자에게 이야기하려면 Zoom에는 귀하의 마이크에 대한 액세스 권한이 필요합니다.", "LSDefaultLocalizedValue" = "In order to speak to participants, Zoom requires access to your microphone.", "nl" = "Om ervoor te zorgen dat u met andere deelnemers kunt spreken, heeft Zoom toegang nodig tot uw microfoon.", "pl" = "Aby porozmawiać z uczestnikami, Zoom wymaga dostępu do Twojego mikrofonu.", "pt-PT" = "Para falar com os participantes, o Zoom requer o acesso ao seu microfone.", "ru" = "Для того, чтобы поговорить с участниками, необходим доступ к микрофону.", "sv" = "För att du ska kunna prata med deltagarna behöver Zoom tillgång till din mikrofon.", "tr" = "Katılımcılarla konuşma için Zoom'un mikrofonunuza erişebilmesi gerekir.", "vi" = "Để có thể nói chuyện với người tham gia, Zoom cần có quyền truy cập vào micrô của bạn.", "zh-Hans" = "为与参会者交谈，Zoom 需要访问您的麦克风。", "zh-Hant" = "為能與參與者通話，Zoom 需要存取您的麥克風。"
+teamID:                     BJ4HAAB9B3
+identifier:                 us.zoom.xos
+version:                    7.0.6 ({length = 32, bytes = 0x07000000 00000000 00000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 us.zoom.xos
+platform:                   native
+executable:                 Contents/MacOS/zoom.us
+slices:                     arm64 (0000000000000080)
+Mach-O UUIDs:               98505B37-7F0C-36C9-B9C1-8C40DC6FAD38
+execSDK ver:                26.2 ({length = 32, bytes = 0x1a000000 00000000 02000000 00000000 ... 00000000 00000000 })
+infoDictionary:             24 values (22768 (0x58f0))
+entitlements:               8 values (22772 (0x58f4))
+Intents:                    0 values (22776 (0x58f8))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1684
+category:                   public.app-category.video (0xbe1c)
+versionString:              7.0.6.84834
+displayVersion:             7.0.6 (84834)
+mod date:                   2026-08-04 12:06 (POSIX 1785859571, 𝛥 1mth 2wks 1hr 32min 43sec)
+exec mod date:              2026-07-22 06:13 (POSIX 1784715182, 𝛥 1mth 3wks 6days 7hr 25min 52sec)
+reg date:                   2026-08-22 16:46 (POSIX 1787431564, 𝛥 3wks 5days 20hr 52min 50sec)
+rec mod date:               2026-08-22 16:46 (POSIX 1787431564, 𝛥 3wks 5days 20hr 52min 50sec)
+type code:                  'APPL' (4150504c)
+creator code:               'ZMZV' (5a4d5a56)
+more flags:                 mail-client
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  extension-hidden (000000000010008e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  explicit (0000000000000003)
+safeAperture app fullscreen: capable  explicit (0000000000000003)
+safeAperture windowed:      capable  explicit (0000000000000003)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (22764 (0x58ec))
+icons:                      Contents/Resources/ZPLogo.icns
+inode:                      369625997
+exec inode:                 369626002
+min version:                11.0 ({length = 32, bytes = 0x0b000000 00000000 00000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               11.0 ({length = 32, bytes = 0x0b000000 00000000 00000000 00000000 ... 00000000 00000000 })
+library:                    Contents/Library/
+library items:              LaunchAgents/ZoomUpdater.app/
+activityTypes:              NOTIFICATION#BJ4HAAB9B3:us.zoom.xos, pv-d892963189051e
+trustedCodeSignatures:      2557d7f515d8a83b36b0beb8a14169aea8f3dd5d
+claimed UTIs:               com.apple.default-app.mail-client
+claimed schemes:            callto:, mailto:, sip:, tel:, zoommtg:, zoomus:
+

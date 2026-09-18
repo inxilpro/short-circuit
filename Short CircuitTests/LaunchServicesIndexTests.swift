@@ -40,3 +40,26 @@ struct LaunchServicesIndexTests {
         #expect(counter.count.withLock { $0 } == 2)
     }
 }
+
+struct ProcessRunnerTests {
+    /// Writes past the pipe buffer on stderr before touching stdout; a runner that drains stdout first
+    /// would block forever.
+    @Test(.timeLimit(.minutes(1))) func drainsBothPipesConcurrently() async throws {
+        let script = "head -c 300000 /dev/zero | tr '\\\\0' e >&2; head -c 300000 /dev/zero | tr '\\\\0' o"
+        let data = try await LaunchServicesIndex.run(URL(fileURLWithPath: "/bin/sh"), arguments: ["-c", script])
+        #expect(data.count == 300_000)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func reportsFailureWithStderr() async throws {
+        let script = "head -c 300000 /dev/zero | tr '\\\\0' o; echo broken >&2; exit 3"
+        await #expect(throws: LaunchServicesIndexError.self) {
+            try await LaunchServicesIndex.run(URL(fileURLWithPath: "/bin/sh"), arguments: ["-c", script])
+        }
+        do {
+            _ = try await LaunchServicesIndex.run(URL(fileURLWithPath: "/bin/sh"), arguments: ["-c", script])
+        } catch LaunchServicesIndexError.lsregisterFailed(let status, let message) {
+            #expect(status == 3)
+            #expect(message.contains("broken"))
+        }
+    }
+}

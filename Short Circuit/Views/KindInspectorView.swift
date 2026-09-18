@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Everything the inspector needs to change handlers. Passing nil keeps the inspector read-only.
 struct KindEditing {
+    /// False while any change anywhere in the app is planning, applying, or awaiting confirmation.
+    var isEnabled = true
     var isApplying = false
     var results: [MemberResult] = []
     var setDefault: (AppRef) -> Void
@@ -30,7 +32,7 @@ private struct KindInspectorForm: View {
     let kind: Kind
     let editing: KindEditing?
 
-    private var canEdit: Bool { editing != nil && editing?.isApplying == false }
+    private var canEdit: Bool { editing?.isEnabled == true }
 
     private var resultsByTarget: [KindMember.Target: MemberResult] {
         Dictionary((editing?.results ?? []).map { ($0.target, $0) }, uniquingKeysWith: { _, last in last })
@@ -50,6 +52,9 @@ private struct KindInspectorForm: View {
             Section("Opens With") {
                 OpensWithPicker(kind: kind, choices: choices, isEnabled: canEdit) { app in
                     editing?.setDefault(app)
+                }
+                if kind.members.contains(where: { WritePlan.browserRole.contains($0.target) }) {
+                    BrowserRoleNotice()
                 }
                 if editing?.isApplying == true {
                     ApplyingNotice()
@@ -312,37 +317,52 @@ private struct MemberRow: View {
         }
     }
 
+    private var isBrowserMember: Bool {
+        WritePlan.browserRole.contains(member.target)
+    }
+
+    /// Browser members can't be changed alone, so their menu offers the browser-wide action
+    /// under its real name instead of pretending to set one member.
     private var memberMenu: some View {
         Menu {
-            Section("Open \(member.target.displayName) With") {
+            Section(isBrowserMember ? "Default Browser (http, https, HTML, XHTML)" : "Open \(member.target.displayName) With") {
                 ForEach(choices.all) { app in
                     Button {
                         onChoose(app)
                     } label: {
                         Label {
-                            Text(app.name)
+                            Text(isBrowserMember ? "Make \(app.name) the Default Browser" : app.name)
                         } icon: {
                             AppIconView(app: app, size: 16)
                         }
                     }
-                    .disabled(app.url == member.defaultApp?.url)
+                    .disabled(app.url == member.defaultApp?.url && !isBrowserMember)
                 }
             }
             Divider()
             Button("Other…") {
-                chooseOtherApp(forOpening: "\(member.target.displayName) (\(kindName))", then: onChoose)
+                chooseOtherApp(forOpening: isBrowserMember ? "web pages and links" : "\(member.target.displayName) (\(kindName))", then: onChoose)
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
+            Image(systemName: isBrowserMember ? "globe" : "ellipsis.circle")
         }
         .menuStyle(.button)
         .buttonStyle(.borderless)
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(!isEnabled)
-        .help(WritePlan.browserRole.contains(member.target)
-              ? "Set just this member. macOS changes all web page types together."
+        .help(isBrowserMember
+              ? "Change the default browser, which sets http, https, HTML, and XHTML together"
               : "Set just this member")
+    }
+}
+
+private struct BrowserRoleNotice: View {
+    var body: some View {
+        Label("Changing this sets your default web browser, which covers http, https, HTML, and XHTML together.", systemImage: "globe")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -354,7 +374,7 @@ private struct MemberResultLabel: View {
             label
                 .fixedSize(horizontal: false, vertical: true)
             if result.viaBrowserRole {
-                Text("Set through http:, since macOS keeps web page types together.")
+                Text("Part of the default-browser change, which is made through the http scheme.")
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -362,26 +382,20 @@ private struct MemberResultLabel: View {
         .font(.caption)
     }
 
-    /// The sample-file fallback is folded into each outcome's own wording so success and failure
-    /// can never be described side by side.
     @ViewBuilder
     private var label: some View {
-        let fallback = result.usedFileFallback
         switch result.outcome {
         case .changed:
-            Label(fallback ? "Changed using a sample file after the type setter was rejected" : "Changed",
-                  systemImage: "checkmark.circle.fill")
+            Label("Changed", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .unchangedAfterSuccess:
-            Label(fallback ? "Not changed — a sample-file retry was accepted, but the handler didn’t change" : "Not changed — the prompt was probably declined",
-                  systemImage: "hand.raised.fill")
+            Label("Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
                 .foregroundStyle(.secondary)
         case .declined:
-            Label(fallback ? "Declined (after retrying with a sample file)" : "Declined", systemImage: "hand.raised.fill")
+            Label("Declined", systemImage: "hand.raised.fill")
                 .foregroundStyle(.secondary)
         case .failed(let domain, let code, let message):
-            Label("\(fallback ? "Failed, and retrying with a sample file didn’t help" : "Failed"): \(message) (\(Self.shortDomain(domain)) \(code))",
-                  systemImage: "xmark.octagon.fill")
+            Label("Failed: \(message) (\(Self.shortDomain(domain)) \(code))", systemImage: "xmark.octagon.fill")
                 .foregroundStyle(.red)
                 .textSelection(.enabled)
         case .skipped(.alreadyDefault):
@@ -428,8 +442,8 @@ private extension MemberResult.Outcome {
     }
 }
 
-private func previewEditing(results: [MemberResult] = [], isApplying: Bool = false) -> KindEditing {
-    KindEditing(isApplying: isApplying, results: results, setDefault: { _ in }, setMemberDefault: { _, _ in }, fixSplit: {})
+private func previewEditing(results: [MemberResult] = [], isEnabled: Bool = true, isApplying: Bool = false) -> KindEditing {
+    KindEditing(isEnabled: isEnabled, isApplying: isApplying, results: results, setDefault: { _ in }, setMemberDefault: { _, _ in }, fixSplit: {})
 }
 
 #Preview("Split") {
@@ -442,14 +456,14 @@ private func previewEditing(results: [MemberResult] = [], isApplying: Bool = fal
         kind: SampleKindProvider.kinds.first { $0.id == "markdown" },
         editing: previewEditing(results: [
             MemberResult(target: .uti("net.daringfireball.markdown"), outcome: .changed, handlerAfter: .safari),
-            MemberResult(target: .uti("public.markdown"), outcome: .failed(domain: NSCocoaErrorDomain, code: 256, message: "The file couldn’t be opened."), handlerAfter: .safari),
+            MemberResult(target: .uti("public.markdown"), outcome: .failed(domain: NSCocoaErrorDomain, code: 256, message: "macOS rejected changing the default app for this type without asking. Nothing was changed."), handlerAfter: .safari),
         ])
     )
     .frame(width: 320, height: 640)
 }
 
 #Preview("Applying") {
-    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "web-page" }, editing: previewEditing(isApplying: true))
+    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "web-page" }, editing: previewEditing(isEnabled: false, isApplying: true))
         .frame(width: 320, height: 640)
 }
 

@@ -1,0 +1,971 @@
+Checking data integrity...
+...done.
+Database is seeded.
+Status:                     Preferences are loaded.
+Seeded System Version:      26.6.2 (25G83)
+Seeded Model Code:          J516cAP/Mac15,9
+CacheGUID:                  0232F398-4C84-45DC-A45C-7863F1D8CDAB
+CacheSequenceNum:           21148
+Date Initialized:           2026-08-22 16:45 (POSIX 1787431539, 𝛥 3wks 5days 20hr 53min 14sec)
+xcode-select Version:       2416
+Path:                       /var/folders/kq/k3kqzttx6274njn2x_bjk7100000gn/0/com.apple.LaunchServices.dv/com.apple.LaunchServices-20971545-v2.csstore
+DB Object:                  <LSDatabase 0x1029b6230> { userID = 501, path = '/var/folders/kq/k3kqzttx6274njn2x_bjk7100000gn/0/com.apple.LaunchServices.dv/com.apple.LaunchServices-20971545-v2.csstore' }
+DB Bundle:                  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework (v 1141.1)
+Store Object:               <_CSStore 0x1029b6930> { p = 0x106da0000, gen = 2430551, length = 17825792/17818084/17366112 }
+Store Bundle:               /System/Library/PrivateFrameworks/CoreServicesStore.framework (v 1141.1)
+0x00000000 00000000:	6264736c 0200f392 57162500 e4e10f01    bdsl····W·%·····
++++++++++++++++++++++++++++++++ Structure Sizes ++++++++++++++++++++++++++++++++
+sizeof(Data):                      100 ( 100 bytes) -----
+sizeof(Table):                      80 (  80 bytes) -----
+sizeof(Unit):                        8 (   8 bytes) -----
+sizeof(IdentifierCache):             4 (   4 bytes) -----
++++++++++++++++++++++++++++++++ Memory by Table ++++++++++++++++++++++++++++++++
+<array>:                       1985562 (      2 MB) 41175 units (≅48 bytes/unit)
+<dictionary>:                     6256 (      6 KB) 391 units (≅16 bytes/unit)
+<string>:                      3001052 (      3 MB) 78653 units (≅38 bytes/unit)
+ActivityTypeBinding:             65296 (     65 KB) 1 units
+Alias:                         2191144 (    2.2 MB) 2265 units (≅967 bytes/unit)
+BindableKeyMap:                 130576 (    131 KB) 1 units
+BindingList:                    211428 (    211 KB) 7363 units (≅28 bytes/unit)
+BluetoothVendorProductIDBinding:       4096 (      4 KB) 1 units
+--------------------------------------------------------------------------------
+bundle id:                  Preview (0x3e8)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /System/Applications/Preview.app (0x11ec)
+directory:                  /System/Applications
+name:                       Preview
+displayName:                Preview
+localizedNames:             "ar" = "المعاينة", "Base" = ?, "ca" = "Previsualització", "cs" = "Náhled", "da" = "Billedfremviser", "de" = "Vorschau", "el" = "Προεπισκόπηση", "en" = "Preview", "en_AU" = "Preview", "en_GB" = "Preview", "es" = "Vista Previa", "es_419" = "Vista Previa", "fi" = "Esikatselu", "fr" = "Aperçu", "fr_CA" = "Aperçu", "he" = "תצוגה מקדימה", "hi" = "प्रीव्यू", "hr" = "Pregled", "hu" = "Megtekintő", "id" = "Pratinjau", "it" = "Anteprima", "ja" = "プレビュー", "ko" = "미리보기", "LSDefaultLocalizedValue" = "Preview", "ms" = "Pratonton", "nl" = "Voorvertoning", "no" = "Forhåndsvisning", "pl" = "Podgląd", "pt_BR" = "Pré-Visualização", "pt_PT" = "Pré‑visualização", "ro" = "Previzualizare", "ru" = "Просмотр", "sk" = "Preview", "sl" = "Predogled", "sv" = "Förhandsvisning", "th" = "แสดงตัวอย่าง", "tr" = "Önizleme", "uk" = "Оглядач", "vi" = "Xem trước", "zh_CN" = "预览", "zh_HK" = "預覽程式", "zh_TW" = "預覽程式"
+localizedShortNames:        "ar" = "المعاينة", "Base" = ?, "ca" = "Previsualització", "cs" = "Náhled", "da" = "Billedfremviser", "de" = "Vorschau", "el" = "Προεπισκόπηση", "en" = "Preview", "en_AU" = "Preview", "en_GB" = "Preview", "es" = "Vista Previa", "es_419" = "Vista Previa", "fi" = "Esikatselu", "fr" = "Aperçu", "fr_CA" = "Aperçu", "he" = "תצוגה מקדימה", "hi" = "प्रीव्यू", "hr" = "Pregled", "hu" = "Megtekintő", "id" = "Pratinjau", "it" = "Anteprima", "ja" = "プレビュー", "ko" = "미리보기", "LSDefaultLocalizedValue" = "Preview", "ms" = "Pratonton", "nl" = "Voorvertoning", "no" = "Forhåndsvisning", "pl" = "Podgląd", "pt_BR" = "Pré-Visualização", "pt_PT" = "Pré‑visualização", "ro" = "Previzualizare", "ru" = "Просмотр", "sk" = "Preview", "sl" = "Predogled", "sv" = "Förhandsvisning", "th" = "แสดงตัวอย่าง", "tr" = "Önizleme", "uk" = "Оглядач", "vi" = "Xem trước", "zh_CN" = "预览", "zh_HK" = "預覽程式", "zh_TW" = "預覽程式"
+teamID:                     0000000000
+identifier:                 com.apple.Preview
+version:                    1113.5.3 ({length = 32, bytes = 0x59040000 00000000 05000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.Preview
+platform:                   native
+executable:                 Contents/MacOS/Preview
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  link-enabled  secured-system-content  redactable
+Mach-O UUIDs:               6018E0A8-D166-3BA1-B959-4A92B64C51AD, 85F7CDA2-F2E4-3262-87C0-02A2155A2A61
+execSDK ver:                26.6.1 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             22 values (18440 (0x4808))
+entitlements:               21 values (18444 (0x480c))
+Intents:                    0 values (18448 (0x4810))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1000
+category:                   public.app-category.productivity (0xbe04)
+canonical id:               com.apple.preview
+versionString:              1113.5.3
+displayVersion:             11.0
+mod date:                   2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+exec mod date:              2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+reg date:                   2026-08-22 16:45 (POSIX 1787431557, 𝛥 3wks 5days 20hr 52min 56sec)
+rec mod date:               2026-08-22 16:45 (POSIX 1787431557, 𝛥 3wks 5days 20hr 52min 56sec)
+type code:                  'APPL' (4150504c)
+creator code:               'prvw' (70727677)
+bundle flags:               has-display-name  wildcard  is-containerized (0000004010000002)
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden  services (000000000030088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable (0000000000000001)
+safeAperture app fullscreen: capable (0000000000000001)
+safeAperture windowed:      capable (0000000000000001)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   AppIcon
+iconDict:                   1 values (18436 (0x4804))
+icons:                      Contents/Resources/AppIcon.icns
+inode:                      18724 (1152921500311898404)
+exec inode:                 18729 (1152921500311898409)
+min version:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+activityTypes:              pv-f565c20cc26da6, NOTIFICATION#:com.apple.Preview
+trustedCodeSignatures:      8c09b9b07790efcb956ab0f8150344ca6c494d2d, 8c09b9b07790efcb956ab0f8150344ca6c494d2d, 73bc5c92033fecbf7765e9d9a12b16ff13b1ae26
+claimed UTIs:               com.apple.icns, org.khronos.gltf, public.avci, public.geometry-definition-format, public.folder, public.fax, public.avif, public.jpeg, public.xbitmap-image, com.apple.macpaint-image, com.adobe.photoshop-image, org.khronos.astc, io.aswf.materialx, public.heics, public.standard-tesselated-geometry-format, com.truevision.tga-image, org.khronos.ktx, com.ilm.openexr-image, com.microsoft.dds, public.jpeg-2000, public.png, public.camera-raw-image, public.mpo-image, com.apple.pdf-printer-settings, org.webmproject.webp, com.microsoft.ico, public.ofd, public.jpeg-xl, com.compuserve.gif, com.apple.localized-pdf-bundle, org.khronos.glb, public.heifs, com.sgi.sgi-image, public.radiance, com.adobe.pdf, com.kodak.flashpix-image, com.adobe.illustrator.ai-image, public.heic, public.pvr, com.apple.application-bundle, public.avcs, public.pbm, com.pixar.universal-scene-description-mobile, public.heif, com.apple.rjpeg, com.google.webp, com.microsoft.bmp, com.pixar.universal-scene-description, public.alembic, public.3d-content, com.apple.package, public.tiff, public.polygon-file-format, com.apple.pict
+
+--------------------------------------------------------------------------------
+claim id:                   3156 (0xc54)
+rank:                       Default
+bundle:                     Preview (0x3e8)
+flags:                      apple-default  apple-internal  doc-type  resolves-icloud-conflicts (0000000000000225)
+roles:                      Viewer (0000000000000002)
+bindings:                   public.heif
+
+--------------------------------------------------------------------------------
+claim id:                   3168 (0xc60)
+rank:                       Default
+bundle:                     Preview (0x3e8)
+flags:                      apple-default  apple-internal  doc-type  resolves-icloud-conflicts (0000000000000225)
+roles:                      Viewer (0000000000000002)
+bindings:                   public.heic
+
+--------------------------------------------------------------------------------
+claim id:                   3240 (0xca8)
+rank:                       Default
+bundle:                     Preview (0x3e8)
+flags:                      apple-internal  doc-type  resolves-icloud-conflicts (0000000000000224)
+roles:                      Viewer (0000000000000002)
+bindings:                   com.adobe.photoshop-image
+
+--------------------------------------------------------------------------------
+claim id:                   3264 (0xcc0)
+rank:                       Default
+bundle:                     Preview (0x3e8)
+flags:                      apple-default  apple-internal  doc-type  resolves-icloud-conflicts (0000000000000225)
+roles:                      Viewer (0000000000000002)
+bindings:                   public.radiance
+
+--------------------------------------------------------------------------------
+claim id:                   3272 (0xcc8)
+rank:                       Default
+bundle:                     Preview (0x3e8)
+flags:                      apple-default  apple-internal  doc-type  resolves-icloud-conflicts (0000000000000225)
+roles:                      Viewer (0000000000000002)
+bindings:                   com.apple.pict
+
+--------------------------------------------------------------------------------
+bundle id:                  Photoshop 2026 (0x5e8)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Applications/Adobe Photoshop 2026/Adobe Photoshop 2026.app (0x158c)
+directory:                  /Applications
+name:                       Photoshop 2026
+displayName:                Adobe Photoshop 2026
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Adobe Photoshop 2026", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+localizedShortNames:        "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Photoshop 2026", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+teamID:                     JQ525L2MZD
+identifier:                 com.adobe.Photoshop
+version:                    27.0 ({length = 32, bytes = 0x1b000000 00000000 00000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.adobe.Photoshop
+platform:                   native
+executable:                 Contents/MacOS/Adobe Photoshop 2026
+slices:                     x86_64  arm64 (0000000000000088)
+Mach-O UUIDs:               45664B41-52DB-35BC-8200-95CEA63A0B9F, 4429ACD8-6D9C-32C0-8730-8B0B81D463E1
+execSDK ver:                14.2 ({length = 32, bytes = 0x0e000000 00000000 02000000 00000000 ... 00000000 00000000 })
+infoDictionary:             19 values (21980 (0x55dc))
+entitlements:               9 values (21984 (0x55e0))
+Intents:                    0 values (21988 (0x55e4))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1512
+category:                   public.app-category.graphics-design (0xbde8)
+canonical id:               com.adobe.photoshop
+versionString:              27.0.0
+displayVersion:             27.0.0
+mod date:                   2025-10-31 16:32 (POSIX 1761942768, 𝛥 10mths 2wks 3days 21hr 6min 6sec)
+exec mod date:              2025-10-31 16:32 (POSIX 1761942772, 𝛥 10mths 2wks 3days 21hr 6min 2sec)
+reg date:                   2026-08-22 16:46 (POSIX 1787431561, 𝛥 3wks 5days 20hr 52min 53sec)
+rec mod date:               2026-08-22 16:46 (POSIX 1787431561, 𝛥 3wks 5days 20hr 52min 53sec)
+type code:                  'APPL' (4150504c)
+creator code:               '8BIM' (3842494d)
+bundle flags:               has-display-name  wildcard (0000000010000002)
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden (000000000010088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  can-change (0000000000000005)
+safeAperture app fullscreen: capable  can-change (0000000000000005)
+safeAperture windowed:      capable  can-change (0000000000000005)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (21976 (0x55d8))
+icons:                      Contents/Resources/PS_AppIcon.icns
+inode:                      218942399
+exec inode:                 218942419
+min version:                13.0 ({length = 32, bytes = 0x0d000000 00000000 00000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               13.0 ({length = 32, bytes = 0x0d000000 00000000 00000000 00000000 ... 00000000 00000000 })
+activityTypes:              pv-fd77c9e3173519, NOTIFICATION#JQ525L2MZD:com.adobe.Photoshop
+trustedCodeSignatures:      6b5339b63602373f87137dba35f2d081cfe48742, 6b5339b63602373f87137dba35f2d081cfe48742, 749d1e9ce76eaa3fde4839428e2797867847c990
+claimed UTIs:               com.nikon.nrw-raw-image, public.png, com.adobe.raw-image, com.leafamerica.raw-image, public.data, com.konicaminolta.raw-image, com.samsung.raw-image, com.panasonic.raw-image, com.olympus.raw-image, com.pentax.raw-image, com.nikon.raw-image, public.heif, com.adobe.illustrator.ai-image, com.kodak.raw-image, com.apple.pict, com.phaseone.raw-image, com.hasselblad.3fr-raw-image, com.adobe.encapsulated-postscript, public.jpeg, com.microsoft.bmp, com.epson.raw-image, com.ilm.openexr-image, com.canon.cr2-raw-image, com.canon.crw-raw-image, public.heic, com.adobe.pdf, com.compuserve.gif, com.adobe.photoshop-image, com.truevision.tga-image, com.ea.iff-ilbm, com.fuji.raw-image, com.adobe.photoshop-large-image, public.tiff, public.pbm, com.adobe.photoshop-template-image, com.sony.raw-image, dyn.ah62d4rv4ge8043pg (.mef), dyn.ah62d4rv4ge8043x1 (.mfw), dyn.ah62d4rv4ge8047dq (.mtl), dyn.ah62d4rv4ge80g4ps (.cin), dyn.ah62d4rv4ge80k25u (.dcp), dyn.ah62d4rv4ge80k25usk (.dcpr), dyn.ah62d4rv4ge80q5bx (.fl3), dyn.ah62d4rv4ge80q8dh (.fxg), dyn.ah62d4rv4ge80y6dx (.jps), dyn.ah62d4rv4ge81a252 (.pcx), dyn.ah62d4rv4ge81a65bsa (.psap), dyn.ah62d4rv4ge81a65nsq (.psjs), dyn.ah62d4rv4ge81a8dw (.pxr), dyn.ah62d4rv4ge81g25y (.sct), dyn.ah62d4rv4ge81nq5e (.u3d), dyn.ah62d4rv4ge81s2xrsa (.wbmp), dyn.ah62d4rv4ge81uq5g (.x3f), dyn.ah62d4rv4gk8w6pwdnu ('..CT'), dyn.ah62d4rv4gk8y4zcqea ('MTL '), dyn.ah62d4rv4gk8yq0chea ('FXG '), dyn.ah62d4rv4gk8yq0chq2 ('FXGf'), dyn.ah62d4rv4gk8yqxbxea ('FL3 '), dyn.ah62d4rv4gk8za0cwea ('PXR '), dyn.ah62d4rv4gk8zau42ea ('PCX '), dyn.ah62d4rv4gk8zauwrfq ('PBM+'), dyn.ah62d4rv4gk8zaywbn6 ('PRAW'), dyn.ah62d4rv4gk8znq4eea ('U3D '), dyn.ah62d4rv4gk8zsuwrna ('WBMP'), dyn.ah62d4rv4gk8zsuwuq2 ('WBPf'), com.hasselblad.fff-raw-image, org.nema.dicom, com.leica.rwl-raw-image, vnd.adobe.cpsd+dcx
+claimed schemes:            adbps:, adobe+phxs:
+
+--------------------------------------------------------------------------------
+claim id:                   Adobe Photoshop file (0x15fc)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Adobe Photoshop file", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Owner
+bundle:                     Photoshop 2026 (0x5e8)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_PrimaryFileIcon.icns
+bindings:                   com.adobe.photoshop-image
+
+--------------------------------------------------------------------------------
+claim id:                   Adobe Photoshop PICT file (0x1634)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Adobe Photoshop PICT file", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Default
+bundle:                     Photoshop 2026 (0x5e8)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_PictFileIcon.icns
+bindings:                   com.apple.pict
+
+--------------------------------------------------------------------------------
+claim id:                   HEIF File (0x17b0)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "HEIF File", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Default
+bundle:                     Photoshop 2026 (0x5e8)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_HEIFFileIcon.icns
+bindings:                   public.heif
+
+--------------------------------------------------------------------------------
+claim id:                   HEIC File (0x17b4)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "HEIC File", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Default
+bundle:                     Photoshop 2026 (0x5e8)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_HEIFFileIcon.icns
+bindings:                   public.heic
+
+--------------------------------------------------------------------------------
+bundle id:                  Photoshop 2025 (0x770)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Applications/Adobe Photoshop 2025/Adobe Photoshop 2025.app (0x1774)
+directory:                  /Applications
+name:                       Photoshop 2025
+displayName:                Adobe Photoshop 2025
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Adobe Photoshop 2025", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+localizedShortNames:        "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Photoshop 2025", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+teamID:                     JQ525L2MZD
+identifier:                 com.adobe.Photoshop
+version:                    26.11.1 ({length = 32, bytes = 0x1a000000 00000000 0b000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.adobe.Photoshop
+platform:                   native
+executable:                 Contents/MacOS/Adobe Photoshop 2025
+slices:                     x86_64  arm64 (0000000000000088)
+Mach-O UUIDs:               EDCBD844-7F27-30B0-B6CA-12DE08C6EA3A, E5C34D44-1832-3F6D-A03F-4CA028B70CFD
+execSDK ver:                14.2 ({length = 32, bytes = 0x0e000000 00000000 02000000 00000000 ... 00000000 00000000 })
+infoDictionary:             19 values (23848 (0x5d28))
+entitlements:               9 values (23852 (0x5d2c))
+Intents:                    0 values (23856 (0x5d30))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1904
+category:                   public.app-category.graphics-design (0xbde8)
+canonical id:               com.adobe.photoshop
+versionString:              26.11.1
+displayVersion:             26.11.1
+mod date:                   2025-07-01 22:10 (POSIX 1751422223, 𝛥 14mths 2wks 5days 15hr 28min 31sec)
+exec mod date:              2025-10-31 16:49 (POSIX 1761943787, 𝛥 10mths 2wks 3days 20hr 49min 7sec)
+reg date:                   2026-08-22 16:46 (POSIX 1787431567, 𝛥 3wks 5days 20hr 52min 47sec)
+rec mod date:               2026-08-22 16:46 (POSIX 1787431567, 𝛥 3wks 5days 20hr 52min 47sec)
+type code:                  'APPL' (4150504c)
+creator code:               '8BIM' (3842494d)
+bundle flags:               has-display-name  wildcard (0000000010000002)
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden (000000000010088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  can-change (0000000000000005)
+safeAperture app fullscreen: capable  can-change (0000000000000005)
+safeAperture windowed:      capable  can-change (0000000000000005)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (23844 (0x5d24))
+icons:                      Contents/Resources/PS_AppIcon.icns
+inode:                      164554800
+exec inode:                 219044308
+min version:                12.0 ({length = 32, bytes = 0x0c000000 00000000 00000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               12.0 ({length = 32, bytes = 0x0c000000 00000000 00000000 00000000 ... 00000000 00000000 })
+activityTypes:              pv-fd77c9e3173519, NOTIFICATION#JQ525L2MZD:com.adobe.Photoshop
+trustedCodeSignatures:      7c8fa3b8bc0df4f3bbd8e8c98dd3295f0b9cbb27, 7c8fa3b8bc0df4f3bbd8e8c98dd3295f0b9cbb27, 9b3fe815c32e155deb3289d8139bc3f771b4c5e2
+claimed UTIs:               com.panasonic.raw-image, public.data, com.leafamerica.raw-image, com.konicaminolta.raw-image, com.adobe.pdf, public.png, com.pentax.raw-image, com.phaseone.raw-image, com.hasselblad.3fr-raw-image, com.microsoft.bmp, com.fuji.raw-image, com.adobe.raw-image, com.compuserve.gif, com.kodak.raw-image, com.hasselblad.fff-raw-image, public.tiff, com.adobe.photoshop-large-image, com.adobe.photoshop-image, org.nema.dicom, com.nikon.nrw-raw-image, com.samsung.raw-image, public.pbm, com.adobe.photoshop-template-image, com.leica.rwl-raw-image, com.adobe.illustrator.ai-image, com.ilm.openexr-image, com.olympus.raw-image, com.nikon.raw-image, com.sony.raw-image, public.jpeg, com.adobe.encapsulated-postscript, com.apple.pict, com.ea.iff-ilbm, com.canon.cr2-raw-image, dyn.ah62d4rv4ge8043pg (.mef), dyn.ah62d4rv4ge8043x1 (.mfw), dyn.ah62d4rv4ge8047dq (.mtl), dyn.ah62d4rv4ge80g4ps (.cin), dyn.ah62d4rv4ge80k25u (.dcp), dyn.ah62d4rv4ge80k25usk (.dcpr), dyn.ah62d4rv4ge80q5bx (.fl3), dyn.ah62d4rv4ge80q8dh (.fxg), dyn.ah62d4rv4ge80y6dx (.jps), dyn.ah62d4rv4ge81a252 (.pcx), dyn.ah62d4rv4ge81a65bsa (.psap), dyn.ah62d4rv4ge81a65nsq (.psjs), dyn.ah62d4rv4ge81a8dw (.pxr), dyn.ah62d4rv4ge81g25y (.sct), dyn.ah62d4rv4ge81nq5e (.u3d), dyn.ah62d4rv4ge81s2xrsa (.wbmp), dyn.ah62d4rv4ge81uq5g (.x3f), dyn.ah62d4rv4gk8w6pwdnu ('..CT'), dyn.ah62d4rv4gk8y4zcqea ('MTL '), dyn.ah62d4rv4gk8yq0chea ('FXG '), dyn.ah62d4rv4gk8yq0chq2 ('FXGf'), dyn.ah62d4rv4gk8yqxbxea ('FL3 '), dyn.ah62d4rv4gk8za0cwea ('PXR '), dyn.ah62d4rv4gk8zau42ea ('PCX '), dyn.ah62d4rv4gk8zauwrfq ('PBM+'), dyn.ah62d4rv4gk8zaywbn6 ('PRAW'), dyn.ah62d4rv4gk8znq4eea ('U3D '), dyn.ah62d4rv4gk8zsuwrna ('WBMP'), dyn.ah62d4rv4gk8zsuwuq2 ('WBPf'), com.epson.raw-image, public.heif, com.truevision.tga-image, com.canon.crw-raw-image, public.heic, vnd.adobe.cpsd+dcx
+claimed schemes:            adbps:, adobe+phxs:
+
+--------------------------------------------------------------------------------
+claim id:                   Adobe Photoshop file (0x2118)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Adobe Photoshop file", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Owner
+bundle:                     Photoshop 2025 (0x770)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_PrimaryFileIcon.icns
+bindings:                   com.adobe.photoshop-image
+
+--------------------------------------------------------------------------------
+claim id:                   Adobe Photoshop PICT file (0x2150)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Adobe Photoshop PICT file", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Default
+bundle:                     Photoshop 2025 (0x770)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_PictFileIcon.icns
+bindings:                   com.apple.pict
+
+--------------------------------------------------------------------------------
+claim id:                   HEIF File (0x22cc)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "HEIF File", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Default
+bundle:                     Photoshop 2025 (0x770)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_HEIFFileIcon.icns
+bindings:                   public.heif
+
+--------------------------------------------------------------------------------
+claim id:                   HEIC File (0x22d0)
+localizedNames:             "cs" = ?, "da" = ?, "de" = ?, "en" = ?, "en-GB" = ?, "English" = ?, "es" = ?, "fi" = ?, "fr" = ?, "fr-CA" = ?, "hu" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "HEIC File", "nb" = ?, "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?, "zh-Hant" = ?
+rank:                       Default
+bundle:                     Photoshop 2025 (0x770)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/PS_HEIFFileIcon.icns
+bindings:                   public.heic
+
+--------------------------------------------------------------------------------
+bundle id:                  Word (0x5060)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Applications/Microsoft Word.app (0x6518)
+directory:                  /Applications
+name:                       Word
+displayName:                Microsoft Word
+localizedNames:             "ar" = "Microsoft Word", "Base" = ?, "cs" = "Microsoft Word", "da" = "Microsoft Word", "de" = "Microsoft Word", "el" = "Microsoft Word", "en" = "Microsoft Word", "en_GB" = "Microsoft Word", "es" = "Microsoft Word", "es_MX" = "Microsoft Word", "fi" = "Microsoft Word", "fr" = "Microsoft Word", "fr_CA" = "Microsoft Word", "he" = "Microsoft Word", "hu" = "Microsoft Word", "id" = "Microsoft Word", "it" = "Microsoft Word", "ja" = "Microsoft Word", "ko" = "Microsoft Word", "LSDefaultLocalizedValue" = "Microsoft Word", "nl" = "Microsoft Word", "no" = "Microsoft Word", "pl" = "Microsoft Word", "pt" = "Microsoft Word", "pt_PT" = "Microsoft Word", "ru" = "Microsoft Word", "sk" = "Microsoft Word", "sv" = "Microsoft Word", "th" = "Microsoft Word", "tr" = "Microsoft Word", "zh_CN" = "Microsoft Word", "zh_TW" = "Microsoft Word"
+localizedShortNames:        "ar" = "Word", "Base" = ?, "cs" = "Word", "da" = "Word", "de" = "Word", "el" = "Word", "en" = "Word", "en_GB" = "Word", "es" = "Word", "es_MX" = "Word", "fi" = "Word", "fr" = "Word", "fr_CA" = "Word", "he" = "Word", "hu" = "Word", "id" = "Word", "it" = "Word", "ja" = "Word", "ko" = "Word", "LSDefaultLocalizedValue" = "Word", "nl" = "Word", "no" = "Word", "pl" = "Word", "pt" = "Word", "pt_PT" = "Word", "ru" = "Word", "sk" = "Word", "sv" = "Word", "th" = "Word", "tr" = "Word", "zh_CN" = "Word", "zh_TW" = "Word"
+MicUsage:                   "ar" = ?, "Base" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_MX" = ?, "fi" = ?, "fr" = ?, "fr_CA" = ?, "he" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Word needs your permission to use the microphone for recording narration or other audio.", "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "pt_PT" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "th" = ?, "tr" = ?, "zh_CN" = ?, "zh_TW" = ?
+teamID:                     UBF8T346G9
+identifier:                 com.microsoft.Word
+version:                    16.113.26091433 ({length = 32, bytes = 0x10000000 00000000 71000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.microsoft.Word
+platform:                   native
+executable:                 Contents/MacOS/Microsoft Word
+slices:                     x86_64  arm64 (0000000000000088)
+base flags:                 link-enabled
+Mach-O UUIDs:               381C692D-6E01-354C-8D27-93EC8A7837CC, 8ADA444A-2B4C-3FE0-8693-30EC1477FDA9
+execSDK ver:                26.4 ({length = 32, bytes = 0x1a000000 00000000 04000000 00000000 ... 00000000 00000000 })
+infoDictionary:             30 values (100796 (0x189bc))
+entitlements:               28 values (100800 (0x189c0))
+Intents:                    0 values (100804 (0x189c4))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                20576
+itemID:                     462054704
+itemName:                   Microsoft Word
+storeFront:                 143441
+versionID:                  891411566
+ratingLabel:                4+
+ratingRank:                 100
+genreID:                    6007
+category:                   public.app-category.productivity (0xbe04)
+canonical id:               com.microsoft.word
+vendor:                     Microsoft Corporation
+versionString:              16.113.26091433
+displayVersion:             16.113
+mod date:                   2026-09-17 08:30 (POSIX 1789648228, 𝛥 1day 5hr 8min 28sec)
+exec mod date:              2026-09-17 08:32 (POSIX 1789648358, 𝛥 1day 5hr 6min 18sec)
+reg date:                   2026-09-17 08:35 (POSIX 1789648544, 𝛥 1day 5hr 3min 12sec)
+rec mod date:               2026-09-17 08:35 (POSIX 1789648544, 𝛥 1day 5hr 3min 12sec)
+type code:                  'APPL' (4150504c)
+creator code:               'MSWD' (4d535744)
+bundle flags:               has-display-name  wildcard  is-containerized  MASReceipt (0080004010000002)
+plist flags:                has-custom-bindings  has-subgenres  has-protected-metadata (0000000000430000)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden (000000000010088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  can-change (0000000000000005)
+safeAperture app fullscreen: capable  can-change (0000000000000005)
+safeAperture windowed:      capable  can-change (0000000000000005)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   Word_macOS
+iconDict:                   1 values (100792 (0x189b8))
+icons:                      Contents/Resources/Word_macOS.icns
+inode:                      391997375
+exec inode:                 392259736
+min version:                14.0 ({length = 32, bytes = 0x0e000000 00000000 00000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               14.0 ({length = 32, bytes = 0x0e000000 00000000 00000000 00000000 ... 00000000 00000000 })
+activityTypes:              ua-a089dd04572aea, UBF8T346G9:com.microsoft.word.clouddocumentedit-dogfood, ua-afa63f5343b939, UBF8T346G9:com.microsoft.word.clouddocumentedit, pv-f96009a47410bb, NOTIFICATION#UBF8T346G9:com.microsoft.Word
+trustedCodeSignatures:      b6f41cad7fdbcd7c04979acb9b0dede5a8e8a462, b6f41cad7fdbcd7c04979acb9b0dede5a8e8a462, c765306b518a5d2c123fa4ac4b298cafda8633d4
+claimed UTIs:               org.openxmlformats.wordprocessingml.document, com.microsoft.word.wordprocessingml, com.microsoft.word.strictopenxmlformats.wordprocessingml.document, com.microsoft.word.mhtml, org.openxmlformats.wordprocessingml.document.macroenabled, com.microsoft.word.wordml, com.microsoft.word.openxmlformats.wordprocessingml.document.macroenabled, public.xml, public.markdown, com.microsoft.word.doc, public.html, com.adobe.pdf, org.openxmlformats.wordprocessingml.template.macroenabled, public.rtf, org.openxmlformats.wordprocessingml.template, com.microsoft.word.openxmlformats.wordprocessingml.template.macroenabled, com.microsoft.word.dot, dyn.ah62d4rv4ge8044dyp6 (.mht_), dyn.ah62d4rv4ge8044dyrz9a (.mhtm~), dyn.ah62d4rv4ge8044dyrztu (.mhtm_), dyn.ah62d4rv4ge8044dyt2 (.mht~), dyn.ah62d4rv4ge80q4pqqz3u (.files), dyn.ah62d4rv4ge80q5de (.fld), dyn.ah62d4rv4ge80u7c9 (.ht_), dyn.ah62d4rv4ge80u7d8 (.ht~), dyn.ah62d4rv4ge80u7drp6 (.htm_), dyn.ah62d4rv4ge80u7drt2 (.htm~), dyn.ah62d4rv4ge81e249 (.rc_), dyn.ah62d4rv4ge81e250 (.rcv), dyn.ah62d4rv4ge81e258 (.rc~), dyn.ah62d4rv4ge81k4drp6 (.thm_), dyn.ah62d4rv4ge81u5n9 (.xm_), dyn.ah62d4rv4ge81u649 (.xs_), dyn.ah62d4rv4ge81u658 (.xs~), dyn.ah62d4rv4ge81u65qp6 (.xsl_), dyn.ah62d4rv4ge81u65qt2 (.xsl~), dyn.ah62d4rv4ge8u, com.microsoft.word.openxmlformats.wordprocessingml.document, org.oasis-open.opendocument.text, public.plain-text, com.microsoft.word.openxmlformats.wordprocessingml.template
+claimed schemes:            launch-word:, ms-office-storage-host:, ms-word:, open-word:, word:
+plugin Identifiers:         com.microsoft.Word.widgetextension
+
+--------------------------------------------------------------------------------
+claim id:                   Microsoft Word Macro-Enabled document (.docm) (0x941c)
+localizedNames:             "ar" = ?, "Base" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_MX" = ?, "fi" = ?, "fr" = ?, "fr_CA" = ?, "he" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Microsoft Word Macro-Enabled document (.docm)", "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "pt_PT" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "th" = ?, "tr" = ?, "zh_CN" = ?, "zh_TW" = ?
+rank:                       Owner
+bundle:                     Word (0x5060)
+flags:                      doc-type  resolves-icloud-conflicts  relative-icon-path (0000000000001220)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/WXBM.icns
+bindings:                   org.openxmlformats.wordprocessingml.document.macroenabled, com.microsoft.word.openxmlformats.wordprocessingml.document.macroenabled
+
+--------------------------------------------------------------------------------
+claim id:                   XML (0x942c)
+localizedNames:             "ar" = ?, "Base" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_MX" = ?, "fi" = ?, "fr" = ?, "fr_CA" = ?, "he" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "XML", "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "pt_PT" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "th" = ?, "tr" = ?, "zh_CN" = ?, "zh_TW" = ?
+rank:                       Alternate
+bundle:                     Word (0x5060)
+flags:                      doc-type  resolves-icloud-conflicts  relative-icon-path (0000000000001220)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/WXML.icns
+bindings:                   public.xml
+
+--------------------------------------------------------------------------------
+claim id:                   Microsoft Word MHTML document (.mht) (0x9430)
+localizedNames:             "ar" = ?, "Base" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_MX" = ?, "fi" = ?, "fr" = ?, "fr_CA" = ?, "he" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Microsoft Word MHTML document (.mht)", "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "pt_PT" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "th" = ?, "tr" = ?, "zh_CN" = ?, "zh_TW" = ?
+rank:                       Owner
+bundle:                     Word (0x5060)
+flags:                      doc-type  resolves-icloud-conflicts  relative-icon-path (0000000000001220)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/WDZ9.icns
+bindings:                   com.microsoft.word.mhtml
+
+--------------------------------------------------------------------------------
+bundle id:                  Chromium (0x22d4)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Users/inxilpro/Development/misc/remotion-test/node_modules/puppeteer/.local-chromium/mac-756035/chrome-mac/Chromium.app (0x3314)
+directory:                  ~
+name:                       Chromium
+displayName:                Chromium
+localizedNames:             "am" = "Chromium", "ar" = "Chromium", "bg" = "Chromium", "bn" = "Chromium", "ca" = "Chromium", "cs" = "Chromium", "da" = "Chromium", "de" = "Chromium", "el" = "Chromium", "en" = "Chromium", "en_GB" = "Chromium", "es" = "Chromium", "es_419" = "Chromium", "et" = "Chromium", "fa" = "Chromium", "fi" = "Chromium", "fil" = "Chromium", "fr" = "Chromium", "gu" = "Chromium", "he" = "Chromium", "hi" = "क्रोमियम", "hr" = "Chromium", "hu" = "Chromium", "id" = "Chromium", "it" = "Chromium", "ja" = "Chromium", "kn" = "Chromium", "ko" = "Chromium", "LSDefaultLocalizedValue" = "Chromium", "lt" = "Chromium", "lv" = "Chromium", "ml" = "Chromium", "mr" = "Chromium", "ms" = "Chromium", "nb" = "Chromium", "nl" = "Chromium", "pl" = "Chromium", "pt_BR" = "Chromium", "pt_PT" = "Chromium", "ro" = "Chromium", "ru" = "Chromium", "sk" = "Chromium", "sl" = "Chromium", "sr" = "Chromium", "sv" = "Chromium", "sw" = "Chromium", "ta" = "Chromium", "te" = "Chromium", "th" = "Chromium", "tr" = "Chromium", "uk" = "Chromium", "vi" = "Chromium", "zh_CN" = "Chromium", "zh_TW" = "Chromium"
+localizedShortNames:        "am" = "Chromium", "ar" = "Chromium", "bg" = "Chromium", "bn" = "Chromium", "ca" = "Chromium", "cs" = "Chromium", "da" = "Chromium", "de" = "Chromium", "el" = "Chromium", "en" = "Chromium", "en_GB" = "Chromium", "es" = "Chromium", "es_419" = "Chromium", "et" = "Chromium", "fa" = "Chromium", "fi" = "Chromium", "fil" = "Chromium", "fr" = "Chromium", "gu" = "Chromium", "he" = "Chromium", "hi" = "क्रोमियम", "hr" = "Chromium", "hu" = "Chromium", "id" = "Chromium", "it" = "Chromium", "ja" = "Chromium", "kn" = "Chromium", "ko" = "Chromium", "LSDefaultLocalizedValue" = "Chromium", "lt" = "Chromium", "lv" = "Chromium", "ml" = "Chromium", "mr" = "Chromium", "ms" = "Chromium", "nb" = "Chromium", "nl" = "Chromium", "pl" = "Chromium", "pt_BR" = "Chromium", "pt_PT" = "Chromium", "ro" = "Chromium", "ru" = "Chromium", "sk" = "Chromium", "sl" = "Chromium", "sr" = "Chromium", "sv" = "Chromium", "sw" = "Chromium", "ta" = "Chromium", "te" = "Chromium", "th" = "Chromium", "tr" = "Chromium", "uk" = "Chromium", "vi" = "Chromium", "zh_CN" = "Chromium", "zh_TW" = "Chromium"
+identifier:                 org.chromium.Chromium
+version:                    4103.0 ({length = 32, bytes = 0x07100000 00000000 00000000 00000000 ... 00000000 00000000 })
+platform:                   native
+executable:                 Contents/MacOS/Chromium
+slices:                     x86_64 (0000000000000008)
+Mach-O UUIDs:               1CA34E85-0A7D-369E-8516-BC8973D7A377
+execSDK ver:                10.15 ({length = 32, bytes = 0x0a000000 00000000 0f000000 00000000 ... 00000000 00000000 })
+infoDictionary:             19 values (46088 (0xb408))
+Intents:                    0 values (46092 (0xb40c))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                8916
+canonical id:               org.chromium.chromium
+versionString:              4103.0
+displayVersion:             83.0.4103.0
+mod date:                   2021-02-09 21:01 (POSIX 1612922469, 𝛥 5yrs 7mths 1wk 1day 16hr 37min 46sec)
+exec mod date:              2021-02-09 21:01 (POSIX 1612922473, 𝛥 5yrs 7mths 1wk 1day 16hr 37min 42sec)
+reg date:                   2026-08-22 19:16 (POSIX 1787440592, 𝛥 3wks 5days 18hr 22min 23sec)
+rec mod date:               2026-08-22 19:16 (POSIX 1787440592, 𝛥 3wks 5days 18hr 22min 23sec)
+uid:                        501
+type code:                  'APPL' (4150504c)
+creator code:               'Cr24' (43723234)
+bundle flags:               has-display-name  launch-disabled  quarantined  handles-file-url (0000000008000482)
+more flags:                 web-browser
+plist flags:                has-environment  has-custom-bindings (0000000000010001)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden (000000000010088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  can-change (0000000000000005)
+safeAperture app fullscreen: capable  can-change (0000000000000005)
+safeAperture windowed:      capable  can-change (0000000000000005)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (46084 (0xb404))
+icons:                      Contents/Resources/app.icns
+inode:                      1380822
+exec inode:                 1380825
+min version:                10.10 ({length = 32, bytes = 0x0a000000 00000000 0a000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               10.10 ({length = 32, bytes = 0x0a000000 00000000 0a000000 00000000 ... 00000000 00000000 })
+activityTypes:              NOTIFICATION#:org.chromium.Chromium, ua-9c0e37c2deb108, pv-f4ffab9db8c975, NSUserActivityTypeBrowsingWeb
+claimed UTIs:               public.html, org.ietf.mhtml, public.svg-image, org.xiph.ogv, com.apple.default-app.web-browser, com.compuserve.gif, org.webmproject.webm, public.jpeg, org.xiph.ogg-audio, public.png, public.xhtml, public.text, org.webmproject.webp, com.netscape.javascript-​source, org.chromium.extension, com.adobe.pdf
+claimed schemes:            file:, ftp:, http:, https:
+
+--------------------------------------------------------------------------------
+claim id:                   MHTML document (0x2a5c)
+localizedNames:             "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "MHTML document", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+rank:                       Default
+bundle:                     Chromium (0x22d4)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Viewer (0000000000000002)
+iconFiles:                  Contents/Resources/document.icns
+bindings:                   org.ietf.mhtml
+
+--------------------------------------------------------------------------------
+bundle id:                  TextEdit (0x3f0)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /System/Applications/TextEdit.app (0x1214)
+directory:                  /System/Applications
+name:                       TextEdit
+displayName:                TextEdit
+localizedNames:             "ar" = "TextEdit", "Base" = ?, "ca" = "TextEdit", "cs" = "TextEdit", "da" = "TextEdit", "de" = "TextEdit", "el" = "TextEdit", "en" = "TextEdit", "en_AU" = "TextEdit", "en_GB" = "TextEdit", "es" = "TextEdit", "es_419" = "Editor de Texto", "fi" = "TeXturi", "fr" = "TextEdit", "fr_CA" = "TextEdit", "he" = "עורך המלל", "hi" = "TextEdit", "hr" = "TextEdit", "hu" = "Szövegszerkesztő", "id" = "TextEdit", "it" = "TextEdit", "ja" = "テキストエディット", "ko" = "텍스트 편집기", "LSDefaultLocalizedValue" = "TextEdit", "ms" = "TextEdit", "nl" = "Teksteditor", "no" = "Tekstredigering", "pl" = "TextEdit", "pt_BR" = "Editor de Texto", "pt_PT" = "Editor de Texto", "ro" = "TextEdit", "ru" = "TextEdit", "sk" = "TextEdit", "sl" = "TextEdit", "sv" = "Textredigerare", "th" = "TextEdit", "tr" = "TextEdit", "uk" = "Мініредактор", "vi" = "TextEdit", "zh_CN" = "文本编辑", "zh_HK" = "文字編輯", "zh_TW" = "文字編輯"
+localizedShortNames:        "ar" = "TextEdit", "Base" = ?, "ca" = "TextEdit", "cs" = "TextEdit", "da" = "TextEdit", "de" = "TextEdit", "el" = "TextEdit", "en" = "TextEdit", "en_AU" = "TextEdit", "en_GB" = "TextEdit", "es" = "TextEdit", "es_419" = "Editor de Texto", "fi" = "TeXturi", "fr" = "TextEdit", "fr_CA" = "TextEdit", "he" = "עורך המלל", "hi" = "TextEdit", "hr" = "TextEdit", "hu" = "Szövegszerkesztő", "id" = "TextEdit", "it" = "TextEdit", "ja" = "テキストエディット", "ko" = "텍스트 편집기", "LSDefaultLocalizedValue" = "TextEdit", "ms" = "TextEdit", "nl" = "Teksteditor", "no" = "Tekstredigering", "pl" = "TextEdit", "pt_BR" = "Editor de Texto", "pt_PT" = "Editor de Texto", "ro" = "TextEdit", "ru" = "TextEdit", "sk" = "TextEdit", "sl" = "TextEdit", "sv" = "Textredigerare", "th" = "TextEdit", "tr" = "TextEdit", "uk" = "Мініредактор", "vi" = "TextEdit", "zh_CN" = "文本编辑", "zh_HK" = "文字編輯", "zh_TW" = "文字編輯"
+teamID:                     0000000000
+identifier:                 com.apple.TextEdit
+version:                    415.0 ({length = 32, bytes = 0x9f010000 00000000 00000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.TextEdit
+platform:                   native
+executable:                 Contents/MacOS/TextEdit
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  secured-system-content  redactable
+Mach-O UUIDs:               A609BB93-0214-3EAD-B9EB-472748DB9CC7, D28E886E-329A-3941-B5A6-C9B988D3EC51
+execSDK ver:                26.6.1 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             22 values (18544 (0x4870))
+entitlements:               7 values (18548 (0x4874))
+Intents:                    0 values (18552 (0x4878))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1008
+category:                   public.app-category.productivity (0xbe04)
+canonical id:               com.apple.textedit
+versionString:              415
+displayVersion:             1.20
+mod date:                   2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+exec mod date:              2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+reg date:                   2026-08-22 16:45 (POSIX 1787431557, 𝛥 3wks 5days 20hr 52min 56sec)
+rec mod date:               2026-08-22 16:45 (POSIX 1787431557, 𝛥 3wks 5days 20hr 52min 56sec)
+type code:                  'APPL' (4150504c)
+creator code:               'ttxt' (74747874)
+bundle flags:               has-display-name  wildcard  is-containerized (0000004010000002)
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden  services (000000000030088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable (0000000000000001)
+safeAperture app fullscreen: capable (0000000000000001)
+safeAperture windowed:      capable (0000000000000001)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   AppIcon
+iconDict:                   1 values (18540 (0x486c))
+icons:                      Contents/Resources/AppIcon.icns
+inode:                      28282 (1152921500311907962)
+exec inode:                 28287 (1152921500311907967)
+min version:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+activityTypes:              NOTIFICATION#:com.apple.TextEdit, ua-bf68923e9ea059, pv-fbe5a44874b800, :com.apple.TextEdit.editing
+trustedCodeSignatures:      b23e4a58474f770c2f83098d6fef029090f73987, b23e4a58474f770c2f83098d6fef029090f73987, f4cc396b8d316e9a9c64a2e5751e61848117ccab
+claimed UTIs:               com.microsoft.word.doc, com.apple.webarchive, org.openoffice.text, org.openoffice.text-template, org.oasis-open.opendocument.text, com.apple.traditional-mac-plain-text, public.html, public.plain-text, public.data, public.text, org.oasis-open.opendocument.text-template, org.openxmlformats.wordprocessingml.document, com.apple.rtfd, public.rtf, com.microsoft.word.wordml
+
+--------------------------------------------------------------------------------
+claim id:                   Document (0xd20)
+localizedNames:             "ar" = "مستند", "Base" = ?, "ca" = "Document", "cs" = "Dokument", "da" = "Dokument", "de" = "Dokument", "el" = "Έγγραφο", "en" = "Document", "en_AU" = "Document", "en_GB" = "Document", "es" = "Documento", "es_419" = "Documento", "fi" = "Dokumentti", "fr" = "Document", "fr_CA" = "Document", "he" = "מסמך", "hi" = "दस्तावेज़", "hr" = "Dokument", "hu" = "Dokumentum", "id" = "Dokumen", "it" = "Documento", "ja" = "書類", "ko" = "문서", "LSDefaultLocalizedValue" = "Unknown document", "ms" = "Dokumen", "nl" = "Document", "no" = "Dokument", "pl" = "dokument", "pt_BR" = "Documento", "pt_PT" = "Documento", "ro" = "Document", "ru" = "Документ", "sk" = "Dokument", "sl" = "Dokument", "sv" = "Dokument", "th" = "เอกสาร", "tr" = "Belge", "uk" = "Документ", "vi" = "Tài liệu", "zh_CN" = "文稿", "zh_HK" = "文件", "zh_TW" = "文件"
+rank:                       Default
+bundle:                     TextEdit (0x3f0)
+flags:                      apple-default  apple-internal  doc-type  resolves-icloud-conflicts  uti-wildcard (0000000000000625)
+roles:                      Viewer (0000000000000002)
+bindings:                   public.data
+
+--------------------------------------------------------------------------------
+bundle id:                  Sublime Text (0x7b8)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Applications/Sublime Text.app (0x17c0)
+directory:                  /Applications
+name:                       Sublime Text
+localizedShortNames:        "LSDefaultLocalizedValue" = "Sublime Text"
+teamID:                     Z6D26JE4Y4
+identifier:                 com.sublimetext.4
+version:                    4200.0 ({length = 32, bytes = 0x68100000 00000000 00000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.sublimetext.4
+platform:                   native
+executable:                 Contents/MacOS/sublime_text
+slices:                     x86_64  arm64 (0000000000000088)
+Mach-O UUIDs:               4C4C4493-5555-3144-A164-376180D3F281, 4C4C44C0-5555-3144-A108-4370E23442E0
+execSDK ver:                10.9 ({length = 32, bytes = 0x0a000000 00000000 09000000 00000000 ... 00000000 00000000 })
+infoDictionary:             17 values (24156 (0x5e5c))
+entitlements:               3 values (24160 (0x5e60))
+Intents:                    0 values (24164 (0x5e64))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1976
+versionString:              4200
+displayVersion:             Build 4200
+mod date:                   2025-05-22 12:13 (POSIX 1747930410, 𝛥 1yr 3mths 4wks 1day 2hr 25min 24sec)
+exec mod date:              2025-05-22 12:13 (POSIX 1747930410, 𝛥 1yr 3mths 4wks 1day 2hr 25min 24sec)
+reg date:                   2026-08-22 16:46 (POSIX 1787431569, 𝛥 3wks 5days 20hr 52min 45sec)
+rec mod date:               2026-08-22 16:46 (POSIX 1787431569, 𝛥 3wks 5days 20hr 52min 45sec)
+uid:                        501
+type code:                  'APPL' (4150504c)
+creator code:               'subl' (7375626c)
+bundle flags:               wildcard (0000000010000000)
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  extension-hidden (000000000010008e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  can-change (0000000000000005)
+safeAperture app fullscreen: capable  can-change (0000000000000005)
+safeAperture windowed:      capable  can-change (0000000000000005)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (24152 (0x5e58))
+icons:                      Contents/Resources/Sublime Text.icns
+inode:                      143726725
+exec inode:                 143726882
+min version:                10.7 ({length = 32, bytes = 0x0a000000 00000000 07000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               10.9 ({length = 32, bytes = 0x0a000000 00000000 09000000 00000000 ... 00000000 00000000 })
+activityTypes:              NOTIFICATION#Z6D26JE4Y4:com.sublimetext.4, pv-d0dc7b14a308c8
+trustedCodeSignatures:      1b083ed38fbf43db1b1b5aaa5686245aba25eefa, ce50b505925e80ceba74540e50659caca3879a5b, 1b083ed38fbf43db1b1b5aaa5686245aba25eefa, ce50b505925e80ceba74540e50659caca3879a5b, 471b4786f5f12967a6d6863a71666dfdcd52e421, 62816179dea10990414f49393db56a251ed646b3
+claimed UTIs:               com.sun.java-source, com.macromates.textmate.theme, com.apple.traditional-mac-plain-text, com.macromates.textmate.preferences, public.c-plus-plus-source, public.c-header, public.utf16-external-plain-text, com.netscape.javascript-source, public.utf8-plain-text, com.sublimehq.sublimetext.snippet, com.sublimehq.sublimetext.macro, com.sublimehq.sublimetext.color-scheme, public.utf16-plain-text, public.source-code, public.c-plus-plus-header, public.text, com.sublimehq.sublimetext.keymap, public.shell-script, com.sublimehq.sublimetext.workspace, com.sublimehq.sublimetext.project, public.csh-script, com.apple.applescript.text, public.assembly-source, com.sublimehq.sublimetext.build-system, public.objective-c-plus-plus-source, com.sublimehq.sublimetext.commands, public.perl-script, public.plain-text, public.php-script, com.sublimehq.sublimetext.menu, com.sublimehq.sublimetext.theme, com.sublimehq.sublimetext.syntax, public.objective-c-source, public.python-script, public.c-source, public.ruby-script, com.sublimehq.sublimetext.settings, public.script, public.html, com.macromates.textmate.language, com.sublimehq.sublimetext.completions, com.sublimehq.sublimetext.mousemap, public.xml, com.macromates.textmate.snippet, public.data
+
+--------------------------------------------------------------------------------
+claim id:                   Sublime Text Document (0x23f4)
+localizedNames:             "LSDefaultLocalizedValue" = "Sublime Text Document"
+rank:                       Alternate
+bundle:                     Sublime Text (0x7b8)
+flags:                      legacy-wildcard  doc-type  relative-icon-path (0000000000001030)
+roles:                      Editor (0000000000000004)
+iconFiles:                  Contents/Resources/Document.icns
+bindings:                   .as, .asa, .asp, .bat, .build, .cs, .csx, .c, .h, .cc, .cp, .cpp, .cxx, .c++, .hh, .hpp, .hxx, .h++, .inl, .ipp, .clj, .cljc, .edn, .css, .css.erb, .css.liquid, .d, .di, .diff, .patch, .erl, .hrl, .escript, .emakefile, .yaws, .attributes, .gitattributes, .gitconfig, .gitmodules, .gitignore, .git, .mailmap, .go, .dot, .gv, .groovy, .grv, .gradle, .jenkinsfile, .hs, .html, .htm, .shtml, .xhtml, .java, .bsh, .js, .mjs, .htc, .jsx, .ts, .tsx, .json, .ipynb, .bib, .tex, .ltx, .sty, .cls, .lisp, .cl, .clisp, .l, .mud, .el, .scm, .ss, .lsp, .fasl, .lua, .make, .gnumakefile, .makefile, .makefile.am, .makefile.in, .ocamlmakefile, .mak, .mk, .md, .mdown, .markdown, .markdn, .matlab, .m, .mm, .ml, .mli, .mll, .mly, .pas, .p, .dpr, .pl, .pc, .pm, .pmc, .pod, .t, .php, .php3, .php4, .php5, .php7, .phps, .phpt, .phtml, .py, .py3, .pyw, .pyi, .pyx, .pyx.in, .pxd, .pxd.in, .pxi, .pxi.in, .rpy, .cpy, .sconstruct, .sconscript, .gyp, .gypi, .snakefile, .vpy, .wscript, .bazel, .bzl, .r, .rprofile, .rails, .rhtml, .erb, .html.erb, .js.erb, .haml, .sass, .erbsql, .sql.erb, .re, .rst, .rest, .rb, .appfile, .appraisals, .berksfile, .brewfile, .capfile, .cgi, .cheffile, .config.ru, .deliverfile, .fastfile, .fcgi, .gemfile, .gemspec, .guardfile, .irbrc, .jbuilder, .podfile, .podspec, .prawn, .rabl, .rake, .rakefile, .rantfile, .rbx, .rjs, .ruby.rail, .scanfile, .simplecov, .snapfile, .thor, .thorfile, .vagrantfile, .rs, .scala, .sbt, .sc, .sh, .bash, .bashrc, .ash, .zsh, .bash_aliases, .bash_completions, .bash_functions, .bash_login, .bash_logout, .bash_profile, .bash_variables, .profile, .textmate_init, .zlogin, .zlogout, .zprofile, .zshenv, .zshrc, .pkgbuild, .ebuild, .eclass, .sql, .ddl, .dml, .tcl, .adp, .txt, .textile, .xml, .xsd, .xslt, .tld, .dtml, .rng, .rss, .opml, .svg, .sproj, .fsproj, .sqlproj, .vbproj, .vcproj, .vcxproj, .dae, .props, .targets, .dtd, .ent, .mod, .yaml, .yml, '****'
+
+--------------------------------------------------------------------------------
+bundle id:                  Archive Utility (0x310)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /System/Library/CoreServices/Applications/Archive Utility.app (0x10a0)
+directory:                  /System/Library/CoreServices
+name:                       Archive Utility
+displayName:                Archive Utility
+localizedNames:             "ar" = "أداة الأرشيف", "Base" = ?, "ca" = "Utilitat de Compressió", "cs" = "Archivační utilita", "da" = "Komprimeringsværktøj", "de" = "Archivierungsprogramm", "el" = "Βοήθημα αρχειοθέτησης", "en" = "Archive Utility", "en_AU" = "Archive Utility", "en_GB" = "Archive Utility", "es" = "Utilidad de Compresión", "es_419" = "Utilidad de Compresión", "fi" = "Arkistotyökalu", "fr" = "Utilitaire d’archive", "fr_CA" = "Utilitaire d’archive", "he" = "כלי העזר לארכיונים", "hi" = "आर्काइव यूटिलिटी", "hr" = "Uslužni program za arhiviranje", "hu" = "Archiváló segédprogram", "id" = "Utilitas Arsip", "it" = "Utility Compressione", "ja" = "アーカイブユーティリティ", "ko" = "아카이브 유틸리티", "LSDefaultLocalizedValue" = "Archive Utility", "ms" = "Utiliti Arkib", "nl" = "Archiveringshulpprogramma", "no" = "Arkivverktøy", "pl" = "Narzędzie archiwizujące", "pt_BR" = "Utilitário de Compressão", "pt_PT" = "Utilitário de Compressão", "ro" = "Utilitar arhivare", "ru" = "Утилита архивирования", "sk" = "Archivovacia utilita", "sl" = "Pripomoček za arhiv", "sv" = "Arkivverktyg", "th" = "ยูทิลิตี้การเก็บถาวร", "tr" = "Arşiv İzlencesi", "uk" = "Архіватор", "vi" = "Tiện ích Lưu trữ", "zh_CN" = "归档实用工具", "zh_HK" = "封存工具程式", "zh_TW" = "封存工具程式"
+localizedShortNames:        "ar" = "أداة الأرشيف", "Base" = ?, "ca" = "Utilitat de Compressió", "cs" = "Archivační utilita", "da" = "Komprimeringsværktøj", "de" = "Archivierungsprogramm", "el" = "Βοήθημα αρχειοθέτησης", "en" = "Archive Utility", "en_AU" = "Archive Utility", "en_GB" = "Archive Utility", "es" = "Utilidad de Compresión", "es_419" = "Utilidad de Compresión", "fi" = "Arkistotyökalu", "fr" = "Utilitaire d’archive", "fr_CA" = "Utilitaire d’archive", "he" = "כלי העזר לארכיונים", "hi" = "आर्काइव यूटिलिटी", "hr" = "Uslužni program za arhiviranje", "hu" = "Archiváló segédprogram", "id" = "Utilitas Arsip", "it" = "Utility Compressione", "ja" = "アーカイブユーティリティ", "ko" = "아카이브 유틸리티", "LSDefaultLocalizedValue" = "Archive Utility", "ms" = "Utiliti Arkib", "nl" = "Archiveringshulpprogramma", "no" = "Arkivverktøy", "pl" = "Narzędzie archiwizujące", "pt_BR" = "Utilitário de Compressão", "pt_PT" = "Utilitário de Compressão", "ro" = "Utilitar arhivare", "ru" = "Утилита архивирования", "sk" = "Archivovacia utilita", "sl" = "Pripomoček za arhiv", "sv" = "Arkivverktyg", "th" = "ยูทิลิตี้การเก็บถาวร", "tr" = "Arşiv İzlencesi", "uk" = "Архіватор", "vi" = "Tiện ích Lưu trữ", "zh_CN" = "归档实用工具", "zh_HK" = "封存工具程式", "zh_TW" = "封存工具程式"
+teamID:                     0000000000
+identifier:                 com.apple.archiveutility
+version:                    176.6.1 ({length = 32, bytes = 0xb0000000 00000000 06000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 com.apple.archiveutility
+platform:                   native
+executable:                 Contents/MacOS/Archive Utility
+slices:                     x86_64  arm64e (0000000000000108)
+base flags:                 apple-internal  secured-system-content  redactable
+Mach-O UUIDs:               EAFC54A3-EB42-3EE0-A2D6-FD009A2C502B, 20AC7C6E-26C4-3EC7-9172-0B50E196A46C
+execSDK ver:                26.6.1 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+infoDictionary:             17 values (17268 (0x4374))
+entitlements:               12 values (17272 (0x4378))
+Intents:                    0 values (17276 (0x437c))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                784
+category:                   public.app-category.utilities (0xbe18)
+versionString:              176.6.1
+displayVersion:             10.15
+mod date:                   2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+exec mod date:              2026-08-12 22:51 (POSIX 1786589515, 𝛥 1mth 5days 14hr 46min 58sec)
+reg date:                   2026-08-22 16:45 (POSIX 1787431555, 𝛥 3wks 5days 20hr 52min 58sec)
+rec mod date:               2026-08-22 16:45 (POSIX 1787431555, 𝛥 3wks 5days 20hr 52min 58sec)
+type code:                  'APPL' (4150504c)
+creator code:               '????' (3f3f3f3f)
+bundle flags:               has-display-name  wildcard  is-containerized (0000004010000002)
+plist flags:                has-custom-bindings (0000000000010000)
+icon flags:                 relative-icon-path  supports-asset-catalog (0000000000000005)
+item flags:                 package  application  container  native-app  extension-hidden (000000000010008e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable (0000000000000001)
+safeAperture app fullscreen: capable (0000000000000001)
+safeAperture windowed:      capable (0000000000000001)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconName:                   ArchiveUtility
+iconDict:                   1 values (17264 (0x4370))
+icons:                      Contents/Resources/ArchiveUtility.icns
+inode:                      198504 (1152921500312078184)
+exec inode:                 198509 (1152921500312078189)
+min version:                26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               26.6 ({length = 32, bytes = 0x1a000000 00000000 06000000 00000000 ... 00000000 00000000 })
+activityTypes:              NOTIFICATION#:com.apple.archiveutility, pv-e9270a83f3c701
+trustedCodeSignatures:      57356f0716e082f67dba4028b7e25dc17ec14784, 57356f0716e082f67dba4028b7e25dc17ec14784, 6740673c0f34dfd528fe09dffbd16b4ba60c7b96
+claimed UTIs:               public.bzip2-archive, com.apple.macbinary-archive, public.tar-archive, public.cpio-archive, com.pixar.universal-scene-description-mobile, org.tukaani.xz-archive, public.zip-archive, com.apple.bom-compressed-cpio, public.data, com.apple.xip-archive, org.gnu.gnu-tar-archive, com.apple.applesingle-archive, public.folder, public.uuencoded-archive, public.z-archive, org.7-zip.7-zip-archive, com.apple.archive, public.tar-bzip2-archive, org.tukaani.tar-xz-archive, com.pkware.zip-archive, com.apple.binhex-archive, org.gnu.gnu-zip-tar-archive, com.apple.encrypted-archive, org.gnu.gnu-zip-archive
+
+--------------------------------------------------------------------------------
+claim id:                   CPIO/PAX archive (0xa64)
+localizedNames:             "ar" = "أرشيف CPIO/PAX", "Base" = ?, "ca" = "Arxiu comprimit CPIO/PAX", "cs" = "Archiv CPIO/PAX", "da" = "CPIO/PAX-arkiv", "de" = "CPIO/PAX-Archiv", "el" = "Αρχειοθήκη CPIO/PAX", "en" = "CPIO/PAX archive", "en_AU" = "CPIO/PAX archive", "en_GB" = "CPIO/PAX archive", "es" = "Archivo CPIO/PAX", "es_419" = "Archivo de CPIO/PAX", "fi" = "CPIO/PAX-arkisto", "fr" = "Archive CPIO/PAX", "fr_CA" = "Archive CPIO/PAX", "he" = "ארכיון בפורמט CPIO/PAX", "hi" = "CPIO/PAX आर्काइव", "hr" = "CPIO/PAX arhiva", "hu" = "CPIO/PAX-archívum", "id" = "Arsip CPIO/PAX", "it" = "Archivio CPIO/PAX", "ja" = "CPIO/PAXアーカイブ", "ko" = "CPIO/PAX 아카이브", "LSDefaultLocalizedValue" = "CPIO/PAX archive", "ms" = "Arkib CPIO/PAX", "nl" = "CPIO/PAX-archief", "no" = "CPIO/PAX-arkiv", "pl" = "archiwum CPIO/PAX", "pt_BR" = "Arquivo CPIO/PAX", "pt_PT" = "Arquivo CPIO/PAX", "ro" = "Arhivă CPIO/PAX", "ru" = "Архив CPIO/PAX", "sk" = "CPIO/PAX archív", "sl" = "Arhiv CPIO/PAX", "sv" = "CPIO/PAX-arkiv", "th" = "ที่เก็บถาวรแบบ CPIO/PAX", "tr" = "CPIO/PAX arşivi", "uk" = "Архів CPIO/PAX", "vi" = "Tệp lưu trữ CPIO/PAX", "zh_CN" = "CPIO/PAX归档", "zh_HK" = "CPIO/PAX封存檔", "zh_TW" = "CPIO/PAX封存檔"
+rank:                       Default
+bundle:                     Archive Utility (0x310)
+flags:                      apple-default  apple-internal  doc-type (0000000000000025)
+roles:                      Viewer (0000000000000002)
+bindings:                   public.cpio-archive
+
+--------------------------------------------------------------------------------
+bundle id:                  The Unarchiver (0x708)
+container:                  / (0x4)
+mount state:                mounted
+isOnRootVolume:             true 
+isSystemManaged:            true 
+isOnPrebootVolume:          false
+path:                       /Applications/The Unarchiver.app (0x16f8)
+directory:                  /Applications
+name:                       The Unarchiver
+localizedShortNames:        "ar" = ?, "be" = ?, "bg" = ?, "cs" = ?, "de" = ?, "en" = ?, "es" = ?, "fr" = ?, "hu" = ?, "it" = ?, "ja" = ?, "LSDefaultLocalizedValue" = "The Unarchiver", "lv" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt-BR" = ?, "pt-PT" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?
+teamID:                     S8EX82NJP6
+identifier:                 cx.c3.theunarchiver
+version:                    147.0 ({length = 32, bytes = 0x93000000 00000000 00000000 00000000 ... 00000000 00000000 })
+codeInfoID:                 cx.c3.theunarchiver
+platform:                   native
+executable:                 Contents/MacOS/The Unarchiver
+slices:                     x86_64  arm64 (0000000000000088)
+Mach-O UUIDs:               8C9FF859-B53A-3989-AA58-B6F3600A224B, BB9748AC-6BD2-3341-94C7-36F72EAB903E
+execSDK ver:                14.5 ({length = 32, bytes = 0x0e000000 00000000 05000000 00000000 ... 00000000 00000000 })
+infoDictionary:             17 values (23412 (0x5b74))
+entitlements:               8 values (23416 (0x5b78))
+Intents:                    0 values (23420 (0x5b7c))
+class:                      kLSBundleClassApplication (0x2)
+sequenceNum:                1800
+itemID:                     425424353
+itemName:                   The Unarchiver
+storeFront:                 143441
+versionID:                  873323031
+ratingLabel:                4+
+ratingRank:                 100
+genreID:                    6002
+category:                   public.app-category.utilities (0xbe18)
+vendor:                     MacPaw Way Ltd
+versionString:              147
+displayVersion:             4.3.9
+mod date:                   2025-03-19 21:07 (POSIX 1742432861, 𝛥 1yr 6mths 1day 17hr 31min 13sec)
+exec mod date:              2025-03-18 13:35 (POSIX 1742319331, 𝛥 1yr 6mths 3days 1hr 3min 23sec)
+reg date:                   2026-08-22 16:46 (POSIX 1787431566, 𝛥 3wks 5days 20hr 52min 48sec)
+rec mod date:               2026-08-22 16:46 (POSIX 1787431566, 𝛥 3wks 5days 20hr 52min 48sec)
+type code:                  'APPL' (4150504c)
+creator code:               'TUnA' (54556e41)
+bundle flags:               wildcard  is-containerized  MASReceipt (0080004010000000)
+plist flags:                has-custom-bindings  has-subgenres  has-protected-metadata (0000000000430000)
+icon flags:                 relative-icon-path (0000000000000001)
+item flags:                 package  application  container  native-app  scriptable  extension-hidden  services (000000000030088e)
+App Nap:                    capable (0000000000000001)
+eGPU:                       capable  can-change (0000000000000005)
+safeAperture system fullscreen: capable  can-change (0000000000000005)
+safeAperture app fullscreen: capable  can-change (0000000000000005)
+safeAperture windowed:      capable  can-change (0000000000000005)
+Game Mode:                  capable  can-change (0000000000000005)
+Identified Game:            capable  can-change (0000000000000005)
+iconDict:                   1 values (23408 (0x5b70))
+icons:                      Contents/Resources/unarchiver.icns
+inode:                      114608773
+exec inode:                 114608779
+min version:                10.13 ({length = 32, bytes = 0x0a000000 00000000 0d000000 00000000 ... 00000000 00000000 })
+min version platform:       native
+mach min ver:               10.13 ({length = 32, bytes = 0x0a000000 00000000 0d000000 00000000 ... 00000000 00000000 })
+activityTypes:              pv-f6550edab3b8ea, NOTIFICATION#S8EX82NJP6:cx.c3.theunarchiver
+trustedCodeSignatures:      0a23fc004295c5f313ec39cc4304dc9b5c44335e, 3da32b3c95897e36ca1e33a04a6dbc65b0550191, 0a23fc004295c5f313ec39cc4304dc9b5c44335e, 3da32b3c95897e36ca1e33a04a6dbc65b0550191, e62e52acea6a53fbc214fea7498fe45018d2b724, ae4a9400176b070b20848d8469c5c4d65b0a3116
+claimed UTIs:               com.altools.alz-archive, com.pkware.zip-archive, org.tukaani.xz-archive, cx.c3.zoo-archive, org.tukaani.lzma-archive, cx.c3.ha-archive, com.cyclos.cpt-archive, org.gnu.gnu-zip-archive, com.microsoft.cab-archive, com.rarlab.rar-archive, cx.c3.xmash-archive, cx.c3.packdev-archive, org.debian.deb-archive, com.apple.macbinary-archive, org.7-zip.7-zip-archive, cx.c3.arj-archive, org.gnu.gnu-tar-archive, public.bzip2-archive, com.redhat.rpm-archive, cx.c3.pp-archive, org.archive.warc-archive, com.amiga.adf-archive, com.winace.ace-archive, com.stuffit.archive.sit, com.apple.applesingle-archive, com.apple.bom-compressed-cpio, com.stuffit.archive.sitx, public.z-archive, cx.c3.dms-archive, cx.c3.lhf-archive, com.nscripter.nsa-archive, com.apple.binhex-archive, com.real.realmedia, cx.c3.lbr-archive, com.sun.java-archive, cx.c3.pma-archive, com.amiga.adz-archive, com.network172.pit-archive, com.symantec.dd-archive, public.tar-bzip2-archive, com.apple.xip-archive, cx.c3.lzx-archive, com.microsoft.msi-installer, public.zip-archive, com.nero.nrg-image, public.tar-archive, cx.c3.lha-archive, cx.c3.compress-tar-archive, com.microsoft.windows-executable, public.iso-image, com.nowsoftware.now-archive, cx.c3.zoom-archive, public.cpio-archive, com.alcohol-soft.mdf-image, com.nscripter.sar, cx.c3.pax-archive, org.gnu.gnu-zip-tar-archive, cx.c3.arc-archive, com.padus.cdi-image, dyn.ah62d4rv4ge8063dx (.nds), dyn.ah62d4rv4ge80c (.a), dyn.ah62d4rv4ge80g2x4 (.cbz), dyn.ah62d4rv4ge80g2xw (.cbr), dyn.ah62d4rv4ge81g75g (.swf), com.apple.installer-package-archive, com.allume.stuffit-archive, com.apple.self-extracting-archive, com.adobe.pdf, public.data, com.apple.xar-archive, cx.c3.dcs-archive, public.zip-archive.first-part, com.winzip.zipx-archive, org.bzip.bzip2-archive, org.bzip.bzip2-tar-archive, org.tukaani.xz-tar-archive, public.lzma-archive, public.pax-archive, public.tar-xz-archive, public.xar-archive, public.xz-archive
+
+--------------------------------------------------------------------------------
+claim id:                   CPIO Archive (0x1fa4)
+localizedNames:             "ar" = ?, "be" = ?, "bg" = ?, "cs" = ?, "de" = ?, "en" = ?, "es" = ?, "fr" = ?, "hu" = ?, "it" = ?, "ja" = ?, "LSDefaultLocalizedValue" = "CPIO Archive", "lv" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt-BR" = ?, "pt-PT" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?
+rank:                       Default
+bundle:                     The Unarchiver (0x708)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Viewer (0000000000000002)
+iconFiles:                  Contents/Resources/archive.icns
+bindings:                   public.cpio-archive
+
+--------------------------------------------------------------------------------
+claim id:                   Pax Archive (0x1fac)
+localizedNames:             "ar" = ?, "be" = ?, "bg" = ?, "cs" = ?, "de" = ?, "en" = ?, "es" = ?, "fr" = ?, "hu" = ?, "it" = ?, "ja" = ?, "LSDefaultLocalizedValue" = "Pax Archive", "lv" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt-BR" = ?, "pt-PT" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?
+rank:                       Default
+bundle:                     The Unarchiver (0x708)
+flags:                      doc-type  relative-icon-path (0000000000001020)
+roles:                      Viewer (0000000000000002)
+iconFiles:                  Contents/Resources/archive.icns
+bindings:                   cx.c3.pax-archive, public.pax-archive
+
+--------------------------------------------------------------------------------
+type id:                    public.radiance (0x48a0)
+bundle:                     Preview (0x3e8)
+uti:                        public.radiance
+localizedDescription:       "ar" = "إشعاعية", "Base" = ?, "ca" = "Radiance", "cs" = "Radiance", "da" = "Udstråling", "de" = "Radiance", "el" = "Radiance", "en" = "Radiance", "en_AU" = "Radiance", "en_GB" = "Radiance", "es" = "Radiance", "es_419" = "Radiance", "fi" = "Radiance", "fr" = "Radiance", "fr_CA" = "Radiance", "he" = "זוהר", "hi" = "चमक", "hr" = "Radiance", "hu" = "Fényes", "id" = "Cahaya", "it" = "Radiance", "ja" = "Radiance", "ko" = "래디언스", "LSDefaultLocalizedValue" = "Radiance", "ms" = "Keserian", "nl" = "Radiance", "no" = "Radiance", "pl" = "Radiance", "pt_BR" = "Radiance", "pt_PT" = "Radiância", "ro" = "Strălucire", "ru" = "Radiance", "sk" = "Radiance", "sl" = "Radiance", "sv" = "Radiance", "th" = "Radiance", "tr" = "Radiance", "uk" = "Radiance", "vi" = "Độ sáng bóng", "zh_CN" = "辐射亮度", "zh_HK" = "Radiance", "zh_TW" = "Radiance"
+flags:                      active  public  apple-internal  exported  trusted (0000000000000057)
+conforms to:                public.image, public.data
+tags:                       .pic, .hdr
+
+--------------------------------------------------------------------------------
+type id:                    com.apple.pict (0xb620)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        com.apple.pict
+localizedDescription:       "ar" = "صورة QuickDraw", "ca" = "Imatge QuickDraw", "cs" = "Obrázek QuickDraw", "da" = "QuickDraw-billede", "de" = "QuickDraw-Bild", "el" = "Φωτογραφία QuickDraw", "en" = "QuickDraw picture", "en_AU" = "QuickDraw picture", "en_GB" = "QuickDraw picture", "es" = "Imagen QuickDraw", "es_419" = "Imagen QuickDraw", "es_US" = "Imagen QuickDraw", "fi" = "QuickDraw-kuva", "fr" = "Image QuickDraw", "fr_CA" = "Image QuickDraw", "he" = "ציור QuickDraw ", "hi" = "QuickDraw तस्वीर", "hr" = "QuickDraw slika", "hu" = "QuickDraw kép", "id" = "Gambar QuickDraw", "it" = "Immagine QuickDraw", "ja" = "QuickDrawピクチャ", "ko" = "QuickDraw 사진", "LSDefaultLocalizedValue" = "QuickDraw picture", "ms" = "Gambar QuickDraw", "nl" = "QuickDraw-afbeelding", "no" = "QuickDraw-bilde", "pl" = "obrazek QuickDraw", "pt_BR" = "Imagem do QuickDraw", "pt_PT" = "Imagem QuickDraw", "ro" = "imagine QuickDraw", "ru" = "Изображение QuickDraw", "sk" = "QuickDraw obrázok", "sl" = "Slika QuickDraw", "sv" = "QuickDraw-bild", "th" = "รูปภาพแบบ QuickDraw", "tr" = "QuickDraw resmi", "uk" = "Зображення QuickDraw", "vi" = "Ảnh QuickDraw", "zh_CN" = "QuickDraw图片", "zh_HK" = "QuickDraw圖片", "zh_TW" = "QuickDraw圖片"
+flags:                      active  apple-internal  exported  core  trusted (0000000000000075)
+conforms to:                public.image
+tags:                       .pict, .pct, .pic, 'PICT', image/pict, image/x-pict, image/x-macpict, "Apple PICT pasteboard type", "NSPICTPboardType"
+
+--------------------------------------------------------------------------------
+type id:                    org.ietf.mhtml (0x976c)
+bundle:                     ChatGPT (0x3ba4)
+uti:                        org.ietf.mhtml
+localizedDescription:       "af" = ?, "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "MIME HTML document", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "ur" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+flags:                      active  imported  trusted (0000000000000041)
+icons:                      2 values (76128 (0x12960))
+                            {
+                                UTTypeIconBadgeName = Icon;
+                                UTTypeIconText = MHTML;
+                            }
+reference URL:              https://www.ietf.org/rfc/rfc2557
+conforms to:                public.data, public.content
+tags:                       .mht, .mhtml, 'MHTM', multipart/related, application/x-mimearchive
+
+--------------------------------------------------------------------------------
+type id:                    org.ietf.mhtml (0x9718)
+bundle:                     Chrome (0x38fc)
+uti:                        org.ietf.mhtml
+localizedDescription:       "af" = ?, "am" = ?, "ar" = ?, "bg" = ?, "bn" = ?, "ca" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_419" = ?, "et" = ?, "fa" = ?, "fi" = ?, "fil" = ?, "fr" = ?, "gu" = ?, "he" = ?, "hi" = ?, "hr" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "kn" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "MIME HTML document", "lt" = ?, "lv" = ?, "ml" = ?, "mr" = ?, "ms" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt_BR" = ?, "pt_PT" = ?, "ro" = ?, "ru" = ?, "sk" = ?, "sl" = ?, "sr" = ?, "sv" = ?, "sw" = ?, "ta" = ?, "te" = ?, "th" = ?, "tr" = ?, "uk" = ?, "ur" = ?, "vi" = ?, "zh_CN" = ?, "zh_TW" = ?
+flags:                      inactive  imported  trusted (0000000000000040)
+icons:                      2 values (73620 (0x11f94))
+                            {
+                                UTTypeIconBadgeName = Icon;
+                                UTTypeIconText = MHTML;
+                            }
+reference URL:              https://www.ietf.org/rfc/rfc2557
+conforms to:                public.data, public.content
+tags:                       .mht, .mhtml, 'MHTM', multipart/related, application/x-mimearchive
+
+--------------------------------------------------------------------------------
+type id:                    com.microsoft.word.mhtml (0xd650)
+bundle:                     Word (0x5060)
+uti:                        com.microsoft.word.mhtml
+localizedDescription:       "ar" = ?, "Base" = ?, "cs" = ?, "da" = ?, "de" = ?, "el" = ?, "en" = ?, "en_GB" = ?, "es" = ?, "es_MX" = ?, "fi" = ?, "fr" = ?, "fr_CA" = ?, "he" = ?, "hu" = ?, "id" = ?, "it" = ?, "ja" = ?, "ko" = ?, "LSDefaultLocalizedValue" = "Microsoft Word Single File Web Page", "nl" = ?, "no" = ?, "pl" = ?, "pt" = ?, "pt_PT" = ?, "ru" = ?, "sk" = ?, "sv" = ?, "th" = ?, "tr" = ?, "zh_CN" = ?, "zh_TW" = ?
+flags:                      active  rel-icon-path  exported  trusted (0000000000000059)
+iconFiles:                  Contents/Resources/WXTM.icns
+conforms to:                public.data
+tags:                       .mht, .mhtm, .mhtml, 'MHTM'
+
+--------------------------------------------------------------------------------
+type id:                    org.openxmlformats.wordprocessingml.document.macroenabled (0xcb38)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        org.openxmlformats.wordprocessingml.document.macroenabled
+localizedDescription:       "ar" = "مستند معالجة نصوص Office Open XML (مع تمكين وحدات الماكرو)", "ca" = "Document de processament de textos de l’Office Open XML (macros habilitades)", "cs" = "Textový dokument Office Open XML (makra povolena)", "da" = "Office Open XML-tekstbehandlingsdokument (makroer slået til)", "de" = "Office Open-XML-Textverarbeitungsdokument (Makros aktiviert)", "el" = "Έγγραφο επεξεργασίας κειμένου Office Open XML (ενεργοποιημένες μακροεντολές)", "en" = "Office Open XML word processing document (macros enabled)", "en_AU" = "Office Open XML word processing document (macros enabled)", "en_GB" = "Office Open XML word processing document (macros enabled)", "es" = "Documento de procesamiento de texto Office Open XML (macros activadas)", "es_419" = "Documento de procesamiento de texto Office Open XML (macros activadas)", "es_US" = "Documento de procesamiento de texto Office Open XML (macros activadas)", "fi" = "Office Open XML -tekstinkäsittelydokumentti (makrot käytössä)", "fr" = "Document de traitement de texte Open XML d’Office (macros activées)", "fr_CA" = "Document de traitement de texte Open XML d’Office (macros activées)", "he" = "מסמך עיבוד תמלילים מסוג Office Open XML (פקודות מאקרו פעילות)", "hi" = "Office Open XML वर्ड प्रोसेसिंग दस्तावेज़ (मैक्रो सक्षम)", "hr" = "Office Open XML tekstualni dokument (makronaredbe omogućene)", "hu" = "Office Open XML szövegszerkesztő dokumentum (makrók bekapcsolva)", "id" = "Dokumen pemroses kata Office Open XML (makro diaktifkan)", "it" = "Documento di elaborazione di testo Office Open XML (macro abilitate)", "ja" = "Office Open XMLワープロ書類（マクロ有効）", "ko" = "Office Open XML 워드 프로세싱 문서(매크로 활성화됨)", "LSDefaultLocalizedValue" = "Office Open XML word processing document (macros enabled)", "ms" = "Dokumen pemprosesan perkataan Office Open XML (makro didayakan)", "nl" = "Office Open XML-tekstverwerkingsdocument (macro's geactiveerd)", "no" = "Office Open XML-tekst­behandlings­dokument (makroer aktivert)", "pl" = "dokument przetwarzania tekstu Office Open XML (aktywne makra)", "pt_BR" = "Documento de processamento de textos do Office Open XML (macros ativadas)", "pt_PT" = "Documento de processamento de texto Open XML do Office (macros ativas)", "ro" = "Document procesare text Office Open XML (macro-comenzi activate)", "ru" = "Текстовый документ Office Open XML (макро включены)", "sk" = "Office Open XML dokument na spracovanie textu (makrá povolené)", "sl" = "Dokument za urejanje besedila Office Open XML (omogočeni makri)", "sv" = "Office Open XML-ordbehandlingsdokument (makron aktiverade)", "th" = "เอกสารประมวลผลคำ Office Open XML (เปิดใช้งานแมโคร)", "tr" = "Office Open XML sözcük işlem belgesi (makrolar etkin)", "uk" = "Текстовий документ Office Open XML (макроси ввімкнені)", "vi" = "Tài liệu soạn thảo văn bản Office Open XML (bật macro)", "zh_CN" = "Office Open XML字处理文稿（已启用宏）", "zh_HK" = "Office Open XML文字處理文件（已啟用巨集）", "zh_TW" = "Office Open XML文字處理文件（已啟用巨集）"
+flags:                      active  apple-internal  imported  core  trusted (0000000000000065)
+icons:                      1 values (97924 (0x17e84))
+                            {
+                                ISDocumentIconConfiguration =     {
+                                    ISSymbolName = "character.text.justify";
+                                };
+                            }
+conforms to:                org.openxmlformats.openxml, public.composite-content, public.executable
+tags:                       .docm, application/vnd.ms-word.document.macroenabled.12
+
+--------------------------------------------------------------------------------
+type id:                    public.heic (0xcc00)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.heic
+flags:                      active  public  apple-internal  imported  core  trusted (0000000000000067)
+conforms to:                public.heif-standard
+tags:                       .heic, image/heic
+
+--------------------------------------------------------------------------------
+type id:                    public.heif (0xcbfc)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.heif
+flags:                      active  public  apple-internal  imported  core  trusted (0000000000000067)
+conforms to:                public.heif-standard
+tags:                       .heif, .hif, image/heif
+
+--------------------------------------------------------------------------------
+type id:                    public.css (0xb50c)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.css
+localizedDescription:       "LSDefaultLocalizedValue" = "CSS"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+conforms to:                public.text
+tags:                       .css, text/css
+
+--------------------------------------------------------------------------------
+type id:                    com.microsoft.typescript (0xb2a0)
+bundle:                     Xcode (0x4eb8)
+uti:                        com.microsoft.typescript
+flags:                      active  apple-internal  imported  trusted (0000000000000045)
+conforms to:                public.script, public.source-code
+tags:                       .ts, .tsx
+
+--------------------------------------------------------------------------------
+type id:                    public.xml (0xb4fc)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.xml
+localizedDescription:       "ar" = "نص XML", "ca" = "Text XML", "cs" = "Text XML", "da" = "XML-tekst", "de" = "XML-Text", "el" = "Κείμενο XML", "en" = "XML text", "en_AU" = "XML text", "en_GB" = "XML text", "es" = "Texto XML", "es_419" = "Texto XML", "es_US" = "Texto XML", "fi" = "XML-teksti", "fr" = "Texte XML", "fr_CA" = "Texte XML", "he" = "מלל XML ", "hi" = "XML टेक्स्ट", "hr" = "XML tekst", "hu" = "XML szöveg", "id" = "Teks XML", "it" = "Testo XML", "ja" = "XMLテキスト", "ko" = "XML 텍스트", "LSDefaultLocalizedValue" = "XML text", "ms" = "Teks XML", "nl" = "XML-tekst", "no" = "XML-tekst", "pl" = "tekst XML", "pt_BR" = "Texto XML", "pt_PT" = "Texto XML", "ro" = "text XML", "ru" = "Текст XML", "sk" = "XML text", "sl" = "Besedilo XML", "sv" = "XML-text", "th" = "ข้อความ XML", "tr" = "XML metni", "uk" = "Текст XML", "vi" = "Văn bản XML", "zh_CN" = "XML文本", "zh_HK" = "XML文字", "zh_TW" = "XML文字"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+conforms to:                public.text
+tags:                       .xml, application/xml, text/xml
+
+--------------------------------------------------------------------------------
+type id:                    public.json (0xb514)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.json
+localizedDescription:       "LSDefaultLocalizedValue" = "JSON"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+conforms to:                public.text
+tags:                       .json, application/json
+
+--------------------------------------------------------------------------------
+type id:                    public.data (0xb2ac)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.data
+localizedDescription:       "ar" = "بيانات", "ca" = "dades", "cs" = "Data", "da" = "data", "de" = "Daten", "el" = "δεδομένα", "en" = "data", "en_AU" = "data", "en_GB" = "data", "es" = "datos", "es_419" = "datos", "es_US" = "datos", "fi" = "data", "fr" = "données", "fr_CA" = "données", "he" = "נתונים", "hi" = "डेटा", "hr" = "podaci", "hu" = "adat", "id" = "data", "it" = "dati", "ja" = "データ", "ko" = "데이터", "LSDefaultLocalizedValue" = "data", "ms" = "data", "nl" = "gegevens", "no" = "data", "pl" = "dane", "pt_BR" = "dados", "pt_PT" = "dados", "ro" = "date", "ru" = "данные", "sk" = "dáta", "sl" = "podatki", "sv" = "data", "th" = "ข้อมูล", "tr" = "veri", "uk" = "дані", "vi" = "dữ liệu", "zh_CN" = "数据", "zh_HK" = "資料", "zh_TW" = "資料"
+flags:                      active  public  apple-internal  exported  core  trusted  is-wildcard (0000000000000277)
+icons:                      4 values (96472 (0x178d8))
+                            {
+                                UTTypeIconFile = "GenericDocumentIcon.icns";
+                                UTTypeSymbolName = doc;
+                                "_ISIconRecipe" =     {
+                                    "class-name" = ISmacosDocumentRecipe1016;
+                                };
+                                "_UTTypeTemplateIconFile" = "SidebarGenericFile.icns";
+                            }
+conforms to:                public.item
+tags:                       'sbFl', application/octet-stream
+
+--------------------------------------------------------------------------------
+type id:                    com.adobe.photoshop-image (0xcbdc)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        com.adobe.photoshop-image
+localizedDescription:       "ar" = "مستند Adobe Photoshop", "ca" = "Document d’Adobe Photoshop", "cs" = "Dokument Adobe Photoshop", "da" = "Adobe Photoshop-dokument", "de" = "Adobe Photoshop-Dokument", "el" = "Έγγραφο Adobe Photoshop", "en" = "Adobe Photoshop document", "en_AU" = "Adobe Photoshop document", "en_GB" = "Adobe Photoshop document", "es" = "Documento de Adobe Photoshop", "es_419" = "Documento de Adobe Photoshop", "es_US" = "Documento de Adobe Photoshop", "fi" = "Adobe Photoshop -dokumentti", "fr" = "Document Adobe Photoshop", "fr_CA" = "Document Adobe Photoshop", "he" = "מסמך Adobe Photoshop", "hi" = "Adobe Photoshop दस्तावेज़", "hr" = "Adobe Photoshop dokument", "hu" = "Adobe Photoshop dokumentum", "id" = "Dokumen Adobe Photoshop", "it" = "Documento Adobe Photoshop", "ja" = "Adobe Photoshop書類", "ko" = "Adobe Photoshop 문서", "LSDefaultLocalizedValue" = "Adobe Photoshop document", "ms" = "Dokumen Adobe Photoshop", "nl" = "Adobe Photoshop-document", "no" = "Adobe Photoshop-dokument", "pl" = "dokument Adobe Photoshop", "pt_BR" = "Documento do Adobe Photoshop", "pt_PT" = "Documento do Adobe Photoshop", "ro" = "document Adobe Photoshop", "ru" = "Документ Adobe Photoshop", "sk" = "Dokument Adobe Photoshop", "sl" = "Dokument Adobe Photoshop", "sv" = "Adobe Photoshop-dokument", "th" = "เอกสารประเภท Adobe Photoshop", "tr" = "Adobe Photoshop belgesi", "uk" = "Документ Adobe Photoshop", "vi" = "Tài liệu Adobe Photoshop", "zh_CN" = "Adobe Photoshop文稿", "zh_HK" = "Adobe Photoshop文件", "zh_TW" = "Adobe Photoshop文件"
+flags:                      active  apple-internal  imported  core  trusted (0000000000000065)
+conforms to:                public.image
+tags:                       .psd, '8BPS', image/vnd.adobe.photoshop, image/photoshop, image/x-photoshop, image/psd, application/photoshop
+
+--------------------------------------------------------------------------------
+type id:                    public.cpio-archive (0xb488)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.cpio-archive
+localizedDescription:       "ar" = "أرشيف CPIO", "ca" = "Arxiu comprimit CPIO", "cs" = "CPIO archiv", "da" = "CPIO-arkiv", "de" = "CPIO-Archiv", "el" = "Αρχειοθήκη CPIO", "en" = "CPIO archive", "en_AU" = "CPIO archive", "en_GB" = "CPIO archive", "es" = "Archivo CPIO", "es_419" = "Archivo CPIO", "es_US" = "Archivo CPIO", "fi" = "CPIO-arkisto", "fr" = "Archive CPIO", "fr_CA" = "Archive CPIO", "he" = "ארכיון CPIO", "hi" = "CPIO आर्काइव", "hr" = "CPIO arhiva", "hu" = "CPIO archívum", "id" = "Arsip CPIO", "it" = "Archivio CPIO", "ja" = "CPIOアーカイブ", "ko" = "CPIO 아카이브", "LSDefaultLocalizedValue" = "CPIO archive", "ms" = "Arkib CPIO", "nl" = "CPIO-archief", "no" = "CPIO-arkiv", "pl" = "archiwum CPIO ", "pt_BR" = "Arquivo comprimido CPIO", "pt_PT" = "Arquivo CPIO", "ro" = "arhivă CPIO", "ru" = "Архив CPIO", "sk" = "CPIO archív", "sl" = "Arhiv CPIO", "sv" = "CPIO-arkiv", "th" = "ที่เก็บถาวรชนิด CPIO", "tr" = "CPIO arşivi", "uk" = "Архів CPIO", "vi" = "Lưu trữ CPIO", "zh_CN" = "CPIO归档", "zh_HK" = "CPIO封存檔", "zh_TW" = "CPIO封存檔"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+conforms to:                public.data, public.archive
+tags:                       .cpio, .pax
+
+--------------------------------------------------------------------------------
+type id:                    cx.c3.pax-archive (0x539c)
+bundle:                     The Unarchiver (0x708)
+uti:                        cx.c3.pax-archive
+localizedDescription:       "ar" = ?, "be" = ?, "bg" = ?, "cs" = ?, "de" = ?, "en" = ?, "es" = ?, "fr" = ?, "hu" = ?, "it" = ?, "ja" = ?, "LSDefaultLocalizedValue" = "Pax Archive", "lv" = ?, "nb" = ?, "nl" = ?, "pl" = ?, "pt-BR" = ?, "pt-PT" = ?, "sv" = ?, "tr" = ?, "uk" = ?, "zh-Hans" = ?
+flags:                      active  rel-icon-path  imported  trusted (0000000000000049)
+iconFiles:                  Contents/Resources/archive.icns
+conforms to:                public.data, public.archive
+tags:                       .pax
+
+--------------------------------------------------------------------------------
+type id:                    public.text (0xb350)
+bundle:                     CoreTypes (0x4ebc)
+uti:                        public.text
+localizedDescription:       "ar" = "نص", "ca" = "text", "cs" = "text", "da" = "tekst", "de" = "Text", "el" = "κείμενο", "en" = "text", "en_AU" = "text", "en_GB" = "text", "es" = "texto", "es_419" = "texto", "es_US" = "texto", "fi" = "teksti", "fr" = "texte", "fr_CA" = "texte", "he" = "מלל", "hi" = "टेक्स्ट", "hr" = "tekst", "hu" = "szöveg", "id" = "teks", "it" = "Testo", "ja" = "テキスト", "ko" = "텍스트", "LSDefaultLocalizedValue" = "text", "ms" = "teks", "nl" = "tekst", "no" = "tekst", "pl" = "tekst", "pt_BR" = "texto", "pt_PT" = "texto", "ro" = "text", "ru" = "текст", "sk" = "text", "sl" = "besedilo", "sv" = "text", "th" = "ข้อความ", "tr" = "metin", "uk" = "текст", "vi" = "văn bản", "zh_CN" = "文本", "zh_HK" = "文字", "zh_TW" = "文字"
+flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
+icons:                      1 values (96524 (0x1790c))
+                            {
+                                UTTypeIconBackgroundName = "txt-fill";
+                            }
+conforms to:                public.data, public.content
+

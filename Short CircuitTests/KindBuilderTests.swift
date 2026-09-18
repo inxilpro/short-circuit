@@ -95,8 +95,39 @@ struct KindBuilderTests {
         let etcher = try #require(kinds.first { $0.id == "scheme:etcher" })
         #expect(etcher.schemes == ["etcher"])
         #expect(etcher.category == .other)
-        #expect(etcher.candidates.map(\.bundleID) == ["io.balena.etcher"])
-        #expect(!kinds.contains { $0.schemes.contains("sip") }, "Claims whose bundle isn't a known app don't create Kinds")
+        #expect(Set(etcher.candidates.compactMap(\.bundleID)) == ["io.balena.etcher"])
+    }
+
+    @Test func appOnlySchemesAreNamedAfterTheirAppAndMarkedPrivate() throws {
+        let kinds = try kinds("schemes.lsdump")
+        let etcher = try #require(kinds.first { $0.id == "scheme:etcher" })
+        let app = try #require(etcher.candidates.first)
+        #expect(etcher.name == "\(app.name) link (etcher:)")
+        #expect(etcher.isAppPrivate, "Only one app registers etcher:, so it is that app's own callback")
+
+        let email = try #require(kinds.first { $0.id == KindBuilder.emailID })
+        #expect(!email.isAppPrivate)
+        let sip = try #require(kinds.first { $0.id == "scheme:sip" })
+        #expect(!sip.isAppPrivate, "Well-known schemes stay public even with one claimant")
+    }
+
+    @Test func wellKnownSchemesGetCategories() {
+        for scheme in ["mailto", "tel", "facetime", "sms", "slack", "zoommtg", "msteams", "sip"] {
+            #expect(KindBuilder.schemeCategory(scheme) == .communication, "\(scheme)")
+        }
+        for scheme in ["http", "https", "ftp", "feed"] {
+            #expect(KindBuilder.schemeCategory(scheme) == .web, "\(scheme)")
+        }
+        for scheme in ["vscode", "cursor", "xcode", "git", "ssh", "x-github-client"] {
+            #expect(KindBuilder.schemeCategory(scheme) == .developer, "\(scheme)")
+        }
+        #expect(KindBuilder.schemeCategory("etcher") == .other)
+    }
+
+    @Test func abstractSchemesAreNotKinds() throws {
+        let snapshot = try Fixture.snapshot("schemes.lsdump")
+        #expect(snapshot.claims.contains { $0.schemes.contains("file") }, "The fixture has Finder's file: claim")
+        #expect(!(try kinds("schemes.lsdump")).contains { $0.schemes.contains("file") })
     }
 
     @Test func mixedCategoriesAndShapesStaySplit() {
@@ -123,13 +154,13 @@ struct KindBuilderTests {
         \(type("com.example.audio", "0x22", conforms: "public.audio", tags: ".mp9, audio/mp9"))
         \(type("com.example.bundle-folder", "0x23", conforms: "public.folder", tags: ".pkgx"))
         \(type("com.example.bundle-file", "0x24", conforms: "public.data", tags: ".pkgx"))
-        \(type("com.example.data-only", "0x25", conforms: "public.data", tags: ".mp9"))
+        \(type("com.example.secondary", "0x25", conforms: "public.data", tags: ".mpx, .mp9"))
         \(separator)
         claim id:                   Everything (0x30)
         rank:                       Default
         bundle:                     Player (0x10)
         roles:                      Viewer (0000000000000002)
-        bindings:                   com.example.movie, com.example.movie-alias, com.example.audio, com.example.bundle-folder, com.example.bundle-file, com.example.data-only
+        bindings:                   com.example.movie, com.example.movie-alias, com.example.audio, com.example.bundle-folder, com.example.bundle-file, com.example.secondary
         """
         let kinds = Fixture.offlineBuilder.build(from: LSDumpParser.parse(text))
         let groups = Set(kinds.map { Set($0.utis) })
@@ -138,7 +169,7 @@ struct KindBuilderTests {
             ["com.example.audio"],
             ["com.example.bundle-folder"],
             ["com.example.bundle-file"],
-            ["com.example.data-only"],
+            ["com.example.secondary"],
         ])
     }
 }

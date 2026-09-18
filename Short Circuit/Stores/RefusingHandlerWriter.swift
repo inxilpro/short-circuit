@@ -4,10 +4,18 @@ import Foundation
 nonisolated struct RefusingHandlerWriter: HandlerWriting {
     private let reader = HandlerService()
 
-    func apply(app: AppRef, to members: [KindMember.Target]) async -> [MemberResult] {
-        members.map {
-            MemberResult(target: $0, outcome: .failed(domain: "ShortCircuit", code: 0, message: "Changes are disabled in this run."))
+    func plan(app: AppRef, targets: [KindMember.Target]) async -> WritePlan {
+        var current: [KindMember.Target: URL?] = [:]
+        for target in targets + WritePlan.browserTargets where current[target] == nil {
+            current[target] = await currentHandler(for: target)?.url
         }
+        return WritePlan(app: app.url, targets: targets) { current[$0] ?? nil }
+    }
+
+    func execute(_ approved: WritePlan) async -> WriteExecution {
+        .completed(approved.affectedTargets.map {
+            MemberResult(target: $0, outcome: .failed(domain: "ShortCircuit", code: 0, message: "Changes are disabled in this run."))
+        })
     }
 
     func currentHandler(for target: KindMember.Target) async -> AppRef? {

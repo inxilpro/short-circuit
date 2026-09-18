@@ -20,7 +20,7 @@ struct ContentView: View {
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
                 }
                 .confirmationDialog(
-                    store.pendingChange.map { "Open \($0.kindName) with \($0.app.name)?" } ?? "",
+                    store.pendingChange.map(ChangeConfirmation.title(for:)) ?? "",
                     isPresented: isConfirmingChange,
                     presenting: store.pendingChange
                 ) { _ in
@@ -28,10 +28,10 @@ struct ContentView: View {
                         Task { await store.confirmPendingChange() }
                     }
                     Button("Cancel", role: .cancel) {
-                        store.pendingChange = nil
+                        store.cancelPendingChange()
                     }
                 } message: { change in
-                    Text("macOS will ask you to confirm each of \(change.promptCount) changes.")
+                    Text(ChangeConfirmation.message(for: change))
                 }
         }
         .frame(minWidth: 820, minHeight: 480)
@@ -62,17 +62,18 @@ struct ContentView: View {
     private var isConfirmingChange: Binding<Bool> {
         Binding(
             get: { store.pendingChange != nil },
-            set: { if !$0 { store.pendingChange = nil } }
+            set: { if !$0 { store.cancelPendingChange() } }
         )
     }
 
     private func editing(for kind: Kind) -> KindEditing {
         KindEditing(
+            isEnabled: store.canWrite,
             isApplying: store.isApplying(kind),
             results: store.results(for: kind),
-            setDefault: { store.setDefault($0, for: kind) },
-            setMemberDefault: { store.setDefault($0, for: $1, in: kind) },
-            fixSplit: { store.fixSplit(kind) }
+            setDefault: { app in Task { await store.setDefault(app, for: kind) } },
+            setMemberDefault: { app, target in Task { await store.setDefault(app, for: target, in: kind) } },
+            fixSplit: { Task { await store.fixSplit(kind) } }
         )
     }
 
@@ -102,7 +103,7 @@ struct ContentView: View {
             } label: {
                 Label("Refresh", systemImage: "arrow.clockwise")
             }
-            .disabled(store.isRefreshing)
+            .disabled(store.isRefreshing || store.isWriting)
             .help("Re-read Launch Services (⌘R)")
         }
 

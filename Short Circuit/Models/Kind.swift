@@ -35,7 +35,13 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
     var members: [KindMember]
     var extensions: [String]
     var mimeTypes: [String]
+    /// Ordered by relevance: current defaults, then apps that explicitly claim a member, then apps that
+    /// only match through broad conformance (plain text and the like); alphabetical within each tier.
+    /// Unique by URL, so two installs sharing a bundle ID both appear.
     var candidates: [AppRef]
+    /// A URL scheme registered by a single app for its own use (login callbacks and the like). Nothing
+    /// else can meaningfully handle it, so it belongs outside Common.
+    var isAppPrivate: Bool = false
 
     var utis: [String] {
         members.compactMap { if case .uti(let identifier) = $0.target { identifier } else { nil } }

@@ -28,9 +28,16 @@ final class KindStore {
         var id = UUID()
         var kindID: Kind.ID
         var kindName: String
-        var app: AppRef
-        var targets: [KindMember.Target]
-        var promptCount: Int
+        var appName: String
+        var plan: WritePlan
+        /// Set when the system changed after an earlier approval and this plan replaces it.
+        var isRevised = false
+    }
+
+    enum WriteActivity: Equatable {
+        case idle
+        case planning(Kind.ID)
+        case applying(Kind.ID)
     }
 
     private let provider: any KindProviding
@@ -46,8 +53,12 @@ final class KindStore {
     var layout: BrowserLayout = .grid
     var isInspectorPresented = true
     private(set) var transientMessage: String?
-    private(set) var applyingKindIDs: Set<Kind.ID> = []
+    /// One app-wide gate: consent prompts from two batches must never interleave, and a batch's
+    /// live reads are only valid while nothing else is writing.
+    private(set) var activity: WriteActivity = .idle
     private(set) var results: [Kind.ID: [MemberResult]] = [:]
+    private var writeGeneration = 0
+    private var verifiedHandlers: [KindMember.Target: AppRef?] = [:]
     var pendingChange: PendingChange?
 
     init(provider: any KindProviding, writer: any HandlerWriting) {
@@ -102,19 +113,34 @@ final class KindStore {
         return KindSearch(searchText).filter(kinds).count - visibleKinds.count
     }
 
+    var isWriting: Bool { activity != .idle }
+
+    var canWrite: Bool { activity == .idle && !isRefreshing && pendingChange == nil }
+
     func refresh(force: Bool = false) async {
+        // A refresh started mid-write would read handlers from before the change and overwrite
+        // the verified result.
+        guard !isWriting else {
+            showMessage("Wait for the current change to finish before refreshing.")
+            return
+        }
         loadGeneration += 1
         let generation = loadGeneration
+        let startingWriteGeneration = writeGeneration
         isRefreshing = true
         if case .failed = state { state = .loading }
         defer { if generation == loadGeneration { isRefreshing = false } }
 
         do {
-            let loaded = try await provider.loadKinds(forceRefresh: force)
+            var loaded = try await provider.loadKinds(forceRefresh: force)
             guard generation == loadGeneration else { return }
-            results = [:]
+            if writeGeneration != startingWriteGeneration {
+                loaded = Self.overlay(verifiedHandlers, onto: loaded)
+            }
             state = .loaded(loaded.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
-            if let selectedKindID, !loaded.contains(where: { $0.id == selectedKindID }) {
+            let ids = Set(loaded.map(\.id))
+            results = results.filter { ids.contains($0.key) }
+            if let selectedKindID, !ids.contains(selectedKindID) {
                 self.selectedKindID = nil
             }
         } catch {
@@ -149,78 +175,118 @@ final class KindStore {
     }
 
     func isApplying(_ kind: Kind) -> Bool {
-        applyingKindIDs.contains(kind.id)
+        activity == .applying(kind.id) || activity == .planning(kind.id)
     }
 
     func results(for kind: Kind) -> [MemberResult] {
         results[kind.id] ?? []
     }
 
-    func setDefault(_ app: AppRef, for kind: Kind) {
-        requestChange(app, targets: kind.members.map(\.target), in: kind)
+    func setDefault(_ app: AppRef, for kind: Kind) async {
+        await requestChange(app, targets: kind.members.map(\.target), in: kind)
     }
 
-    func setDefault(_ app: AppRef, for target: KindMember.Target, in kind: Kind) {
-        requestChange(app, targets: [target], in: kind)
+    func setDefault(_ app: AppRef, for target: KindMember.Target, in kind: Kind) async {
+        await requestChange(app, targets: [target], in: kind)
     }
 
-    func fixSplit(_ kind: Kind) {
+    func fixSplit(_ kind: Kind) async {
         guard let majority = kind.majorityApp else { return }
-        requestChange(majority, targets: kind.members.map(\.target), in: kind)
+        await requestChange(majority, targets: kind.members.map(\.target), in: kind)
     }
 
-    /// Every changed member costs the user a system consent prompt, so anything beyond one is
-    /// confirmed first.
-    private func requestChange(_ app: AppRef, targets: [KindMember.Target], in kind: Kind) {
-        guard !isApplying(kind) else { return }
-        let known = Dictionary(kind.members.map { ($0.target, $0.defaultApp?.url) }, uniquingKeysWith: { first, _ in first })
-        let plan = WritePlan(app: app.url, targets: targets) { known[$0] ?? nil }
-        guard plan.promptCount > 0 else {
-            showMessage("\(kind.name) already opens with \(app.name).")
+    /// Plans from live reads, not the displayed Kind, so the confirmation describes what will
+    /// actually run. Several prompts, or anything touching the browser role, is confirmed first.
+    private func requestChange(_ app: AppRef, targets: [KindMember.Target], in kind: Kind) async {
+        guard canWrite else {
+            showMessage("Another change is still in progress.")
             return
         }
+        activity = .planning(kind.id)
+        let plan = await writer.plan(app: app, targets: targets)
+        activity = .idle
 
-        let change = PendingChange(kindID: kind.id, kindName: kind.name, app: app, targets: targets, promptCount: plan.promptCount)
-        if plan.promptCount > 1 {
+        let change = PendingChange(kindID: kind.id, kindName: kind.name, appName: app.name, plan: plan)
+        guard plan.promptCount > 0 else {
+            await settleWithoutChanges(change)
+            return
+        }
+        if plan.promptCount > 1 || plan.changesBrowser {
             pendingChange = change
         } else {
-            Task { await apply(change) }
+            await run(change)
         }
     }
 
     func confirmPendingChange() async {
         guard let change = pendingChange else { return }
         pendingChange = nil
-        await apply(change)
+        await run(change)
     }
 
-    func apply(_ change: PendingChange) async {
-        guard !applyingKindIDs.contains(change.kindID) else { return }
-        applyingKindIDs.insert(change.kindID)
+    func cancelPendingChange() {
+        pendingChange = nil
+    }
+
+    private func run(_ change: PendingChange) async {
+        guard activity == .idle, !isRefreshing else { return }
+        activity = .applying(change.kindID)
         results[change.kindID] = nil
-        defer { applyingKindIDs.remove(change.kindID) }
+        defer { activity = .idle }
 
-        let outcome = await writer.apply(app: change.app, to: change.targets)
-        results[change.kindID] = outcome
-        await reloadHandlers(forKindID: change.kindID)
+        switch await writer.execute(change.plan) {
+        case .completed(let outcome):
+            results[change.kindID] = outcome
+            await reloadHandlers(for: change.plan.requested + change.plan.affectedTargets)
+        case .needsApproval(let fresh):
+            var revised = change
+            revised.id = UUID()
+            revised.plan = fresh
+            revised.isRevised = true
+            if fresh.promptCount == 0 {
+                await settleWithoutChanges(revised)
+            } else {
+                pendingChange = revised
+            }
+        }
     }
 
-    /// Re-reads every member from the system rather than trusting the writer's outcome, since a
-    /// Kind can end up partially applied.
-    private func reloadHandlers(forKindID id: Kind.ID) async {
-        guard var kind = kinds.first(where: { $0.id == id }) else { return }
-        for memberIndex in kind.members.indices {
-            kind.members[memberIndex].defaultApp = await writer.currentHandler(for: kind.members[memberIndex].target)
+    private func settleWithoutChanges(_ change: PendingChange) async {
+        showMessage("\(change.kindName) already opens with \(change.appName).")
+        await reloadHandlers(for: change.plan.requested)
+    }
+
+    /// Re-reads handlers from the system rather than trusting the writer's outcome, since a Kind
+    /// can end up partially applied, and patches them by target into every Kind that has them.
+    private func reloadHandlers(for targets: [KindMember.Target]) async {
+        var read: [KindMember.Target: AppRef?] = [:]
+        for target in targets where read[target] == nil {
+            read[target] = await writer.currentHandler(for: target)
         }
-        for app in kind.members.compactMap(\.defaultApp) where !kind.candidates.contains(where: { $0.url == app.url }) {
-            kind.candidates.append(app)
-        }
+        writeGeneration += 1
+        verifiedHandlers.merge(read) { _, new in new }
 
         // The reads above suspend, so merge into whatever is loaded now rather than a stale copy.
-        guard case .loaded(var all) = state, let latestIndex = all.firstIndex(where: { $0.id == id }) else { return }
-        all[latestIndex] = kind
-        IconCache.invalidate(typeIdentifiers: kind.utis)
-        state = .loaded(all)
+        guard case .loaded(let all) = state else { return }
+        let merged = Self.overlay(read, onto: all)
+        for kind in merged where kind.members.contains(where: { read[$0.target] != nil }) {
+            IconCache.invalidate(typeIdentifiers: kind.utis)
+        }
+        state = .loaded(merged)
+    }
+
+    private static func overlay(_ handlers: [KindMember.Target: AppRef?], onto kinds: [Kind]) -> [Kind] {
+        kinds.map { kind in
+            var kind = kind
+            for index in kind.members.indices {
+                guard let handler = handlers[kind.members[index].target] else { continue }
+                kind.members[index].defaultApp = handler
+                if let handler, !kind.candidates.contains(where: { $0.url == handler.url }) {
+                    kind.candidates.append(handler)
+                }
+            }
+            return kind
+        }
     }
 
     func showMessage(_ message: String) {

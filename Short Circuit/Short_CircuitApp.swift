@@ -31,6 +31,7 @@ struct Short_CircuitApp: App {
                     Task { await store.refresh(force: true) }
                 }
                 .keyboardShortcut("r")
+                .disabled(store.isRefreshing || store.isWriting)
             }
         }
     }

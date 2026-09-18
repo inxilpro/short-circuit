@@ -64,6 +64,18 @@ struct LivePipelineDebugTests {
             let members = kind.members.map { "\($0.target) → \($0.defaultApp?.name ?? "none")" }.joined(separator: "; ")
             lines.append("  split: \(kind.name): \(members)")
         }
+        let categoryTotals = Dictionary(grouping: enriched, by: \.category).mapValues(\.count)
+        lines.append("categories: \(KindCategory.allCases.map { "\($0.rawValue) \(categoryTotals[$0] ?? 0)" }.joined(separator: ", "))")
+        let common = Dictionary(grouping: multiCandidate, by: \.category).mapValues(\.count)
+        lines.append("categories (≥2 candidates): \(KindCategory.allCases.map { "\($0.rawValue) \(common[$0] ?? 0)" }.joined(separator: ", "))")
+        let duplicateNames = Dictionary(grouping: enriched, by: \.name).filter { $0.value.count > 1 }.keys.sorted()
+        lines.append("duplicate names: \(duplicateNames.count) \(duplicateNames.prefix(20))")
+        lines.append("unresolved tag claims: \(built.unresolvedTags.count) \(built.unresolvedTags.sorted().prefix(40))")
+        lines.append("app-private schemes: \(enriched.filter(\.isAppPrivate).count)")
+        for probe in [".css", ".ts", ".go", ".rs"] {
+            let owners = enriched.filter { $0.extensions.contains(String(probe.dropFirst())) }.map { "\($0.name) \($0.utis)" }
+            lines.append("probe \(probe): \(owners)")
+        }
         if let markdown = enriched.first(where: { $0.utis.contains("public.markdown") }) {
             lines.append("markdown: \(markdown.name) utis=\(markdown.utis) ext=\(markdown.extensions) candidates=\(markdown.candidates.map(\.name))")
         }
@@ -71,6 +83,13 @@ struct LivePipelineDebugTests {
         print(report)
         if let path = ProcessInfo.processInfo.environment["SHORT_CIRCUIT_LIVE"], path.hasPrefix("/") {
             try report.write(toFile: path, atomically: true, encoding: .utf8)
+            let rows = enriched.map { kind in
+                [kind.name, kind.category.rawValue, kind.members.map { "\($0.target)" }.joined(separator: ", "),
+                 kind.extensions.joined(separator: ", "), kind.mimeTypes.joined(separator: ", "),
+                 kind.candidates.map(\.name).joined(separator: ", ")].joined(separator: "\t")
+            }
+            try (["Name\tCategory\tMembers\tExtensions\tMIME\tCandidates"] + rows).joined(separator: "\n")
+                .write(toFile: path + ".tsv", atomically: true, encoding: .utf8)
         }
     }
 }
