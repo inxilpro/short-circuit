@@ -41,3 +41,7 @@ Exactly two prompts appeared: one for `net.daringfireball.markdown` → Mud and 
 3. A stale or conflicting `handlerpref` record for the type.
 
 The `dump-truth` ground-truth analysis lists which apps claim each Markdown UTI, which will confirm or rule out hypothesis 2.
+
+## Update: hypothesis 2 ruled out
+
+The independent dump analysis (`Documentation/spikes/dump-format.md`) shows Mud and Microsoft Word both claim `public.markdown` explicitly, and Mud and Xcode claim `net.daringfireball.markdown`. Mud was a direct claimant of the type whose change failed, so a missing direct claim is not the cause of error 256. Hypotheses 1 and 3 remain open.
