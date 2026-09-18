@@ -1,0 +1,63 @@
+# CI: an unsigned Release build of the app plus the unit tests
+# (Short CircuitTests) through the shared "Short Circuit" scheme. UI tests are
+# excluded: they need a logged-in GUI session and drive real windows.
+#
+# Runner image / Xcode: the project is in Xcode 27's format (objectVersion 110)
+# and targets macOS 26.6, which no Xcode on the `macos-26` image (26.0.1–26.6,
+# SDK ≤ 26.5) can build. `xcode-27` is GitHub's preview image for Xcode 27;
+# move to `macos-27` once it is GA. Bump `runs-on` and XCODE_APP together.
+# Available images and Xcode versions:
+# https://github.com/actions/runner-images#available-images
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # Bump this when moving to a newer Xcode (see runner-images README above).
+  XCODE_APP: /Applications/Xcode_27.0.app
+
+jobs:
+  build:
+    name: Build app (unsigned) and run unit tests
+    runs-on: xcode-27
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Build Short Circuit
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "Short Circuit.xcodeproj" \
+            -scheme "Short Circuit" \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      # The live Launch Services suites only run when TEST_RUNNER_SHORT_CIRCUIT_LIVE or
+      # TEST_RUNNER_SHORT_CIRCUIT_EXPORT is set; a runner's Launch Services database says
+      # nothing about the code, so they stay off here.
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "Short Circuit.xcodeproj" \
+            -scheme "Short Circuit" \
+            -destination 'platform=macOS' \
+            -only-testing:"Short CircuitTests" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""

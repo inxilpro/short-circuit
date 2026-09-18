@@ -1,4 +1,13 @@
 .DS_Store
 .build/
+build/
 xcuserdata/
 DerivedData/
+.swiftpm/
+*.xcresult
+*.d
+*.dia
+*.o
+*.swiftconstvalues
+*.swiftdeps
+*.profraw

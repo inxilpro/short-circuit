@@ -1,0 +1,236 @@
+# Release: triggered by pushing a tag like v1.2.3.
+#
+# Runs the unit tests, builds and archives Short Circuit in Release, signs it
+# with the Developer ID certificate imported from secrets, notarizes and
+# staples, and uploads a DMG (for humans) and a zip (for a future Homebrew
+# cask) to the GitHub Release for the tag.
+#
+# Required repository secrets (see Documentation/RELEASING.md for how to create each):
+#   MACOS_CERTIFICATE_P12       base64-encoded Developer ID Application .p12
+#   MACOS_CERTIFICATE_PASSWORD  password protecting the .p12
+#   KEYCHAIN_PASSWORD           arbitrary password for the throwaway CI keychain
+#   APPLE_TEAM_ID               Apple Developer Team ID (657AK7D2D9)
+#   ASC_KEY_ID                  App Store Connect API key ID (for notarytool)
+#   ASC_ISSUER_ID               App Store Connect API issuer ID
+#   ASC_PRIVATE_KEY             contents of the App Store Connect API .p8 key
+#
+# Runner image / Xcode: see the note in ci.yml; bump `runs-on` and XCODE_APP
+# together, and keep them identical to ci.yml.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  # Bump this when moving to a newer Xcode (see runner-images README).
+  XCODE_APP: /Applications/Xcode_27.0.app
+  APP_NAME: Short Circuit
+  # Release asset names avoid the space; GitHub would rewrite it to a dot.
+  ASSET_BASENAME: Short-Circuit
+
+jobs:
+  release:
+    name: Build, notarize, and publish
+    runs-on: xcode-27
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Derive version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' is not of the form vX.Y.Z"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      # The tag is the release trigger, so gate on the unit tests here rather
+      # than trusting that main was green when it was tagged.
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "Short Circuit.xcodeproj" \
+            -scheme "Short Circuit" \
+            -destination 'platform=macOS' \
+            -only-testing:"Short CircuitTests" \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Import Developer ID certificate
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/release.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+
+          echo -n "$MACOS_CERTIFICATE_P12" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          # Allow codesign to use the key without a UI prompt.
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH" > /dev/null
+
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          rm "$CERT_PATH"
+
+          # Fail fast if the identity is unusable.
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application"
+
+      - name: Archive Short Circuit
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project "Short Circuit.xcodeproj" \
+            -scheme "Short Circuit" \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -archivePath "$RUNNER_TEMP/$ASSET_BASENAME.xcarchive" \
+            -derivedDataPath DerivedData \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$VERSION" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            ENABLE_HARDENED_RUNTIME=YES \
+            OTHER_CODE_SIGN_FLAGS="--timestamp"
+
+      - name: Stage app from archive
+        run: |
+          mkdir -p "$RUNNER_TEMP/dist"
+          cp -R "$RUNNER_TEMP/$ASSET_BASENAME.xcarchive/Products/Applications/$APP_NAME.app" "$RUNNER_TEMP/dist/"
+
+      - name: Verify code signature
+        run: |
+          APP="$RUNNER_TEMP/dist/$APP_NAME.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign --display --verbose=2 "$APP" 2>&1 | grep -q "Authority=Developer ID Application"
+          codesign --display --verbose=2 "$APP" 2>&1 | grep -q "Timestamp="
+          codesign --display --verbose=2 "$APP" 2>&1 | grep -q "runtime"
+          # The notary service rejects get-task-allow; it only belongs on Debug builds.
+          if codesign --display --entitlements - --xml "$APP" 2>/dev/null | grep -q "get-task-allow"; then
+            echo "::error::$APP_NAME.app is signed with com.apple.security.get-task-allow"
+            exit 1
+          fi
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist" | grep -qx "$VERSION"
+
+      - name: Notarize and staple app
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          umask 077
+          printf '%s\n' "$ASC_PRIVATE_KEY" > "$KEY_PATH"
+
+          # notarytool exits 0 even when the verdict is Invalid, so check the
+          # status ourselves and surface Apple's log before failing.
+          cat > "$RUNNER_TEMP/notarize.sh" <<'NOTARIZE'
+          #!/bin/bash
+          set -euo pipefail
+          RESULT=$(xcrun notarytool submit "$1" \
+            --key "$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8" \
+            --key-id "$ASC_KEY_ID" \
+            --issuer "$ASC_ISSUER_ID" \
+            --wait --output-format json)
+          echo "$RESULT"
+          SUBMISSION_ID=$(jq -r .id <<< "$RESULT")
+          STATUS=$(jq -r .status <<< "$RESULT")
+          if [[ "$STATUS" != "Accepted" ]]; then
+            echo "::error::Notarization of $1 finished with status '$STATUS'"
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --key "$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8" \
+              --key-id "$ASC_KEY_ID" \
+              --issuer "$ASC_ISSUER_ID"
+            exit 1
+          fi
+          NOTARIZE
+          chmod +x "$RUNNER_TEMP/notarize.sh"
+
+          ditto -c -k --keepParent "$RUNNER_TEMP/dist/$APP_NAME.app" "$RUNNER_TEMP/notarize.zip"
+          "$RUNNER_TEMP/notarize.sh" "$RUNNER_TEMP/notarize.zip"
+          rm "$RUNNER_TEMP/notarize.zip"
+
+          xcrun stapler staple "$RUNNER_TEMP/dist/$APP_NAME.app"
+
+      - name: Gatekeeper assessment
+        run: spctl -a -t exec -vv "$RUNNER_TEMP/dist/$APP_NAME.app"
+
+      - name: Package zip and DMG
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+
+          # Built from the stapled app so it installs offline without a
+          # Gatekeeper round-trip.
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/dist/$APP_NAME.app" \
+            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.zip"
+
+          # The DMG humans download: app + /Applications symlink.
+          DMG_ROOT="$RUNNER_TEMP/dmg-root"
+          mkdir -p "$DMG_ROOT"
+          cp -R "$RUNNER_TEMP/dist/$APP_NAME.app" "$DMG_ROOT/"
+          ln -s /Applications "$DMG_ROOT/Applications"
+          hdiutil create \
+            -volname "$APP_NAME" \
+            -srcfolder "$DMG_ROOT" \
+            -ov -format UDZO \
+            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.dmg"
+
+          codesign --sign "Developer ID Application" --timestamp \
+            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.dmg"
+
+          # Notarize and staple the DMG itself so Gatekeeper is satisfied
+          # before it is even opened.
+          "$RUNNER_TEMP/notarize.sh" "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.dmg"
+          xcrun stapler staple "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.dmg"
+
+          shasum -a 256 "$RUNNER_TEMP/artifacts/"*
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$APP_NAME $VERSION" \
+            --generate-notes \
+            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.dmg" \
+            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.zip"
+
+      - name: Remove temporary keychain and API key
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/release.keychain-db" || true
+          security list-keychains -d user -s login.keychain-db
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8
