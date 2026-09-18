@@ -53,12 +53,30 @@ Several types can declare the same extension, but macOS resolves each extension 
 **Split and Fix Split:**
 - A Kind is split only when its effective members differ **and** some app could unify them (`Kind.unifyingCandidates`, the apps every effective member accepts).
 - Fix Split chooses from those, preferring the app most effective members already use, so it always fits every effective member.
-- If effective members differ but no app fits them all (for example `facetime:` and `facetime-audio:` on the dev Mac), the Kind shows "Mixed" with a neutral note. It gets no ⚠, isn't in the Split list, and has no Fix Split button.
+- If effective members differ but no app fits them all (for example `facetime:` and `facetime-audio:` on the dev Mac), the Kind shows "Mixed" with a neutral note. It gets no ⚠ and no Fix Split button, and it is not counted in the Split badge. The Split view still lists it, under a second heading, "Differ, no single app fits", so the mismatch stays visible (Codex review 2, R4).
+- The Split list is fixed at load or explicit refresh; Kinds that become split during the session are added. **Resolved** (green check) marks only Kinds that were split when the session began and whose effective members now all agree. When nothing fixable remains, the empty state reads "No Fixable Splits".
 
 **Inspector:**
 - Effective members come first, each with chips for the extensions it governs.
-- Shadowed members sit dimmed in a collapsed "Other declared types (N)" disclosure, captioned "No files use this type on this Mac…".
+- Shadowed members sit dimmed in a collapsed "Other declared types (N)" disclosure, captioned "Not the preferred type for any extension on this Mac." That is the narrower fact the extension lookup proves; an explicit-type lookup can still reach them. When any of them points to a different app than the effective members, the collapsed label adds a quiet "· differs".
 - Extensions no member wins are noted under Extensions as handled by a type outside the Kind.
+
+## Browser-role eligibility
+
+A request touching `http`, `https`, or `public.html` becomes one `http` call. So whether an app can take any of those members is decided by whether the **`http` member** accepts it; `https` and `public.html` follow (`Kind.canSet(_:to:)`). This was Codex review 2, R1.
+
+Every surface uses the same rule through `Kind.eligibility(of:for:)`:
+- the store's single and batch changes
+- the Applications batch count
+- the picker's "N of M types" note
+- per-member menus (the HTML row's globe menu offers only apps the `http` call accepts)
+- Fix Split
+
+Results have exactly one row per target (`KindStore.finalResults`). A target covered by a performed step is never also listed as not supported.
+
+Examples, from the dev Mac's asymmetric lists:
+- **ChatGPT**, listed for http and https only: it takes the browser role, so html follows, and XHTML is not supported. That's "3 of 4 types", one call.
+- **Sublime Text**, listed for HTML and XHTML only: it is never offered as the default browser. Only XHTML changes: "1 of 4 types", one call.
 
 ## Per-member candidates
 

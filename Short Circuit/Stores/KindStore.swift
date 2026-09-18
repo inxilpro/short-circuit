@@ -67,6 +67,9 @@ final class KindStore {
     private(set) var activity: WriteActivity = .idle
     private(set) var results: [Kind.ID: [MemberResult]] = [:]
     private var splitSnapshotIDs: Set<Kind.ID> = []
+    /// Split at the last load or explicit refresh. Only these can be shown as Resolved: a Kind
+    /// that split during the session and was put back is simply back where it started.
+    private var sessionStartSplitIDs: Set<Kind.ID> = []
     private var writeGeneration = 0
     private var verifiedHandlers: [KindMember.Target: AppRef?] = [:]
     /// The setter call currently waiting on a macOS consent prompt, if any.
@@ -102,7 +105,12 @@ final class KindStore {
     /// Kinds that were split at the last load or explicit refresh, plus any that became split
     /// since. Fixed ones stay listed for the session so progress stays visible.
     var splitKinds: [Kind] {
-        kinds.filter { splitSnapshotIDs.contains($0.id) || $0.isSplit }
+        kinds.filter { ($0.isSplit || splitSnapshotIDs.contains($0.id)) && !$0.isMixedWithoutFix }
+    }
+
+    /// Shown under the fixable splits: their members differ, but no single app takes them all.
+    var mixedWithoutFixKinds: [Kind] {
+        kinds.filter(\.isMixedWithoutFix)
     }
 
     var unresolvedSplitCount: Int {
@@ -110,7 +118,7 @@ final class KindStore {
     }
 
     var resolvedSplitIDs: Set<Kind.ID> {
-        Set(kinds.filter { splitSnapshotIDs.contains($0.id) && !$0.isSplit }.map(\.id))
+        Set(kinds.filter { sessionStartSplitIDs.contains($0.id) && !$0.hasMixedHandlers }.map(\.id))
     }
 
     var categoriesWithKinds: [KindCategory] {
@@ -126,7 +134,7 @@ final class KindStore {
 
     func kinds(in item: SidebarItem?) -> [Kind] {
         switch item {
-        case .split: splitKinds
+        case .split: splitKinds + mixedWithoutFixKinds
         case .common, nil: commonKinds
         case .category(let category): choosableKinds.filter { $0.category == category }.sorted(by: Self.catalogOrder)
         case .all: kinds
@@ -184,6 +192,7 @@ final class KindStore {
             }
             state = .loaded(loaded.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
             splitSnapshotIDs = Set(loaded.filter(\.isSplit).map(\.id))
+            sessionStartSplitIDs = splitSnapshotIDs
             let ids = Set(loaded.map(\.id))
             results = results.filter { ids.contains($0.key) }
             if let selectedKindID, !ids.contains(selectedKindID) {
@@ -260,9 +269,7 @@ final class KindStore {
             batchRun?.currentKindName = kind.name
             results[kind.id] = nil
 
-            let effective = kind.effectiveMembers
-            let supported = effective.filter { kind.member($0, accepts: app) }
-            let unsupported = effective.filter { !kind.member($0, accepts: app) }
+            let (supported, unsupported) = kind.eligibility(of: kind.effectiveMembers, for: app)
             let base = batchRun?.changesStarted ?? 0
             let applied = supported.isEmpty ? [] : await writer.apply(app: app, targets: supported.map(\.target)) { [weak self] step in
                 guard let self, self.batchRun?.stopRequested != true else { return false }
@@ -270,9 +277,7 @@ final class KindStore {
                 self.progress = step
                 return true
             }
-            results[kind.id] = applied + unsupported.map {
-                MemberResult(target: $0.target, outcome: .skipped(.notSupported(app)), handlerAfter: $0.defaultApp)
-            }
+            results[kind.id] = Self.finalResults(applied: applied, unsupported: unsupported, app: app)
             await reloadHandlers(for: kind.members.map(\.target) + applied.map(\.target))
             batchRun?.finishedKindIDs.append(kind.id)
         }
@@ -349,6 +354,10 @@ final class KindStore {
             showMessage("Another change is still in progress.")
             return
         }
+        guard !members.isEmpty else {
+            showMessage("None of \(kind.name)’s types is preferred for an extension. Set them one by one below.")
+            return
+        }
         activity = .applying(kind.id)
         results[kind.id] = nil
         defer {
@@ -356,8 +365,7 @@ final class KindStore {
             progress = nil
         }
 
-        let supported = members.filter { kind.member($0, accepts: app) }
-        let unsupported = members.filter { !kind.member($0, accepts: app) }
+        let (supported, unsupported) = kind.eligibility(of: members, for: app)
         let targets = supported.map(\.target)
         let appName = AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app)
 
@@ -365,10 +373,7 @@ final class KindStore {
             self?.progress = step
             return true
         }
-        let skippedAsUnsupported = unsupported.map {
-            MemberResult(target: $0.target, outcome: .skipped(.notSupported(app)), handlerAfter: $0.defaultApp)
-        }
-        let outcome = applied + skippedAsUnsupported
+        let outcome = Self.finalResults(applied: applied, unsupported: unsupported, app: app)
 
         if supported.isEmpty {
             showMessage("\(appName) can’t open \(members.count == 1 ? "this type" : "any of these types").")
@@ -378,6 +383,15 @@ final class KindStore {
             results[kind.id] = outcome
         }
         await reloadHandlers(for: members.map(\.target) + applied.map(\.target))
+    }
+
+    /// One result per target: what a performed step reports wins, so a browser member covered
+    /// by the `http` call is never also listed as not supported.
+    static func finalResults(applied: [MemberResult], unsupported: [KindMember], app: AppRef) -> [MemberResult] {
+        let covered = Set(applied.map(\.target))
+        return applied + unsupported.filter { !covered.contains($0.target) }.map {
+            MemberResult(target: $0.target, outcome: .skipped(.notSupported(app)), handlerAfter: $0.defaultApp)
+        }
     }
 
     /// Re-reads handlers from the system rather than trusting the writer's outcome, since a Kind

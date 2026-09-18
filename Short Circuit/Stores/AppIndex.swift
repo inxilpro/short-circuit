@@ -42,7 +42,7 @@ struct AppIndex {
 
     /// `explicitApps` returns the apps that declare a Kind's format outright. When it's empty for
     /// every Kind the distinction is unknown, and every candidate counts as able to open it.
-    init(kinds: [Kind], explicitApps: (Kind) -> Set<URL> = AppIndex.explicitCandidateURLs) {
+    init(kinds: [Kind], explicitApps: (Kind) -> Set<URL> = { $0.explicitCandidateURLs }) {
         let explicit = Dictionary(uniqueKeysWithValues: kinds.map { ($0.id, explicitApps($0)) })
         let explicitKnown = explicit.values.contains { !$0.isEmpty }
 
@@ -83,15 +83,6 @@ struct AppIndex {
     func relations(for app: URL) -> [(kindID: Kind.ID, relation: AppKindRelation)] {
         entries[app] ?? []
     }
-
-    /// Reads `Kind.explicitCandidateURLs` by name. The data layer is adding that field in
-    /// parallel; reflection keeps this compiling before it lands and picks it up once it does.
-    nonisolated static func explicitCandidateURLs(of kind: Kind) -> Set<URL> {
-        guard let value = Mirror(reflecting: kind).children.first(where: { $0.label == "explicitCandidateURLs" })?.value else { return [] }
-        if let set = value as? Set<URL> { return set }
-        if let array = value as? [URL] { return Set(array) }
-        return []
-    }
 }
 
 /// What "Make default for…" would do for one app across the checked Kinds, computed from the
@@ -121,11 +112,11 @@ struct AppBatchPlan {
     init(app: AppRef, kinds: [Kind]) {
         self.app = app
         items = kinds.map { kind in
-            let effective = kind.effectiveMembers
+            let (supported, unsupported) = kind.eligibility(of: kind.effectiveMembers, for: app)
             return Item(
                 kind: kind,
-                changing: effective.filter { kind.member($0, accepts: app) && $0.defaultApp?.url != app.url },
-                unsupported: effective.filter { !kind.member($0, accepts: app) }
+                changing: supported.filter { $0.defaultApp?.url != app.url },
+                unsupported: unsupported
             )
         }
         // One plan over every target, so shared targets and the browser role are counted once.

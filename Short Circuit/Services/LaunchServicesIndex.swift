@@ -16,6 +16,8 @@ nonisolated enum LaunchServicesIndexError: Error, LocalizedError {
 /// `lsregister -dump` (about 4 seconds, 32 MB of output) only when asked or when no cache exists.
 actor LaunchServicesIndex {
     typealias DumpSource = @Sendable () async throws -> Data
+    /// Launch Services' current database sequence number, or nil when it can't be read cheaply.
+    typealias SequenceSource = @Sendable () async -> Int?
 
     static let lsregisterURL = URL(fileURLWithPath:
         "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister")
@@ -29,24 +31,47 @@ actor LaunchServicesIndex {
 
     private let cacheURL: URL?
     private let dumpSource: DumpSource
+    private let sequenceSource: SequenceSource
     private var snapshot: LSSnapshot?
     private var inFlight: Task<LSSnapshot, Error>?
+    /// Set once a dump has run in this session, so an unreadable sequence number triggers at most one
+    /// background refresh.
+    private var hasDumped = false
 
     /// Pass a nil `cacheURL` to keep everything in memory (tests).
-    init(cacheURL: URL? = LaunchServicesIndex.defaultCacheURL, dumpSource: @escaping DumpSource = LaunchServicesIndex.runDump) {
+    init(
+        cacheURL: URL? = LaunchServicesIndex.defaultCacheURL,
+        dumpSource: @escaping DumpSource = LaunchServicesIndex.runDump,
+        sequenceSource: @escaping SequenceSource = LaunchServicesIndex.readSequenceNumber
+    ) {
         self.cacheURL = cacheURL
         self.dumpSource = dumpSource
+        self.sequenceSource = sequenceSource
     }
 
+    /// Serves the in-memory or disk snapshot while Launch Services' sequence number still matches it;
+    /// a changed number (an app was installed, removed or re-registered) re-dumps first. When the number
+    /// can't be read, the cached snapshot is served and a refresh runs in the background, so the next
+    /// call returns the fresh one.
     func snapshot(forceRefresh: Bool = false) async throws -> LSSnapshot {
-        if !forceRefresh {
-            if let snapshot { return snapshot }
-            if let cached = loadCache() {
-                snapshot = cached
-                return cached
+        if !forceRefresh, let current = snapshot ?? loadCache() {
+            snapshot = current
+            switch await isCurrent(current) {
+            case true?:
+                return current
+            case false?:
+                return try await refresh()
+            case nil:
+                if !hasDumped { Task { _ = try? await self.refresh() } }
+                return current
             }
         }
         return try await refresh()
+    }
+
+    private func isCurrent(_ snapshot: LSSnapshot) async -> Bool? {
+        guard let stored = snapshot.cacheSequenceNumber, let live = await sequenceSource() else { return nil }
+        return stored == live
     }
 
     func refresh() async throws -> LSSnapshot {
@@ -58,6 +83,7 @@ actor LaunchServicesIndex {
         inFlight = task
         defer { inFlight = nil }
         let fresh = try await task.value
+        hasDumped = true
         snapshot = fresh
         saveCache(fresh)
         return fresh
@@ -79,6 +105,48 @@ actor LaunchServicesIndex {
         } catch {
             // The cache only saves a re-dump on next launch; failing to write it isn't worth surfacing.
         }
+    }
+
+    /// Reads only the dump's header, which carries `CacheSequenceNum`, then stops lsregister; about 30 ms
+    /// instead of the full 4-second dump.
+    @Sendable static func readSequenceNumber() async -> Int? {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = lsregisterURL
+                process.arguments = ["-dump"]
+                let output = Pipe()
+                process.standardOutput = output
+                process.standardError = FileHandle.nullDevice
+                guard (try? process.run()) != nil else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                var header = Data()
+                var number: Int?
+                // The header is a few KB; giving up after 256 KB bounds the read if the format changes.
+                while number == nil, header.count < 256 * 1024 {
+                    let chunk = output.fileHandleForReading.availableData
+                    guard !chunk.isEmpty else { break }
+                    header.append(chunk)
+                    number = sequenceNumber(inHeader: header)
+                }
+                if process.isRunning { process.terminate() }
+                try? output.fileHandleForReading.close()
+                process.waitUntilExit()
+                continuation.resume(returning: number)
+            }
+        }
+    }
+
+    static func sequenceNumber(inHeader data: Data) -> Int? {
+        let text = String(decoding: data, as: UTF8.self)
+        for line in text.split(separator: "\n") where line.hasPrefix("CacheSequenceNum:") {
+            // A line cut off mid-read has no newline after it yet, so only accept one followed by more text.
+            guard text.contains(line + "\n") else { return nil }
+            return Int(line.dropFirst("CacheSequenceNum:".count).trimmingCharacters(in: .whitespaces))
+        }
+        return nil
     }
 
     @Sendable static func runDump() async throws -> Data {

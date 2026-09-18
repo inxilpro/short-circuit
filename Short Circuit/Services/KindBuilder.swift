@@ -226,6 +226,9 @@ nonisolated struct KindBuilder: Sendable {
     ///     extensions (Kaleidoscope's CSS type next to `public.css`), or otherwise
     ///   - its preferred extension is one of the entry's extensions and its category doesn't conflict
     ///     (a vendor's own `.csv` type).
+    /// Either way the node must have the same shape as the entry's listed members: a package never joins
+    /// an entry of flat files (a package declaring `.json` stays out of JSON), and an entry that lists
+    /// no members is taken to describe flat files. `.other` relaxes the category check, never the shape.
     /// A node that matches several entries joins none. Entries matching nothing on this Mac produce no Kind.
     private func assignCatalog(
         _ catalog: Catalog,
@@ -256,10 +259,19 @@ nonisolated struct KindBuilder: Sendable {
         }
 
         let entryExtensions = catalog.kinds.map { Set($0.extensions.map { ".\($0)" }) }
+        func isFolder(_ uti: String) -> Bool {
+            let lineage = lineage(uti, context: context)
+            return lineage.contains("public.folder") || lineage.contains("public.directory")
+        }
+        let entryShapes = catalog.kinds.indices.map { Set((members[$0] ?? []).map(isFolder)) }
+        func shapeFits(_ uti: String, _ index: Int) -> Bool {
+            let shapes = entryShapes[index]
+            return shapes.isEmpty ? !isFolder(uti) : shapes == [isFolder(uti)]
+        }
         for uti in nodes where owner[uti] == nil {
             let tags = context.mergeTags(uti)
             let mates = groupByNode[uti].flatMap { groups[$0] } ?? []
-            let clusterEntries = Set(mates.compactMap { owner[$0] }).filter { !entryExtensions[$0].isDisjoint(with: tags) }
+            let clusterEntries = Set(mates.compactMap { owner[$0] }).filter { !entryExtensions[$0].isDisjoint(with: tags) && shapeFits(uti, $0) }
 
             var chosen: Int?
             if clusterEntries.count == 1 {
@@ -267,7 +279,7 @@ nonisolated struct KindBuilder: Sendable {
             } else if clusterEntries.isEmpty {
                 let category = Self.category(identifier: uti, lineage: lineage(uti, context: context))
                 let adopting = catalog.kinds.indices.filter { index in
-                    guard !entryExtensions[index].isDisjoint(with: context.preferredExtensions(uti)) else { return false }
+                    guard !entryExtensions[index].isDisjoint(with: context.preferredExtensions(uti)), shapeFits(uti, index) else { return false }
                     guard let wanted = catalog.kinds[index].category, category != .other else { return true }
                     return wanted == category
                 }
@@ -537,9 +549,21 @@ nonisolated struct KindBuilder: Sendable {
     /// scheme itself in parentheses so people can recognise it in URLs.
     static func schemeName(_ scheme: String, owners: [AppRef] = []) -> String {
         if let name = schemeNames[scheme] { return name }
-        let names = Set(owners.map(\.name))
-        if names.count == 1, let app = names.first { return "\(app) link (\(scheme):)" }
-        return "\(scheme): link"
+        // Several installs of one app (Bartender 5 in the Trash, Bartender 6 on a disk image) are one
+        // owner, named after its best-placed install.
+        let byApp = Dictionary(grouping: owners) { $0.bundleID?.lowercased() ?? $0.url.path }
+        let names = byApp.values.compactMap { installs in
+            installs.min { lhs, rhs in
+                let lhsRank = Context.pathPreference(lhs.url.path(percentEncoded: false))
+                let rhsRank = Context.pathPreference(rhs.url.path(percentEncoded: false))
+                return lhsRank != rhsRank ? lhsRank < rhsRank : alphabetical(lhs, rhs)
+            }?.name
+        }.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        switch names.count {
+        case 1: return "\(names[0]) link (\(scheme):)"
+        case 2: return "\(names[0]) and \(names[1]) link (\(scheme):)"
+        default: return "\(scheme): link"
+        }
     }
 
     static func schemeCategory(_ scheme: String) -> KindCategory {
@@ -608,7 +632,7 @@ nonisolated private struct Context {
             let key = url.path
             if let unit = bundle.unitID { appKeyByUnit[unit] = key }
             if apps[key] == nil {
-                apps[key] = AppRef(url: url, bundleID: bundle.identifier, name: bundle.displayName ?? bundle.name, version: bundle.version)
+                apps[key] = AppRef(url: url, bundleID: bundle.identifier, name: bundle.preferredName, version: bundle.version)
             }
             if let identifier = bundle.identifier?.lowercased() {
                 if let current = preferredAppByBundleID[identifier], Self.pathPreference(current) <= Self.pathPreference(key) { continue }

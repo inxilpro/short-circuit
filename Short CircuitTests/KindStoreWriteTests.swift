@@ -353,7 +353,8 @@ struct KindStoreWriteTests {
 
         await store.setDefault(.notes, for: .uti("public.rtf"), in: try kind("rtf", in: store))
         #expect(store.splitKinds.contains { $0.id == "rtf" })
-        #expect(store.resolvedSplitIDs.contains("rtf"))
+        // Resolved is reserved for Kinds that were split when the session began.
+        #expect(!store.resolvedSplitIDs.contains("rtf"))
     }
 
     @Test func fixSplitOnlyTouchesMembersOffTheMajorityApp() async throws {
@@ -690,4 +691,154 @@ struct EffectiveMemberTests {
         #expect(try kind("markdown", in: store).extensionsHandledElsewhere == ["mkd"])
         #expect(try kind("rtf", in: store).extensionsHandledElsewhere.isEmpty)
     }
+}
+
+/// Codex review 2, R1: the browser role changes through one `http` call, so eligibility is that
+/// call's. Two asymmetric matrices from the dev Mac, with sample apps standing in:
+/// "ChatGPT" (Notes here) is listed for http and https only; "Sublime Text" (TextEdit here)
+/// only for public.html and public.xhtml.
+@MainActor
+struct BrowserRoleEligibilityTests {
+    private let chatGPT = AppRef.notes
+    private let sublime = AppRef.textEdit
+
+    private var webPage: Kind {
+        let schemes: Set<URL> = [AppRef.safari.url, AppRef.notes.url]
+        let files: Set<URL> = [AppRef.safari.url, AppRef.textEdit.url]
+        return Kind(
+            id: "web-page", name: "Web page", category: .web,
+            members: [
+                KindMember(target: .scheme("http"), defaultApp: .safari, candidateURLs: schemes),
+                KindMember(target: .scheme("https"), defaultApp: .safari, candidateURLs: schemes),
+                KindMember(target: .uti("public.html"), defaultApp: .safari, candidateURLs: files, governedExtensions: ["html"]),
+                KindMember(target: .uti("public.xhtml"), defaultApp: .safari, candidateURLs: files, governedExtensions: ["xhtml"]),
+            ],
+            extensions: ["html", "xhtml"], mimeTypes: [], candidates: [.safari, .notes, .textEdit]
+        )
+    }
+
+    private func makeStore() async -> (KindStore, SimulatedHandlerBackend) {
+        let backend = SimulatedHandlerBackend(kinds: [webPage])
+        let store = KindStore(provider: FixedKinds(kinds: [webPage]), writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
+        await store.refresh()
+        return (store, backend)
+    }
+
+    private func member(_ target: KindMember.Target) -> KindMember {
+        webPage.members.first { $0.target == target }!
+    }
+
+    @Test func schemesOnlyAppTakesTheWholeRoleButNotXHTML() async throws {
+        let (store, backend) = await makeStore()
+
+        #expect(webPage.supportNote(for: chatGPT) == "3 of 4 types")
+        #expect(webPage.candidates(for: member(.uti("public.html"))).contains(chatGPT))
+        #expect(AppBatchPlan(app: chatGPT, kinds: [webPage]).promptCount == 1)
+
+        await store.setDefault(chatGPT, for: try #require(store.kinds.first))
+
+        let results = store.results["web-page"] ?? []
+        #expect(backend.calls.map(\.target) == [.scheme("http")])
+        #expect(results.map(\.target).count == Set(results.map(\.target)).count)
+        #expect(Set(results.map(\.target)) == [.scheme("http"), .scheme("https"), .uti("public.html"), .uti("public.xhtml")])
+        #expect(results.first { $0.target == .uti("public.html") }?.outcome == .changed)
+        #expect(results.first { $0.target == .uti("public.xhtml") }?.outcome == .skipped(.notSupported(chatGPT)))
+    }
+
+    @Test func fileOnlyAppIsNeverOfferedAsTheDefaultBrowser() async throws {
+        let (store, backend) = await makeStore()
+
+        #expect(webPage.supportNote(for: sublime) == "1 of 4 types")
+        #expect(!webPage.candidates(for: member(.uti("public.html"))).contains(sublime))
+        #expect(webPage.candidates(for: member(.uti("public.xhtml"))).contains(sublime))
+        #expect(AppBatchPlan(app: sublime, kinds: [webPage]).promptCount == 1)
+
+        await store.setDefault(sublime, for: try #require(store.kinds.first))
+
+        let results = store.results["web-page"] ?? []
+        #expect(backend.calls.map(\.target) == [.uti("public.xhtml")])
+        #expect(results.map(\.target).count == Set(results.map(\.target)).count)
+        #expect(results.filter { $0.outcome == .skipped(.notSupported(sublime)) }.map(\.target).sorted { "\($0)" < "\($1)" }
+                == [KindMember.Target.scheme("http"), .scheme("https"), .uti("public.html")].sorted { "\($0)" < "\($1)" })
+    }
+
+    @Test func perMemberHTMLRequestForAFileOnlyAppMakesNoCall() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(sublime, for: .uti("public.html"), in: try #require(store.kinds.first))
+
+        #expect(backend.calls.isEmpty)
+    }
+
+    @Test func finalResultsNeverListACoveredTargetTwice() {
+        let applied = [MemberResult(target: .uti("public.html"), outcome: .changed)]
+        let results = KindStore.finalResults(applied: applied, unsupported: [member(.uti("public.html")), member(.uti("public.xhtml"))], app: chatGPT)
+
+        #expect(results.map(\.target) == [.uti("public.html"), .uti("public.xhtml")])
+    }
+}
+
+/// Codex review 2, R4: differences that aren't fixable splits stay visible.
+@MainActor
+struct DifferenceVisibilityTests {
+    private func makeStore(_ kinds: [Kind] = SampleKindProvider.kinds) async -> (KindStore, SimulatedHandlerBackend) {
+        let backend = SimulatedHandlerBackend(kinds: kinds)
+        let store = KindStore(provider: FixedKinds(kinds: kinds), writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
+        await store.refresh()
+        return (store, backend)
+    }
+
+    @Test func shadowedMembersOnAnotherAppAreFlaggedAsDiffering() async throws {
+        let (store, _) = await makeStore()
+        let mpeg4Audio = try #require(store.kinds.first { $0.id == "mpeg4-audio" })
+
+        #expect(!mpeg4Audio.hasMixedHandlers)
+        #expect(mpeg4Audio.shadowedMembersDiffer)
+        #expect(try #require(store.kinds.first { $0.id == "heic" }).shadowedMembersDiffer == false)
+    }
+
+    @Test func mixedKindsWithNoCommonAppAreListedUnderSplitWithoutCountingOrFix() async throws {
+        let (store, _) = await makeStore()
+        store.sidebarSelection = .split
+
+        #expect(store.mixedWithoutFixKinds.map(\.id) == ["audio-call"])
+        #expect(store.visibleKinds.contains { $0.id == "audio-call" })
+        #expect(!store.splitKinds.contains { $0.id == "audio-call" })
+        #expect(store.unresolvedSplitCount == store.kinds.count(where: \.isSplit))
+        #expect(try #require(store.kinds.first { $0.id == "audio-call" }).fixSplitApp == nil)
+    }
+
+    @Test func resolvedMeansSplitAtStartAndNowUnified() async throws {
+        let (store, _) = await makeStore()
+        #expect(try #require(store.kinds.first { $0.id == "heic" }).isSplit)
+
+        await store.setDefault(.preview, for: .uti("public.heif"), in: try #require(store.kinds.first { $0.id == "heic" }))
+
+        #expect(store.resolvedSplitIDs.contains("heic"))
+    }
+
+    @Test func aSplitWhoseMembersStillDifferIsNotResolved() async throws {
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [
+                KindMember(target: .uti("a"), defaultApp: .textEdit),
+                KindMember(target: .uti("b"), defaultApp: .preview),
+            ],
+            extensions: [], mimeTypes: [], candidates: [.textEdit, .preview, .safari]
+        )
+        let (store, _) = await makeStore([kind])
+        #expect(store.splitKinds.map(\.id) == ["k"])
+
+        await store.setDefault(.safari, for: .uti("a"), in: try #require(store.kinds.first))
+
+        #expect(try #require(store.kinds.first).hasMixedHandlers)
+        #expect(!store.resolvedSplitIDs.contains("k"))
+        #expect(store.splitKinds.map(\.id) == ["k"])
+    }
+}
+
+private struct FixedKinds: KindProviding {
+    let kinds: [Kind]
+
+    func loadKinds(forceRefresh: Bool) async throws -> [Kind] { kinds }
 }

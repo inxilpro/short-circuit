@@ -70,9 +70,10 @@ nonisolated struct HandlerService: HandlerLookup {
 
     static func appRef(for url: URL) -> AppRef {
         let info = Bundle(url: url)?.infoDictionary ?? [:]
-        let name = (info["CFBundleDisplayName"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            ?? (info["CFBundleName"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            ?? url.deletingPathExtension().lastPathComponent
+        let name = AppNaming.name(
+            candidates: [info["CFBundleDisplayName"] as? String, info["CFBundleName"] as? String],
+            path: url.path(percentEncoded: false)
+        ) ?? url.deletingPathExtension().lastPathComponent
         return AppRef(
             url: url,
             bundleID: info["CFBundleIdentifier"] as? String,

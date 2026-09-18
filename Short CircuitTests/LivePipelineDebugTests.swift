@@ -99,6 +99,8 @@ struct LivePipelineDebugTests {
         for kind in enriched.filter({ !$0.unclaimedExtensions.isEmpty }).prefix(25) {
             lines.append("  unclaimed: \(kind.name): \(kind.unclaimedExtensions)")
         }
+        let inert = enriched.filter { $0.effectiveMembers.isEmpty }
+        lines.append("Kinds with no effective member (no whole-Kind targets): \(inert.count) \(inert.map(\.name).prefix(20))")
         lines.append("(Kind, member) pairs rejecting ≥1 Kind candidate: \(restrictedPairs) across \(restrictedKinds.count) Kinds")
         var blockedSplits: [String] = []
         for kind in split {

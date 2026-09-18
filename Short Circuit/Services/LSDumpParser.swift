@@ -19,7 +19,7 @@ nonisolated struct LSDumpParser {
     ]
 
     private static let wantedKeys: [String: Set<String>] = [
-        "bundle id": ["path", "name", "displayName", "identifier", "version", "displayVersion", "class"],
+        "bundle id": ["path", "name", "displayName", "localizedNames", "identifier", "version", "displayVersion", "class"],
         "claim id": ["rank", "bundle", "flags", "roles", "bindings"],
         "type id": ["bundle", "uti", "localizedDescription", "flags", "conforms to", "tags"],
     ]
@@ -167,7 +167,8 @@ nonisolated struct LSDumpParser {
                 path: values["path"].map { Self.splitUnitReference($0).name },
                 displayName: values["displayName"],
                 version: values["displayVersion"] ?? values["version"].map(Self.stripParenthetical),
-                bundleClass: values["class"].map { Self.splitUnitReference($0).name }
+                bundleClass: values["class"].map { Self.splitUnitReference($0).name },
+                localizedName: values["localizedNames"].flatMap(Self.localizedValue)
             ))
         case .claim:
             if let unitID, !seenClaimUnits.insert(unitID).inserted { return }

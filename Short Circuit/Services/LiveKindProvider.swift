@@ -75,17 +75,20 @@ nonisolated struct LiveKindProvider: KindProviding {
 
     /// Extensions, from the type's own tags and the Kind's list, that macOS resolves to exactly this
     /// type. Several types can declare `.docx`; only the winner's handler opens the file.
-    private func governedExtensions(of identifier: String, in kind: Kind) -> [String] {
+    /// Nil for a type with no extensions to win at all, so it isn't mistaken for a shadowed one.
+    private func governedExtensions(of identifier: String, in kind: Kind) -> [String]? {
         var seen: Set<String> = []
-        return (handlers.declaredExtensions(forContentType: identifier) + kind.extensions)
+        let candidates = (handlers.declaredExtensions(forContentType: identifier) + kind.extensions)
             .map { $0.lowercased() }
-            .filter { seen.insert($0).inserted && handlers.contentTypes(forFilenameExtension: $0).contains(identifier) }
+            .filter { seen.insert($0).inserted }
+        guard !candidates.isEmpty else { return nil }
+        return candidates.filter { handlers.contentTypes(forFilenameExtension: $0).contains(identifier) }
     }
 
     /// One spelling per app bundle, so `KindMember.accepts` can compare URLs from the snapshot and from
     /// NSWorkspace, which differ in trailing slashes and `..` components.
     static func canonical(_ url: URL) -> URL {
-        URL(filePath: url.standardizedFileURL.path(percentEncoded: false), directoryHint: .isDirectory)
+        AppIdentity.canonical(url)
     }
 
     /// Unique by standardized URL, so two installs sharing a bundle ID both stay. Ordered by relevance:

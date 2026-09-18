@@ -148,11 +148,29 @@ struct GovernedExtensionTests {
         #expect(kind.isSplit)
     }
 
-    @Test func allShadowedFallsBackToSettableMembers() {
+    @Test func knownShadowedMembersLeaveNothingForWholeKindChanges() {
         let kind = wav(lookup(resolutions: ["wav": ["com.example.other"], "wave": ["com.example.other"]]))
         #expect(kind.members.allSatisfy { $0.governedExtensions == [] })
+        #expect(kind.effectiveMembers.isEmpty, "Known-shadowed is not the same as unknown")
+        #expect(kind.unifyingCandidates.isEmpty)
+        #expect(!kind.isSplit)
+        #expect(kind.defaultApp != nil, "Display still shows what the settable members open with")
+    }
+
+    @Test func unknownGovernanceStaysEffective() {
+        var kind = wav(lookup(resolutions: ["wav": ["com.example.other"], "wave": ["com.example.other"]]))
+        for index in kind.members.indices { kind.members[index].governedExtensions = nil }
         #expect(kind.effectiveMembers.count == 2)
-        #expect(kind.isSplit)
+    }
+
+    @Test func typesWithNoExtensionsAreNotMistakenForShadowed() {
+        let kind = Kind(
+            id: "utf8", name: "UTF-8 text", category: .documents, members: [KindMember(target: .uti("public.utf8-plain-text"))],
+            extensions: [], mimeTypes: [], candidates: []
+        )
+        let enriched = LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup(resolutions: [:])).enrich([kind])[0]
+        #expect(enriched.members[0].governedExtensions == nil)
+        #expect(enriched.effectiveMembers.count == 1)
     }
 
     @Test func extensionsResolvingOutsideTheKindAreRecorded() {

@@ -35,7 +35,9 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
     /// Nil when unknown, which places no restriction.
     var candidateURLs: Set<URL>? = nil
     /// Extensions whose files macOS resolves to this type. Several types can declare `.docx`, but
-    /// only one wins it, and only the winner's handler decides what opens the file. Nil when unknown.
+    /// only one wins it, and only the winner's handler decides what opens the file. Empty means the
+    /// type is known to win none (shadowed). Nil means extension governance is unknown or doesn't
+    /// apply (a type that declares no extensions at all), which counts as effective.
     var governedExtensions: [String]? = nil
 
     /// True when this member's handler can affect what opens something: a URL scheme, or a type
@@ -50,8 +52,7 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
         guard isSettable else { return false }
         guard let candidateURLs else { return true }
         // An app chosen through "Other…" arrives spelled by NSOpenPanel, not by the provider.
-        let url = URL(filePath: app.url.standardizedFileURL.path(percentEncoded: false), directoryHint: .isDirectory)
-        return candidateURLs.contains(url) || candidateURLs.contains(app.url)
+        return candidateURLs.contains(AppIdentity.canonical(app.url)) || candidateURLs.contains(app.url)
     }
 
     var id: Target { target }
@@ -99,16 +100,18 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
         members.filter(\.isSettable)
     }
 
-    /// The members whose handlers decide what actually opens. Falls back to every settable member
-    /// when none wins an extension, as with types that have no extensions at all.
+    /// The members whose handlers decide what actually opens: whole-Kind changes target exactly these.
+    /// Empty when every member is known to be shadowed (Canon TIFF RAW loses `.tif` to TIFF); such a
+    /// Kind has nothing a whole-Kind change could affect, though each member can still be set alone.
     var effectiveMembers: [KindMember] {
-        let effective = members.filter(\.isEffective)
-        return effective.isEmpty ? settableMembers : effective
+        members.filter(\.isEffective)
     }
 
-    /// Apps every effective member accepts, in candidate order.
+    /// Apps every effective member accepts, in candidate order. Empty when there are no effective members.
     var unifyingCandidates: [AppRef] {
-        candidates.filter { app in effectiveMembers.allSatisfy { $0.accepts(app) } }
+        let effective = effectiveMembers
+        guard !effective.isEmpty else { return [] }
+        return candidates.filter { app in effective.allSatisfy { $0.accepts(app) } }
     }
 
     var hasMixedHandlers: Bool {
@@ -121,8 +124,10 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
         hasMixedHandlers && !unifyingCandidates.isEmpty
     }
 
+    /// For display. A Kind whose members are all shadowed still shows what its settable members open with.
     var defaultApp: AppRef? {
-        hasMixedHandlers ? nil : effectiveMembers.first?.defaultApp
+        if hasMixedHandlers { return nil }
+        return (effectiveMembers.first ?? settableMembers.first)?.defaultApp
     }
 }
 

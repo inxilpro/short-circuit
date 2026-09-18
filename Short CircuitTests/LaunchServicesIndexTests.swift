@@ -21,7 +21,8 @@ struct LaunchServicesIndexTests {
             return fixture
         }
 
-        let first = LaunchServicesIndex(cacheURL: cacheURL, dumpSource: source)
+        let unchanged: LaunchServicesIndex.SequenceSource = { 21148 }
+        let first = LaunchServicesIndex(cacheURL: cacheURL, dumpSource: source, sequenceSource: unchanged)
         let fresh = try await first.snapshot()
         #expect(counter.count.withLock { $0 } == 1)
         #expect(FileManager.default.fileExists(atPath: cacheURL.path))
@@ -29,7 +30,7 @@ struct LaunchServicesIndexTests {
         _ = try await first.snapshot()
         #expect(counter.count.withLock { $0 } == 1, "The in-memory snapshot is reused")
 
-        let second = LaunchServicesIndex(cacheURL: cacheURL, dumpSource: source)
+        let second = LaunchServicesIndex(cacheURL: cacheURL, dumpSource: source, sequenceSource: unchanged)
         let cached = try await second.snapshot()
         #expect(counter.count.withLock { $0 } == 1, "A new index loads the disk cache instead of re-dumping")
         #expect(cached.types == fresh.types)
@@ -61,5 +62,72 @@ struct ProcessRunnerTests {
             #expect(status == 3)
             #expect(message.contains("broken"))
         }
+    }
+}
+
+struct CacheStalenessTests {
+    private final class Counter: Sendable {
+        let count = Mutex(0)
+        var value: Int { count.withLock { $0 } }
+    }
+
+    private func makeIndex(sequence: @escaping LaunchServicesIndex.SequenceSource, counter: Counter, cacheURL: URL) throws -> LaunchServicesIndex {
+        let fixture = try Fixture.data("markdown.lsdump")
+        return LaunchServicesIndex(cacheURL: cacheURL, dumpSource: {
+            counter.count.withLock { $0 += 1 }
+            return fixture
+        }, sequenceSource: sequence)
+    }
+
+    private func primedCache() async throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appending(path: "CacheStalenessTests-\(UUID().uuidString)").appending(path: "ls.json")
+        let seed = try makeIndex(sequence: { nil }, counter: Counter(), cacheURL: url)
+        _ = try await seed.refresh()
+        return url
+    }
+
+    @Test func aChangedSequenceNumberRedumps() async throws {
+        let url = try await primedCache()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let counter = Counter()
+        let index = try makeIndex(sequence: { 99_999 }, counter: counter, cacheURL: url)
+        _ = try await index.snapshot()
+        #expect(counter.value == 1)
+    }
+
+    @Test func aMatchingSequenceNumberServesTheCache() async throws {
+        let url = try await primedCache()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let counter = Counter()
+        let index = try makeIndex(sequence: { 21148 }, counter: counter, cacheURL: url)
+        _ = try await index.snapshot()
+        _ = try await index.snapshot()
+        #expect(counter.value == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func anUnreadableSequenceServesTheCacheThenRefreshesInTheBackground() async throws {
+        let url = try await primedCache()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let counter = Counter()
+        let index = try makeIndex(sequence: { nil }, counter: counter, cacheURL: url)
+        let served = try await index.snapshot()
+        #expect(served.cacheSequenceNumber == 21148)
+        while counter.value == 0 { await Task.yield() }
+        _ = try await index.snapshot()
+        _ = try await index.snapshot()
+        #expect(counter.value == 1, "One background refresh per session")
+    }
+
+    @Test func readsTheSequenceNumberFromTheHeader() throws {
+        let header = try Fixture.data("markdown.lsdump").prefix(2000)
+        #expect(LaunchServicesIndex.sequenceNumber(inHeader: Data(header)) == 21148)
+        #expect(LaunchServicesIndex.sequenceNumber(inHeader: Data("CacheSequenceNum:           211".utf8)) == nil, "A cut-off line isn't trusted")
+    }
+
+    @Test(.timeLimit(.minutes(1))) func readsThisMacsSequenceNumberCheaply() async throws {
+        let start = ContinuousClock.now
+        let number = await LaunchServicesIndex.readSequenceNumber()
+        #expect(number != nil)
+        #expect(ContinuousClock.now - start < .seconds(2), "Only the header is read, not the whole dump")
     }
 }

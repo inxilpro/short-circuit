@@ -86,8 +86,15 @@ private struct KindInspectorForm: View {
                             memberRow(member, caption: shadowedCaption)
                         }
                     } label: {
-                        Text("Other declared types (\(kind.shadowedMembers.count))")
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            Text("Other declared types (\(kind.shadowedMembers.count))")
+                                .foregroundStyle(.secondary)
+                            if kind.shadowedMembersDiffer {
+                                Text("· differs")
+                                    .foregroundStyle(.tertiary)
+                                    .help("At least one of these points to a different app than the types above")
+                            }
+                        }
                     }
                 }
                 ForEach(kind.members.filter { !$0.isSettable }) { member in
@@ -137,9 +144,9 @@ private struct KindInspectorForm: View {
     /// Names the extensions the effective members do govern, so it's clear why this type is inert.
     private var shadowedCaption: String {
         let governed = kind.effectiveMembers.flatMap { $0.governedExtensions ?? [] }
-        guard !governed.isEmpty else { return "No files use this type on this Mac." }
+        guard !governed.isEmpty else { return "Not the preferred type for any extension on this Mac." }
         let handlers = kind.effectiveMembers.count == 1 ? "the type above" : "the types above"
-        return "No files use this type on this Mac. \(Self.formatted(governed)) files are handled by \(handlers)."
+        return "Not the preferred type for any extension on this Mac. \(Self.formatted(governed)) prefer \(handlers)."
     }
 
     static func formatted(_ extensions: [String]) -> String {

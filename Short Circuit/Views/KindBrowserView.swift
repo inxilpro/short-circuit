@@ -3,6 +3,17 @@ import SwiftUI
 struct KindBrowserView: View {
     @Environment(KindStore.self) private var store
 
+    /// In Split, types whose members differ with no app to unify them follow the fixable ones
+    /// under their own heading, so the mismatch stays visible without a Fix Split offer.
+    private var splitSecondary: KindGridView.SecondarySection? {
+        guard store.sidebarSelection == .split else { return nil }
+        return KindGridView.SecondarySection(
+            title: "Differ, no single app fits",
+            ids: Set(store.mixedWithoutFixKinds.map(\.id)),
+            emptyPrimaryNote: "No fixable splits"
+        )
+    }
+
     /// Resolution is progress within the Split list; elsewhere a fixed Kind just shows its app.
     private var resolvedIDs: Set<Kind.ID> {
         store.sidebarSelection == .split ? store.resolvedSplitIDs : []
@@ -30,7 +41,7 @@ struct KindBrowserView: View {
                 EmptyKindsView()
             } else {
                 switch store.layout {
-                case .grid: KindGridView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs)
+                case .grid: KindGridView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs, secondary: splitSecondary)
                 case .list: KindTableView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs)
                 }
             }
@@ -45,9 +56,9 @@ private struct EmptyKindsView: View {
         if KindSearch(store.searchText).isEmpty {
             if store.sidebarSelection == .split {
                 ContentUnavailableView(
-                    "Nothing Is Split",
+                    "No Fixable Splits",
                     systemImage: "checkmark.seal",
-                    description: Text("Every type opens in a single app.")
+                    description: Text("No type has members in different apps that one app could bring together.")
                 )
             } else {
                 ContentUnavailableView("No Types", systemImage: "doc.questionmark")

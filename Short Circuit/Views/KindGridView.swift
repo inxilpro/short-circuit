@@ -1,24 +1,70 @@
 import SwiftUI
 
 struct KindGridView: View {
+    struct SecondarySection {
+        var title: String
+        var ids: Set<Kind.ID>
+        /// Shown in place of the primary tiles when only the secondary section has any.
+        var emptyPrimaryNote: String
+    }
+
     let kinds: [Kind]
     @Binding var selection: Kind.ID?
     var resolvedIDs: Set<Kind.ID> = []
+    var secondary: SecondarySection?
 
     private let columns = [GridItem(.adaptive(minimum: 120, maximum: 150), spacing: 8, alignment: .top)]
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(kinds) { kind in
-                    KindTile(kind: kind, isSelected: selection == kind.id, isResolved: resolvedIDs.contains(kind.id))
-                        .onTapGesture { selection = kind.id }
+            if let secondary {
+                let primary = kinds.filter { !secondary.ids.contains($0.id) }
+                let others = kinds.filter { secondary.ids.contains($0.id) }
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                    Section {
+                        tiles(primary)
+                    } header: {
+                        if primary.isEmpty {
+                            SectionTitle(text: secondary.emptyPrimaryNote)
+                        }
+                    }
+                    if !others.isEmpty {
+                        Section {
+                            tiles(others)
+                        } header: {
+                            SectionTitle(text: secondary.title)
+                                .padding(.top, primary.isEmpty ? 0 : 12)
+                        }
+                    }
                 }
+                .padding(20)
+            } else {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    tiles(kinds)
+                }
+                .padding(20)
             }
-            .padding(20)
         }
         .contentShape(Rectangle())
         .onTapGesture { selection = nil }
+    }
+
+    private func tiles(_ kinds: [Kind]) -> some View {
+        ForEach(kinds) { kind in
+            KindTile(kind: kind, isSelected: selection == kind.id, isResolved: resolvedIDs.contains(kind.id))
+                .onTapGesture { selection = kind.id }
+        }
+    }
+}
+
+private struct SectionTitle: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.headline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

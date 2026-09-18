@@ -52,8 +52,14 @@ nonisolated struct BundleRecord: Hashable, Codable, Sendable {
     var displayName: String?
     var version: String?
     var bundleClass: String?
+    /// The default entry of `localizedNames`; the only readable name some helpers have.
+    var localizedName: String?
 
     var isApplication: Bool { bundleClass == "kLSBundleClassApplication" }
+
+    var preferredName: String {
+        AppNaming.name(candidates: [displayName, localizedName, name], path: path) ?? name
+    }
 }
 
 nonisolated struct HandlerPref: Hashable, Codable, Sendable {
@@ -93,7 +99,8 @@ nonisolated struct HandlerPref: Hashable, Codable, Sendable {
 }
 
 nonisolated struct LSSnapshot: Codable, Sendable {
-    static let currentFormatVersion = 1
+    /// Bumped when records gain fields, so older caches are re-dumped rather than read with gaps.
+    static let currentFormatVersion = 2
 
     var formatVersion: Int = LSSnapshot.currentFormatVersion
     var capturedAt: Date
