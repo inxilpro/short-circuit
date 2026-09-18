@@ -72,7 +72,7 @@ private struct KindInspectorForm: View {
             Section("Members") {
                 ForEach(kind.settableMembers + kind.members.filter { !$0.isSettable }) { member in
                     MemberRow(
-                        kindName: kind.name,
+                        kind: kind,
                         member: member,
                         isOddOneOut: member.isSettable && kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url,
                         result: resultsByTarget[member.target],
@@ -170,9 +170,15 @@ private struct OpensWithPicker: View {
         .disabled(!isEnabled)
     }
 
+    /// Apps that can't take every member carry a quiet note, so choosing one isn't a surprise
+    /// when some members stay put.
     private func appLabel(_ app: AppRef) -> some View {
         Label {
-            Text(choices.labels.label(for: app))
+            if let note = kind.supportNote(for: app) {
+                Text("\(choices.labels.label(for: app))  \(Text(note).foregroundStyle(.secondary))")
+            } else {
+                Text(choices.labels.label(for: app))
+            }
         } icon: {
             AppIconView(app: app, size: 16)
         }
@@ -240,6 +246,7 @@ private struct ResultSummary: View {
         let changed = results.filter { $0.outcome == .changed }.count
         let notChanged = results.filter(\.outcome.isNotChanged).count
         let failed = results.filter(\.outcome.isFailure).count
+        let unsupported = results.filter(\.outcome.isNotSupported).count
 
         HStack(spacing: 12) {
             if changed > 0 {
@@ -254,7 +261,11 @@ private struct ResultSummary: View {
                 Label("\(failed) failed", systemImage: "xmark.octagon.fill")
                     .foregroundStyle(.red)
             }
-            if changed + notChanged + failed == 0 {
+            if unsupported > 0 {
+                Label("\(unsupported) not supported", systemImage: "nosign")
+                    .foregroundStyle(.secondary)
+            }
+            if changed + notChanged + failed + unsupported == 0 {
                 Label("Nothing needed changing", systemImage: "checkmark.circle")
                     .foregroundStyle(.secondary)
             }
@@ -275,16 +286,23 @@ private struct SplitNotice: View {
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let majority = kind.majorityApp {
-                Button("Fix Split — Use \(kind.labelContext.label(for: majority)) for All", action: onFix)
+            if let choice = kind.fixSplitChoice {
+                let name = kind.labelContext.label(for: choice.app)
+                Button(choice.unreachable.isEmpty ? "Fix Split — Use \(name) for All" : "Fix Split — Use \(name) Where Possible", action: onFix)
                     .disabled(!isEnabled)
+                if !choice.unreachable.isEmpty {
+                    Text("\(choice.unreachable.map(\.target.displayName).joined(separator: ", ")) will stay as \(choice.unreachable.count == 1 ? "it is" : "they are"), because \(name) can’t open \(choice.unreachable.count == 1 ? "that type" : "those types").")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
 }
 
 private struct MemberRow: View {
-    let kindName: String
+    let kind: Kind
     let member: KindMember
     let isOddOneOut: Bool
     let result: MemberResult?
@@ -353,7 +371,7 @@ private struct MemberRow: View {
     private var memberMenu: some View {
         Menu {
             Section(isBrowserMember ? "Default Browser (http, https, HTML files)" : "Open \(member.target.displayName) With") {
-                ForEach(choices.all) { app in
+                ForEach(kind.candidates(for: member)) { app in
                     Button {
                         onChoose(app)
                     } label: {
@@ -368,7 +386,7 @@ private struct MemberRow: View {
             }
             Divider()
             Button("Other…") {
-                chooseOtherApp(forOpening: isBrowserMember ? "web pages and links" : "\(member.target.displayName) (\(kindName))", then: onChoose)
+                chooseOtherApp(forOpening: isBrowserMember ? "web pages and links" : "\(member.target.displayName) (\(kind.name))", then: onChoose)
             }
         } label: {
             Image(systemName: isBrowserMember ? "globe" : "ellipsis.circle")
@@ -428,6 +446,9 @@ private struct MemberResultLabel: View {
         case .skipped(.alreadyDefault):
             Label("Already set", systemImage: "checkmark.circle")
                 .foregroundStyle(.tertiary)
+        case .skipped(.notSupported(let app)):
+            Label("\(app.name) can’t open this type", systemImage: "nosign")
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -466,6 +487,10 @@ private extension MemberResult.Outcome {
 
     var isFailure: Bool {
         if case .failed = self { true } else { false }
+    }
+
+    var isNotSupported: Bool {
+        if case .skipped(.notSupported) = self { true } else { false }
     }
 }
 

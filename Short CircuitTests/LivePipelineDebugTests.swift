@@ -80,6 +80,31 @@ struct LivePipelineDebugTests {
         for kind in commonKinds {
             lines.append("  \(kind.commonRank ?? 0). \(kind.name) [\(kind.category.rawValue)] \(kind.members.map { "\($0.target)" }.joined(separator: ", ")) — default: \(kind.isSplit ? "split" : kind.defaultApp?.name ?? "none"), \(kind.candidates.count) apps")
         }
+        var restrictedPairs = 0
+        var restrictedKinds: Set<String> = []
+        for kind in enriched {
+            for member in kind.settableMembers where kind.candidates.contains(where: { !member.accepts($0) }) {
+                restrictedPairs += 1
+                restrictedKinds.insert(kind.id)
+            }
+        }
+        lines.append("(Kind, member) pairs rejecting ≥1 Kind candidate: \(restrictedPairs) across \(restrictedKinds.count) Kinds")
+        var blockedSplits: [String] = []
+        for kind in split {
+            let defaults = kind.settableMembers.compactMap(\.defaultApp)
+            let counts = Dictionary(grouping: defaults, by: \.url).mapValues(\.count)
+            let top = counts.values.max() ?? 0
+            // Ties have no single majority; the Kind is only blocked if every tied app is refused somewhere.
+            let majority = defaults.filter { counts[$0.url] == top }.reduce(into: [URL: AppRef]()) { $0[$1.url] = $1 }.values
+            guard !majority.isEmpty, !majority.contains(where: { app in kind.settableMembers.allSatisfy { $0.accepts(app) } }) else { continue }
+            let anyUnifier = kind.candidates.first { app in kind.settableMembers.allSatisfy { $0.accepts(app) } }
+            let refusals = majority.map { app in
+                "\(app.name) refused by \(kind.settableMembers.filter { !$0.accepts(app) }.map { "\($0.target)" }.joined(separator: ", "))"
+            }
+            blockedSplits.append("\(kind.name): \(refusals.joined(separator: "; ")); any app all members accept: \(anyUnifier?.name ?? "none")")
+        }
+        lines.append("split Kinds that can't be unified onto their majority app: \(blockedSplits.count) of \(split.count)")
+        for line in blockedSplits { lines.append("  \(line)") }
         lines.append("app-private schemes: \(enriched.filter(\.isAppPrivate).count)")
         for probe in [".css", ".ts", ".go", ".rs"] {
             let owners = enriched.filter { $0.extensions.contains(String(probe.dropFirst())) }.map { "\($0.name) \($0.utis)" }

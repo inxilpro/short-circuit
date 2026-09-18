@@ -2,9 +2,17 @@ import AppKit
 import Foundation
 import UniformTypeIdentifiers
 
+/// The reads LiveKindProvider needs, so tests can stand in for Launch Services.
+nonisolated protocol HandlerLookup: Sendable {
+    func defaultApplicationURL(forContentType identifier: String) -> URL?
+    func applicationURLs(forContentType identifier: String) -> [URL]
+    func defaultApplicationURL(forScheme scheme: String) -> URL?
+    func applicationURLs(forScheme scheme: String) -> [URL]
+}
+
 /// Live default-handler lookups through NSWorkspace. Launch Services answers these from its own
 /// database, so they reflect the current state even when the parsed snapshot is stale.
-nonisolated struct HandlerService: Sendable {
+nonisolated struct HandlerService: HandlerLookup {
     // MARK: - Reads
 
     func defaultApplicationURL(forContentType identifier: String) -> URL? {

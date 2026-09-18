@@ -33,7 +33,11 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
     var candidateURLs: Set<URL>? = nil
 
     func accepts(_ app: AppRef) -> Bool {
-        isSettable && (candidateURLs?.contains(app.url) ?? true)
+        guard isSettable else { return false }
+        guard let candidateURLs else { return true }
+        // An app chosen through "Other…" arrives spelled by NSOpenPanel, not by the provider.
+        let url = URL(filePath: app.url.standardizedFileURL.path(percentEncoded: false), directoryHint: .isDirectory)
+        return candidateURLs.contains(url) || candidateURLs.contains(app.url)
     }
 
     var id: Target { target }

@@ -489,3 +489,116 @@ private struct StaticKindProvider: KindProviding {
 
     func loadKinds(forceRefresh: Bool) async throws -> [Kind] { kinds }
 }
+
+/// macOS only accepts an app it lists for that exact type (found when MHTML → Chrome failed with
+/// 256 on com.microsoft.word.mhtml). The sample Calendar event models this: only Calendar lists
+/// webcal:, although Mail is a Kind-level candidate.
+@MainActor
+struct MemberCandidateWriteTests {
+    private func makeStore() async -> (KindStore, SimulatedHandlerBackend) {
+        let backend = SimulatedHandlerBackend(kinds: SampleKindProvider.kinds)
+        let store = KindStore(provider: SimulatedKindProvider(backend: backend), writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
+        await store.refresh()
+        return (store, backend)
+    }
+
+    private func kind(_ id: Kind.ID, in store: KindStore) throws -> Kind {
+        try #require(store.kinds.first { $0.id == id })
+    }
+
+    private func member(_ target: KindMember.Target, withCandidates urls: Set<URL>?, on app: AppRef) -> KindMember {
+        KindMember(target: target, defaultApp: app, candidateURLs: urls)
+    }
+
+    @Test func membersThatDontListTheAppAreSkippedNotFailed() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(.mail, for: try kind("calendar-event", in: store))
+
+        let calendarEvent = try kind("calendar-event", in: store)
+        #expect(backend.calls.map(\.target) == [.uti("com.apple.ical.ics")])
+        #expect(store.results(for: calendarEvent).map(\.outcome) == [.changed, .skipped(.notSupported(.mail))])
+        #expect(calendarEvent.isSplit)
+    }
+
+    @Test func perMemberRequestForAnUnlistedAppMakesNoCall() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(.mail, for: .scheme("webcal"), in: try kind("calendar-event", in: store))
+
+        #expect(backend.calls.isEmpty)
+        #expect(store.transientMessage?.contains("can’t open this type") == true)
+    }
+
+    @Test func memberMenusOfferOnlyThatMembersApps() async throws {
+        let (store, _) = await makeStore()
+        let calendarEvent = try kind("calendar-event", in: store)
+        let webcal = try #require(calendarEvent.members.first { $0.target == .scheme("webcal") })
+        let ics = try #require(calendarEvent.members.first { $0.target == .uti("com.apple.ical.ics") })
+
+        #expect(calendarEvent.candidates(for: webcal).map(\.url) == [AppRef.calendar.url])
+        #expect(calendarEvent.candidates(for: ics).map(\.url) == [AppRef.calendar.url, AppRef.mail.url])
+    }
+
+    @Test func pickerNotesPartialSupport() async throws {
+        let (store, _) = await makeStore()
+        let calendarEvent = try kind("calendar-event", in: store)
+
+        #expect(calendarEvent.supportNote(for: .mail) == "1 of 2 types")
+        #expect(calendarEvent.supportNote(for: .calendar) == nil)
+    }
+
+    @Test func fixSplitPicksTheAppThatReachesTheMostMembers() {
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [
+                member(.uti("a"), withCandidates: [AppRef.textEdit.url, AppRef.safari.url], on: .textEdit),
+                member(.uti("b"), withCandidates: [AppRef.textEdit.url, AppRef.safari.url], on: .textEdit),
+                member(.uti("c"), withCandidates: [AppRef.safari.url], on: .safari),
+            ],
+            extensions: [], mimeTypes: [], candidates: [.textEdit, .safari]
+        )
+
+        #expect(kind.fixSplitChoice == Kind.FixSplitChoice(app: .safari, unreachable: []))
+    }
+
+    @Test func fixSplitSaysWhichMembersWillStay() {
+        let stuck = member(.uti("c"), withCandidates: [AppRef.preview.url], on: .preview)
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [
+                member(.uti("a"), withCandidates: [AppRef.textEdit.url], on: .textEdit),
+                member(.uti("b"), withCandidates: [AppRef.textEdit.url], on: .textEdit),
+                stuck,
+            ],
+            extensions: [], mimeTypes: [], candidates: [.textEdit, .preview]
+        )
+
+        #expect(kind.fixSplitChoice == Kind.FixSplitChoice(app: .textEdit, unreachable: [stuck]))
+    }
+
+    @Test func unknownCandidatesPlaceNoRestriction() {
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [member(.uti("a"), withCandidates: nil, on: .textEdit), member(.uti("b"), withCandidates: nil, on: .safari)],
+            extensions: [], mimeTypes: [], candidates: [.textEdit, .safari, .preview]
+        )
+
+        #expect(kind.supportNote(for: .preview) == nil)
+        #expect(kind.candidates(for: kind.members[0]) == [.textEdit, .safari, .preview])
+    }
+
+    /// An "Other…" app on a member with unknown candidates can still reach the setter and fail.
+    @Test func setterRejectionOfAnUnlistedAppExplainsTheRule() async throws {
+        let backend = SimulatedHandlerBackend(handlers: [.uti("x"): AppRef.textEdit.url], allowedApps: [.uti("x"): [AppRef.textEdit.url]])
+        let writer = HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1)
+
+        let results = await writer.apply(app: .preview, targets: [.uti("x")]) { _ in }
+
+        guard case .failed(_, 256, let message) = results.first?.outcome else {
+            Issue.record("Expected a 256 failure, got \(String(describing: results.first?.outcome))")
+            return
+        }
+        #expect(message.contains("only allows apps that declare support for the type"))
+    }
+}

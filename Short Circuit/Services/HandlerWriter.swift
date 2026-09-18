@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 nonisolated struct MemberResult: Identifiable, Hashable, Sendable {
     enum SkipReason: Hashable, Sendable {
         case alreadyDefault
+        /// macOS doesn't list the app for this member, so the setter would reject it; no call is made.
+        case notSupported(AppRef)
     }
 
     enum Outcome: Hashable, Sendable {
@@ -205,7 +207,7 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
         // Cocoa's own text for 256 ("The file couldn't be opened") reads as a bug in this app.
         // On macOS 26.6 it means Launch Services refused the type outright, before any prompt.
         let message = isRejectedBeforeConsent(error)
-            ? "macOS rejected changing the default app for this type without asking. Nothing was changed."
+            ? "macOS rejected this app for this type without asking. It only allows apps that declare support for the type. Nothing was changed."
             : error.localizedDescription
         return .failed(domain: error.domain, code: error.code, message: message)
     }

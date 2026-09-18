@@ -62,6 +62,46 @@ extension Kind {
         return apps.max { counts[$0.url, default: 0] < counts[$1.url, default: 0] }
     }
 
+    /// Whether `member` can be set to `app`. A member already on the app counts, even if the
+    /// candidate list somehow omits it.
+    func member(_ member: KindMember, accepts app: AppRef) -> Bool {
+        member.accepts(app) || (member.isSettable && member.defaultApp?.url == app.url)
+    }
+
+    /// Apps offered for one member: only those macOS lists for it, since any other is rejected.
+    func candidates(for member: KindMember) -> [AppRef] {
+        var seen = Set<URL>()
+        return ([member.defaultApp].compactMap { $0 } + candidates)
+            .filter { seen.insert($0.url).inserted && self.member(member, accepts: $0) }
+    }
+
+    /// "2 of 3 types" when the app can take only some settable members; nil when it takes all.
+    func supportNote(for app: AppRef) -> String? {
+        let settable = settableMembers
+        let accepted = settable.filter { member($0, accepts: app) }.count
+        guard settable.count > 1, accepted < settable.count else { return nil }
+        return "\(accepted) of \(settable.count) types"
+    }
+
+    struct FixSplitChoice: Equatable {
+        var app: AppRef
+        /// Settable members that will keep their current app because the chosen one can't open them.
+        var unreachable: [KindMember]
+    }
+
+    /// The current app that the most settable members can be moved to (ties go to the app more
+    /// members already use), plus the members it can't reach.
+    var fixSplitChoice: FixSplitChoice? {
+        let settable = settableMembers
+        var seen = Set<URL>()
+        let apps = settable.compactMap(\.defaultApp).filter { seen.insert($0.url).inserted }
+        func score(_ app: AppRef) -> (Int, Int) {
+            (settable.filter { member($0, accepts: app) }.count, settable.filter { $0.defaultApp?.url == app.url }.count)
+        }
+        guard let best = apps.max(by: { score($0) < score($1) }) else { return nil }
+        return FixSplitChoice(app: best, unreachable: settable.filter { !member($0, accepts: best) })
+    }
+
     /// The UTI whose document icon represents this Kind. Finder shows the icon of the type a
     /// file's extension resolves to, so that type wins when it's one of our settable members.
     /// Unsettable members never supply the icon: `public.markdown` on the dev Mac carries Word's

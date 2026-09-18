@@ -125,6 +125,13 @@ enum DebugSnapshotter {
             await snapshot("inert-member-after-set-light", to: directory)
         }
 
+        // Mail is a candidate for the Kind, but only Calendar lists webcal:.
+        if let calendarEvent = kind("calendar-event") {
+            store.selectedKindID = calendarEvent.id
+            await store.setDefault(.mail, for: calendarEvent)
+            await snapshot("write-not-supported-light", to: directory)
+        }
+
         if let heic = kind("heic") {
             store.selectedKindID = heic.id
             await store.fixSplit(heic)

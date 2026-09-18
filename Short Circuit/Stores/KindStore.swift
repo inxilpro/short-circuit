@@ -203,23 +203,27 @@ final class KindStore {
     /// Unsettable members are left out of every plan: macOS refuses them without a prompt, and
     /// no file resolves to them, so a call could only fail.
     func setDefault(_ app: AppRef, for kind: Kind) async {
-        await requestChange(app, targets: kind.settableMembers.map(\.target), in: kind)
+        await requestChange(app, members: kind.settableMembers, in: kind)
     }
 
     func setDefault(_ app: AppRef, for target: KindMember.Target, in kind: Kind) async {
-        guard kind.settableMembers.contains(where: { $0.target == target }) else { return }
-        await requestChange(app, targets: [target], in: kind)
+        guard let member = kind.settableMembers.first(where: { $0.target == target }) else { return }
+        await requestChange(app, members: [member], in: kind)
     }
 
     func fixSplit(_ kind: Kind) async {
-        guard let majority = kind.majorityApp else { return }
-        await requestChange(majority, targets: kind.settableMembers.map(\.target), in: kind)
+        guard let choice = kind.fixSplitChoice else { return }
+        await requestChange(choice.app, members: kind.settableMembers, in: kind)
     }
 
     /// Applies straight away: macOS asks the user to confirm every handler change itself, so an
     /// app-level confirmation only doubled the questions. The writer plans from live reads, not
     /// the displayed Kind, immediately before it runs.
-    private func requestChange(_ app: AppRef, targets: [KindMember.Target], in kind: Kind) async {
+    ///
+    /// macOS only accepts an app it lists for that exact type (anything else fails with error 256
+    /// and no prompt), so members that don't list the app are reported as not supported instead
+    /// of being attempted.
+    private func requestChange(_ app: AppRef, members: [KindMember], in kind: Kind) async {
         guard canWrite else {
             showMessage("Another change is still in progress.")
             return
@@ -231,17 +235,27 @@ final class KindStore {
             progress = nil
         }
 
-        let outcome = await writer.apply(app: app, targets: targets) { [weak self] step in
+        let supported = members.filter { kind.member($0, accepts: app) }
+        let unsupported = members.filter { !kind.member($0, accepts: app) }
+        let targets = supported.map(\.target)
+        let appName = AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app)
+
+        let applied = targets.isEmpty ? [] : await writer.apply(app: app, targets: targets) { [weak self] step in
             self?.progress = step
         }
-        let affected = outcome.map(\.target)
-        if outcome.allSatisfy({ $0.outcome == .skipped(.alreadyDefault) }) {
-            let appName = AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app)
+        let skippedAsUnsupported = unsupported.map {
+            MemberResult(target: $0.target, outcome: .skipped(.notSupported(app)), handlerAfter: $0.defaultApp)
+        }
+        let outcome = applied + skippedAsUnsupported
+
+        if supported.isEmpty {
+            showMessage("\(appName) can’t open \(members.count == 1 ? "this type" : "any of these types").")
+        } else if outcome.allSatisfy({ $0.outcome == .skipped(.alreadyDefault) }) {
             showMessage("\(kind.name) already opens with \(appName).")
         } else {
             results[kind.id] = outcome
         }
-        await reloadHandlers(for: targets + affected)
+        await reloadHandlers(for: members.map(\.target) + applied.map(\.target))
     }
 
     /// Re-reads handlers from the system rather than trusting the writer's outcome, since a Kind

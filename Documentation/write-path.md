@@ -41,7 +41,23 @@ Every covered target's result still comes from a live re-read, so if a browser t
 
 The same hand test confirmed that the (since removed) confirmation dialog's Continue button applied the change in the real app.
 
-## Error 256
+## Per-member candidates
+
+macOS only accepts an app it lists for that exact type. Setting any other app fails with `NSCocoaErrorDomain` 256 and no prompt.
+
+**How it was found (2026-09-18):**
+- Chris's hand test set MHTML to Google Chrome, and it failed with 256 on `com.microsoft.word.mhtml`.
+- The orchestrator's probe showed that `urlsForApplications(toOpen: com.microsoft.word.mhtml)` lists only Word and Chromium. Chrome was a candidate for the Kind only through the other member, `org.ietf.mhtml`.
+- A Kind's candidates are the union of its members' lists, so not every candidate fits every member.
+
+**The rule:**
+- `KindMember.candidateURLs` holds the apps macOS lists for that member. Nil means unknown, and places no restriction.
+- **Planning:** members that don't accept the chosen app make no setter call. They are reported as a neutral "X can't open this type" row, and counted separately in the summary ("1 changed · 1 not supported"). If their app differs, the Kind honestly stays split.
+- **Fix Split:** picks the current app that the most settable members can take. Ties go to the app more members already use. If some members can't take it, the button reads "Use X Where Possible" and names the members that will stay.
+- **Menus:** the per-member ⋯ menu lists only that member's candidates, plus "Other…". The Kind-level picker marks partially supported apps with a quiet note such as "1 of 2 types".
+- **"Other…":** an app picked there can still reach the setter on a member whose candidates are unknown. A 256 then reads "macOS rejected this app for this type without asking. It only allows apps that declare support for the type."
+
+
 
 Some types, such as `public.markdown` on macOS 26.6, make the content-type setter fail with `NSCocoaErrorDomain` 256 and no prompt. That member is reported as failed: "macOS rejected changing the default app for this type without asking. Nothing was changed."
 

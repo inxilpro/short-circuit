@@ -4,10 +4,14 @@ import Foundation
 /// defaults and candidates, since handler choices change more often than the snapshot is refreshed.
 nonisolated struct LiveKindProvider: KindProviding {
     let index: LaunchServicesIndex
-    let handlers: HandlerService
+    let handlers: any HandlerLookup
     let builder: KindBuilder
 
-    init(index: LaunchServicesIndex = LaunchServicesIndex(), handlers: HandlerService = HandlerService(), builder: KindBuilder = KindBuilder(catalog: Catalog.bundled)) {
+    init(
+        index: LaunchServicesIndex = LaunchServicesIndex(),
+        handlers: any HandlerLookup = HandlerService(),
+        builder: KindBuilder = KindBuilder(catalog: Catalog.bundled)
+    ) {
         self.index = index
         self.handlers = handlers
         self.builder = builder
@@ -22,8 +26,10 @@ nonisolated struct LiveKindProvider: KindProviding {
     func enrich(_ kinds: [Kind]) -> [Kind] {
         var appCache: [URL: AppRef] = [:]
         func app(_ url: URL) -> AppRef {
+            let url = Self.canonical(url)
             if let cached = appCache[url] { return cached }
-            let app = HandlerService.appRef(for: url)
+            var app = HandlerService.appRef(for: url)
+            app.url = url
             appCache[url] = app
             return app
         }
@@ -44,7 +50,10 @@ nonisolated struct LiveKindProvider: KindProviding {
                     candidateURLs = handlers.applicationURLs(forScheme: scheme)
                 }
                 kind.members[index].defaultApp = defaultURL.map(app)
-                if let defaultURL { defaults.insert(defaultURL.standardizedFileURL) }
+                if let defaultURL { defaults.insert(Self.canonical(defaultURL)) }
+                // Launch Services' own list for this member is the only set its setter accepts; the
+                // current default always counts, since it's already assigned.
+                kind.members[index].candidateURLs = Set((candidateURLs + [defaultURL].compactMap { $0 }).map(Self.canonical))
                 liveCandidates.append(contentsOf: candidateURLs.map(app))
             }
             kind.candidates = Self.mergeCandidates(live: liveCandidates, explicit: kind.candidates, defaults: defaults)
@@ -55,20 +64,28 @@ nonisolated struct LiveKindProvider: KindProviding {
         }
     }
 
+    /// One spelling per app bundle, so `KindMember.accepts` can compare URLs from the snapshot and from
+    /// NSWorkspace, which differ in trailing slashes and `..` components.
+    static func canonical(_ url: URL) -> URL {
+        URL(filePath: url.standardizedFileURL.path(percentEncoded: false), directoryHint: .isDirectory)
+    }
+
     /// Unique by standardized URL, so two installs sharing a bundle ID both stay. Ordered by relevance:
     /// current defaults, then apps that explicitly claim a member (the builder's list), then apps Launch
     /// Services only offers through broad conformance; alphabetical within each tier. Apps that no longer
     /// exist on disk are dropped.
     static func mergeCandidates(live: [AppRef], explicit: [AppRef], defaults: Set<URL>) -> [AppRef] {
-        let explicitURLs = Set(explicit.map { $0.url.standardizedFileURL })
+        let defaults = Set(defaults.map(canonical))
+        let explicitURLs = Set(explicit.map { canonical($0.url) })
         var chosen: [URL: AppRef] = [:]
-        for app in explicit + live {
-            let url = app.url.standardizedFileURL
+        for var app in explicit + live {
+            let url = canonical(app.url)
             guard chosen[url] == nil, FileManager.default.fileExists(atPath: url.path) else { continue }
+            app.url = url
             chosen[url] = app
         }
         func tier(_ app: AppRef) -> Int {
-            let url = app.url.standardizedFileURL
+            let url = app.url
             if defaults.contains(url) { return 0 }
             return explicitURLs.contains(url) ? 1 : 2
         }

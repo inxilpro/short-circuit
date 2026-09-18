@@ -30,6 +30,8 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
     private let state: Mutex<State>
     private let behaviors: [KindMember.Target: Behavior]
     private let browserFollowers: Set<KindMember.Target>
+    /// Apps macOS lists per target. Like the real setter, any other app fails with 256 and no prompt.
+    private let allowedApps: [KindMember.Target: Set<URL>]
     private let latency: Duration
 
     /// `browserFollowers` are the targets an accepted `http` call also changes. The default is the
@@ -39,11 +41,13 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         handlers: [KindMember.Target: URL],
         behaviors: [KindMember.Target: Behavior] = [:],
         browserFollowers: Set<KindMember.Target> = WritePlan.browserRole,
+        allowedApps: [KindMember.Target: Set<URL>] = [:],
         latency: Duration = .zero
     ) {
         state = Mutex(State(handlers: handlers))
         self.behaviors = behaviors
         self.browserFollowers = browserFollowers
+        self.allowedApps = allowedApps
         self.latency = latency
     }
 
@@ -54,10 +58,12 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         latency: Duration = .zero
     ) {
         var handlers: [KindMember.Target: URL] = [:]
+        var allowedApps: [KindMember.Target: Set<URL>] = [:]
         for member in kinds.flatMap(\.members) {
             handlers[member.target] = member.defaultApp?.url
+            allowedApps[member.target] = member.candidateURLs
         }
-        self.init(handlers: handlers, behaviors: behaviors, browserFollowers: browserFollowers, latency: latency)
+        self.init(handlers: handlers, behaviors: behaviors, browserFollowers: browserFollowers, allowedApps: allowedApps, latency: latency)
     }
 
     var calls: [Call] {
@@ -86,6 +92,10 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         defer { state.withLock { $0.inFlight -= 1 } }
         if latency > .zero {
             try? await Task.sleep(for: latency)
+        }
+
+        if let allowed = allowedApps[target], !allowed.contains(app) {
+            throw CocoaError(.fileReadUnknown)
         }
 
         switch behaviors[target] ?? .accept {

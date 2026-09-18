@@ -236,8 +236,10 @@ nonisolated extension SampleKindProvider {
         Kind(
             id: "calendar-event", name: "Calendar event", category: .communication,
             members: [
-                KindMember(target: .uti("com.apple.ical.ics"), defaultApp: .calendar),
-                KindMember(target: .scheme("webcal"), defaultApp: .calendar),
+                KindMember(target: .uti("com.apple.ical.ics"), defaultApp: .calendar, candidateURLs: [AppRef.calendar.url, AppRef.mail.url]),
+                // Only Calendar lists webcal:, so Mail is a Kind-level candidate this member rejects,
+                // like Chrome and com.microsoft.word.mhtml on the dev Mac.
+                KindMember(target: .scheme("webcal"), defaultApp: .calendar, candidateURLs: [AppRef.calendar.url]),
             ],
             extensions: ["ics"], mimeTypes: ["text/calendar"],
             candidates: [.calendar, .mail]
