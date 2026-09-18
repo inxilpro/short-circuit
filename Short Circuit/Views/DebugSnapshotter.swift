@@ -94,20 +94,36 @@ enum DebugSnapshotter {
             store.selectedKindID = phone.id
             await store.setDefault(.messages, for: phone)
             await snapshot("write-confirm-light", to: directory)
-            let confirming = Task { await store.confirmPendingChange() }
+            let confirming = Task { await ChangeConfirmationActions(store: store).replayContinue() }
             await snapshot("write-applying-light", to: directory)
             await confirming.value
             await snapshot("write-results-light", to: directory)
         }
 
-        if let markdown = kind("markdown") {
-            store.selectedKindID = markdown.id
-            await store.setDefault(.preview, for: markdown)
-            await store.confirmPendingChange()
+        store.sidebarSelection = .split
+        store.selectedKindID = kind("phone-call")?.id
+        await snapshot("write-split-resolved-light", to: directory)
+        store.layout = .list
+        await snapshot("write-split-resolved-list-light", to: directory)
+        store.layout = .grid
+        store.sidebarSelection = .all
+
+        if let richText = kind("rtf") {
+            store.selectedKindID = richText.id
+            await store.setDefault(.notes, for: richText)
+            await ChangeConfirmationActions(store: store).replayContinue()
             await snapshot("write-partial-failure-light", to: directory)
             NSApp.appearance = NSAppearance(named: .darkAqua)
             await snapshot("write-partial-failure-dark", to: directory)
             NSApp.appearance = NSAppearance(named: .aqua)
+        }
+
+        // public.markdown is unsettable in the sample data, so this is one call and a clean result.
+        if let markdown = kind("markdown") {
+            store.selectedKindID = markdown.id
+            await snapshot("inert-member-light", to: directory)
+            await store.setDefault(.preview, for: markdown)
+            await snapshot("inert-member-after-set-light", to: directory)
         }
 
         if let heic = kind("heic") {
@@ -120,7 +136,7 @@ enum DebugSnapshotter {
             store.selectedKindID = web.id
             await store.setDefault(.textEdit, for: .uti("public.xhtml"), in: web)
             await snapshot("write-browser-confirm-light", to: directory)
-            await store.confirmPendingChange()
+            await ChangeConfirmationActions(store: store).replayContinue()
             await snapshot("write-browser-role-light", to: directory)
         }
 
@@ -132,9 +148,9 @@ enum DebugSnapshotter {
             simulated.backend.changeExternally(.uti("public.email-message"), to: AppRef.textEdit.url)
             await store.setDefault(.mail, for: email)
             simulated.backend.changeExternally(.scheme("mailto"), to: AppRef.textEdit.url)
-            await store.confirmPendingChange()
+            await ChangeConfirmationActions(store: store).replayContinue()
             await snapshot("write-revised-confirm-light", to: directory)
-            store.cancelPendingChange()
+            ChangeConfirmationActions(store: store).replayCancel()
         }
     }
 

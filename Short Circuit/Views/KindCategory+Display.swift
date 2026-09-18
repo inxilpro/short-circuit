@@ -42,9 +42,9 @@ extension KindMember.Target {
 }
 
 extension Kind {
-    /// The app most members point at, used to decide which members are the odd ones out.
+    /// The app most settable members point at, used to decide which members are the odd ones out.
     var majorityApp: AppRef? {
-        let apps = members.compactMap(\.defaultApp)
+        let apps = settableMembers.compactMap(\.defaultApp)
         let counts = Dictionary(apps.map { ($0.url, 1) }, uniquingKeysWith: +)
         return apps.max { counts[$0.url, default: 0] < counts[$1.url, default: 0] }
     }

@@ -31,3 +31,32 @@ enum ChangeConfirmation {
         return lines.joined(separator: "\n")
     }
 }
+
+/// The confirmation dialog's behavior, kept out of the view so tests and snapshot runs can replay
+/// it in the order SwiftUI actually uses.
+struct ChangeConfirmationActions {
+    let store: KindStore
+
+    /// Runs when SwiftUI sets the dialog's `isPresented` binding to false, which happens for
+    /// every button, Continue included, before that button's action.
+    func dismiss() {
+        store.cancelPendingChange()
+    }
+
+    func continueTapped(_ change: KindStore.PendingChange) async {
+        await store.confirm(change)
+    }
+
+    /// A Continue tap as SwiftUI performs it: dismissal first, then the button's action.
+    func replayContinue() async {
+        guard let change = store.pendingChange else { return }
+        dismiss()
+        await continueTapped(change)
+    }
+
+    /// A Cancel tap: dismissal, then the Cancel action.
+    func replayCancel() {
+        dismiss()
+        store.cancelPendingChange()
+    }
+}

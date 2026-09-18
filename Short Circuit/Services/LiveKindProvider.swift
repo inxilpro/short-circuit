@@ -7,7 +7,7 @@ nonisolated struct LiveKindProvider: KindProviding {
     let handlers: HandlerService
     let builder: KindBuilder
 
-    init(index: LaunchServicesIndex = LaunchServicesIndex(), handlers: HandlerService = HandlerService(), builder: KindBuilder = KindBuilder()) {
+    init(index: LaunchServicesIndex = LaunchServicesIndex(), handlers: HandlerService = HandlerService(), builder: KindBuilder = KindBuilder(catalog: Catalog.bundled)) {
         self.index = index
         self.handlers = handlers
         self.builder = builder

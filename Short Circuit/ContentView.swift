@@ -23,12 +23,12 @@ struct ContentView: View {
                     store.pendingChange.map(ChangeConfirmation.title(for:)) ?? "",
                     isPresented: isConfirmingChange,
                     presenting: store.pendingChange
-                ) { _ in
+                ) { change in
                     Button("Continue") {
-                        Task { await store.confirmPendingChange() }
+                        Task { await confirmationActions.continueTapped(change) }
                     }
                     Button("Cancel", role: .cancel) {
-                        store.cancelPendingChange()
+                        confirmationActions.dismiss()
                     }
                 } message: { change in
                     Text(ChangeConfirmation.message(for: change))
@@ -59,10 +59,14 @@ struct ContentView: View {
         }
     }
 
+    private var confirmationActions: ChangeConfirmationActions {
+        ChangeConfirmationActions(store: store)
+    }
+
     private var isConfirmingChange: Binding<Bool> {
         Binding(
             get: { store.pendingChange != nil },
-            set: { if !$0 { store.cancelPendingChange() } }
+            set: { if !$0 { confirmationActions.dismiss() } }
         )
     }
 

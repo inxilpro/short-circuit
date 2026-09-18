@@ -34,6 +34,14 @@ nonisolated struct KindBuilder: Sendable {
         /// Bare extension or MIME claims that match no declared type, or several unrelated ones. They
         /// have no UTI a setter could act on, so they don't become Kinds.
         var unresolvedTags: Set<String>
+        /// Members macOS won't assign a handler to; they stay visible but don't count toward splits.
+        var unsettableUTIs: Set<String> = []
+        /// Kinds dropped because none of their members could be set.
+        var droppedUnsettableKindCount = 0
+        /// Catalog entries with no claimed UTI or scheme on this Mac.
+        var unmatchedCatalogEntries: [String] = []
+        /// Per catalog entry, listed UTIs nothing on this Mac claims.
+        var unmatchedCatalogUTIs: [String: [String]] = [:]
     }
 
     static let webPageID = "web-page"
@@ -51,6 +59,8 @@ nonisolated struct KindBuilder: Sendable {
         guard let type = UTType(identifier) else { return [] }
         return Set(type.supertypes.map(\.identifier))
     }
+    var isSettableType: @Sendable (String) -> Bool = KindBuilder.isSettableLive
+    var catalog: Catalog?
 
     func build(from snapshot: LSSnapshot) -> [Kind] {
         analyze(snapshot).kinds
@@ -65,7 +75,7 @@ nonisolated struct KindBuilder: Sendable {
         for claim in tagClaims.resolved where claim.utis.count == 1 || claim.areAliases {
             for uti in claim.utis { claimers[uti, default: []].formUnion(claim.claimers) }
         }
-        let nodes = claimers.keys.filter { context.hasExtension($0) && !Self.isContainer(lineage($0, context: context)) }.sorted()
+        let nodes = claimers.keys.filter { context.hasExtension($0) && !Self.isContainer($0, lineage: lineage($0, context: context)) }.sorted()
 
         var unionFind = UnionFind(nodes)
         var traits: [String: GroupTraits] = [:]
@@ -95,24 +105,46 @@ nonisolated struct KindBuilder: Sendable {
         }
 
         var groups = unionFind.groups()
+        var groupByNode: [String: String] = [:]
+        for (root, members) in groups {
+            for member in members { groupByNode[member] = root }
+        }
+
+        var drafts: [Draft] = []
+        var catalogReport = CatalogReport()
+        var catalogSchemes: Set<String> = []
+        var catalogIDs: Set<String> = []
+        if let catalog {
+            let assignment = assignCatalog(catalog, nodes: nodes, groupByNode: groupByNode, groups: groups, claimers: claimers, context: context)
+            catalogReport = assignment.report
+            let assigned = Set(assignment.drafts.flatMap(\.utis))
+            groups = groups.compactMapValues { members in
+                let remaining = members.filter { !assigned.contains($0) }
+                return remaining.isEmpty ? nil : remaining
+            }
+            drafts = assignment.drafts
+            catalogSchemes = Set(assignment.drafts.flatMap(\.schemes))
+            catalogIDs = Set(assignment.drafts.map(\.id))
+        }
+
         let webRoots = Set(["public.html", "public.xhtml"].compactMap { unionFind.find($0) })
         let webUTIs = webRoots.flatMap { groups.removeValue(forKey: $0) ?? [] }
 
-        var drafts: [Draft] = groups.values.map { utis in
+        drafts += groups.values.map { utis in
             let ordered = context.primaryOrder(utis, claimers: claimers)
             return Draft(id: "uti:\(ordered[0])", utis: ordered, schemes: [])
         }
 
-        let webSchemes = ["http", "https"].filter { context.claimersByScheme[$0] != nil }
-        if !webUTIs.isEmpty || !webSchemes.isEmpty {
+        let webSchemes = ["http", "https"].filter { context.claimersByScheme[$0] != nil && !catalogSchemes.contains($0) }
+        if (!webUTIs.isEmpty || !webSchemes.isEmpty) && !catalogIDs.contains(Self.webPageID) {
             let utis = context.primaryOrder(webUTIs, claimers: claimers)
             drafts.append(Draft(id: Self.webPageID, utis: utis, schemes: webSchemes, name: "Web page", category: .web))
         }
-        if context.claimersByScheme["mailto"] != nil {
+        if context.claimersByScheme["mailto"] != nil && !catalogSchemes.contains("mailto") && !catalogIDs.contains(Self.emailID) {
             drafts.append(Draft(id: Self.emailID, utis: [], schemes: ["mailto"], name: "Email", category: .communication))
         }
         for scheme in context.claimersByScheme.keys.sorted()
-        where !["http", "https", "mailto"].contains(scheme) && !Self.abstractSchemes.contains(scheme) {
+        where !["http", "https", "mailto"].contains(scheme) && !Self.abstractSchemes.contains(scheme) && !catalogSchemes.contains(scheme) {
             let owners = context.claimersByScheme[scheme, default: []].compactMap { context.apps[$0] }
             let isWellKnown = Self.schemeNames[scheme] != nil || Self.schemeCategory(scheme) != .other
             drafts.append(Draft(
@@ -162,9 +194,109 @@ nonisolated struct KindBuilder: Sendable {
                 }
             )
         }
+        let unsettableUTIs = Set(kinds.flatMap { $0.members.filter { !$0.isSettable } }.compactMap { member -> String? in
+            if case .uti(let identifier) = member.target { identifier } else { nil }
+        })
+        let unsettableKindCount = kinds.count { $0.settableMembers.isEmpty }
+        kinds.removeAll { $0.settableMembers.isEmpty }
         Self.disambiguateNames(&kinds)
         kinds.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return Output(kinds: kinds, genericTags: genericTags, unresolvedTags: unresolvedTags)
+        return Output(
+            kinds: kinds,
+            genericTags: genericTags,
+            unresolvedTags: unresolvedTags,
+            unsettableUTIs: unsettableUTIs,
+            droppedUnsettableKindCount: unsettableKindCount,
+            unmatchedCatalogEntries: catalogReport.unmatchedEntries,
+            unmatchedCatalogUTIs: catalogReport.unmatchedUTIs
+        )
+    }
+
+    // MARK: - Catalog
+
+    private struct CatalogReport {
+        var unmatchedEntries: [String] = []
+        var unmatchedUTIs: [String: [String]] = [:]
+    }
+
+    /// The catalog is authoritative for the UTIs it lists: they form one Kind per entry however the
+    /// heuristic grouped them, and no other entry or heuristic group can take them. A node the catalog
+    /// doesn't list joins an entry when
+    ///   - a heuristic cluster-mate is listed by that entry and the node declares one of the entry's
+    ///     extensions (Kaleidoscope's CSS type next to `public.css`), or otherwise
+    ///   - its preferred extension is one of the entry's extensions and its category doesn't conflict
+    ///     (a vendor's own `.csv` type).
+    /// A node that matches several entries joins none. Entries matching nothing on this Mac produce no Kind.
+    private func assignCatalog(
+        _ catalog: Catalog,
+        nodes: [String],
+        groupByNode: [String: String],
+        groups: [String: [String]],
+        claimers: [String: Set<String>],
+        context: Context
+    ) -> (drafts: [Draft], report: CatalogReport) {
+        var owner: [String: Int] = [:]
+        for (index, entry) in catalog.kinds.enumerated() {
+            for uti in entry.utis where owner[uti] == nil { owner[uti] = index }
+        }
+
+        let nodeSet = Set(nodes)
+        var members: [Int: [String]] = [:]
+        var report = CatalogReport()
+        for (index, entry) in catalog.kinds.enumerated() {
+            for uti in entry.utis where owner[uti] == index {
+                let isAvailable = nodeSet.contains(uti)
+                    || (!(claimers[uti]?.isEmpty ?? true) && !Self.isContainer(uti, lineage: lineage(uti, context: context)))
+                if isAvailable {
+                    members[index, default: []].append(uti)
+                } else {
+                    report.unmatchedUTIs[entry.id, default: []].append(uti)
+                }
+            }
+        }
+
+        let entryExtensions = catalog.kinds.map { Set($0.extensions.map { ".\($0)" }) }
+        for uti in nodes where owner[uti] == nil {
+            let tags = context.mergeTags(uti)
+            let mates = groupByNode[uti].flatMap { groups[$0] } ?? []
+            let clusterEntries = Set(mates.compactMap { owner[$0] }).filter { !entryExtensions[$0].isDisjoint(with: tags) }
+
+            var chosen: Int?
+            if clusterEntries.count == 1 {
+                chosen = clusterEntries.first
+            } else if clusterEntries.isEmpty {
+                let category = Self.category(identifier: uti, lineage: lineage(uti, context: context))
+                let adopting = catalog.kinds.indices.filter { index in
+                    guard !entryExtensions[index].isDisjoint(with: context.preferredExtensions(uti)) else { return false }
+                    guard let wanted = catalog.kinds[index].category, category != .other else { return true }
+                    return wanted == category
+                }
+                if adopting.count == 1 { chosen = adopting[0] }
+            }
+            if let chosen { members[chosen, default: []].append(uti) }
+        }
+
+        var drafts: [Draft] = []
+        for (index, entry) in catalog.kinds.enumerated() {
+            let schemes = entry.schemes.filter { context.claimersByScheme[$0] != nil }
+            let utis = context.primaryOrder(members[index] ?? [], claimers: claimers)
+            guard !utis.isEmpty || !schemes.isEmpty else {
+                report.unmatchedEntries.append(entry.id)
+                continue
+            }
+            drafts.append(Draft(
+                id: entry.id,
+                utis: utis,
+                schemes: schemes,
+                name: entry.name,
+                category: entry.category ?? (utis.isEmpty ? schemes.first.map(Self.schemeCategory) : nil),
+                commonRank: entry.common,
+                keywords: entry.keywords,
+                catalogExtensions: entry.extensions,
+                catalogID: entry.id
+            ))
+        }
+        return (drafts, report)
     }
 
     // MARK: - Kind assembly
@@ -183,12 +315,24 @@ nonisolated struct KindBuilder: Sendable {
     /// Apps, loadable bundles (plug-ins, prefpanes, test bundles), volumes and plain folders are opened
     /// by the system, not by an app a person picks. Document packages (`.rtfd`, `.pages`, photo
     /// libraries) are directories too, but they're packages, and bundles that are content stay.
-    static func isContainer(_ lineage: Set<String>) -> Bool {
+    static func isContainer(_ identifier: String, lineage: Set<String>) -> Bool {
         if lineage.contains("com.apple.application") || lineage.contains("public.volume") { return true }
+        if documentBundlePrefixes.contains(where: identifier.hasPrefix) { return false }
         let isContent = lineage.contains("public.content") || lineage.contains("public.composite-content")
         if lineage.contains("com.apple.bundle"), !isContent { return true }
         let isDirectory = lineage.contains("public.directory") || lineage.contains("public.folder")
         return isDirectory && !lineage.contains("com.apple.package") && !isContent
+    }
+
+    /// Bundle-shaped formats people do reassign (Installer vs. Suspicious Package, Wallet passes)
+    /// even though they don't declare content conformance.
+    private static let documentBundlePrefixes = ["com.apple.installer-", "com.apple.pkpass"]
+
+    /// macOS refuses to assign a handler to a type that conforms to neither `public.item` nor
+    /// `public.data` (Word's bare `public.markdown` import), and no file resolves to it anyway.
+    static func isSettableLive(_ identifier: String) -> Bool {
+        guard let type = UTType(identifier) else { return false }
+        return type.conforms(to: .item) || type.conforms(to: .data)
     }
 
     private func lineage(_ uti: String, context: Context) -> Set<String> {
@@ -202,6 +346,10 @@ nonisolated struct KindBuilder: Sendable {
         var name: String?
         var category: KindCategory?
         var isAppPrivate = false
+        var commonRank: Int?
+        var keywords: [String] = []
+        var catalogExtensions: [String] = []
+        var catalogID: String?
     }
 
     private func makeKind(
@@ -211,7 +359,7 @@ nonisolated struct KindBuilder: Sendable {
         extraClaimers: Set<String>,
         showsTag: (String, String) -> Bool
     ) -> Kind {
-        var extensions: [String] = []
+        var extensions = draft.catalogExtensions
         var mimeTypes: [String] = []
         for uti in draft.utis {
             for tag in context.displayTags(uti) where showsTag(tag, uti) && !Self.meaninglessMIMETypes.contains(tag) {
@@ -224,7 +372,7 @@ nonisolated struct KindBuilder: Sendable {
             }
         }
 
-        let members = draft.utis.map { KindMember(target: .uti($0), defaultApp: context.defaultApp(forContentType: $0)) }
+        let members = draft.utis.map { KindMember(target: .uti($0), defaultApp: context.defaultApp(forContentType: $0), isSettable: isSettableType($0)) }
             + draft.schemes.map { KindMember(target: .scheme($0), defaultApp: context.defaultApp(forScheme: $0)) }
 
         var candidateKeys = extraClaimers
@@ -247,7 +395,10 @@ nonisolated struct KindBuilder: Sendable {
             extensions: extensions,
             mimeTypes: mimeTypes,
             candidates: candidates,
-            isAppPrivate: draft.isAppPrivate
+            isAppPrivate: draft.isAppPrivate,
+            commonRank: draft.commonRank,
+            keywords: draft.keywords,
+            catalogID: draft.catalogID
         )
     }
 
@@ -309,7 +460,8 @@ nonisolated struct KindBuilder: Sendable {
                     suffixes[index] = kinds[index].utis.first ?? kinds[index].schemes.first.map { "\($0):" } ?? kinds[index].id
                 }
             }
-            for index in group {
+            // Catalog names are curated; only heuristic Kinds get a suffix.
+            for index in group where kinds[index].catalogID == nil {
                 if let suffix = suffixes[index] { kinds[index].name += " (\(suffix))" }
             }
         }
@@ -518,6 +670,10 @@ nonisolated private struct Context {
     /// Tags shown to people and used for search: every declaration, active ones first.
     func displayTags(_ uti: String) -> [String] {
         displayTagsByUTI[uti] ?? []
+    }
+
+    func preferredExtensions(_ uti: String) -> Set<String> {
+        preferredExtensionsByUTI[uti] ?? []
     }
 
     func hasExtension(_ uti: String) -> Bool {

@@ -57,6 +57,7 @@ final class KindStore {
     /// live reads are only valid while nothing else is writing.
     private(set) var activity: WriteActivity = .idle
     private(set) var results: [Kind.ID: [MemberResult]] = [:]
+    private var splitSnapshotIDs: Set<Kind.ID> = []
     private var writeGeneration = 0
     private var verifiedHandlers: [KindMember.Target: AppRef?] = [:]
     var pendingChange: PendingChange?
@@ -75,8 +76,18 @@ final class KindStore {
         kinds.filter { $0.candidates.count >= 2 }
     }
 
+    /// Kinds that were split at the last load or explicit refresh, plus any that became split
+    /// since. Fixed ones stay listed for the session so progress stays visible.
     var splitKinds: [Kind] {
-        kinds.filter(\.isSplit)
+        kinds.filter { splitSnapshotIDs.contains($0.id) || $0.isSplit }
+    }
+
+    var unresolvedSplitCount: Int {
+        kinds.filter(\.isSplit).count
+    }
+
+    var resolvedSplitIDs: Set<Kind.ID> {
+        Set(kinds.filter { splitSnapshotIDs.contains($0.id) && !$0.isSplit }.map(\.id))
     }
 
     var categoriesWithKinds: [KindCategory] {
@@ -138,6 +149,7 @@ final class KindStore {
                 loaded = Self.overlay(verifiedHandlers, onto: loaded)
             }
             state = .loaded(loaded.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
+            splitSnapshotIDs = Set(loaded.filter(\.isSplit).map(\.id))
             let ids = Set(loaded.map(\.id))
             results = results.filter { ids.contains($0.key) }
             if let selectedKindID, !ids.contains(selectedKindID) {
@@ -182,17 +194,20 @@ final class KindStore {
         results[kind.id] ?? []
     }
 
+    /// Unsettable members are left out of every plan: macOS refuses them without a prompt, and
+    /// no file resolves to them, so a call could only fail.
     func setDefault(_ app: AppRef, for kind: Kind) async {
-        await requestChange(app, targets: kind.members.map(\.target), in: kind)
+        await requestChange(app, targets: kind.settableMembers.map(\.target), in: kind)
     }
 
     func setDefault(_ app: AppRef, for target: KindMember.Target, in kind: Kind) async {
+        guard kind.settableMembers.contains(where: { $0.target == target }) else { return }
         await requestChange(app, targets: [target], in: kind)
     }
 
     func fixSplit(_ kind: Kind) async {
         guard let majority = kind.majorityApp else { return }
-        await requestChange(majority, targets: kind.members.map(\.target), in: kind)
+        await requestChange(majority, targets: kind.settableMembers.map(\.target), in: kind)
     }
 
     /// Plans from live reads, not the displayed Kind, so the confirmation describes what will
@@ -218,8 +233,11 @@ final class KindStore {
         }
     }
 
-    func confirmPendingChange() async {
-        guard let change = pendingChange else { return }
+    /// Takes the change the dialog showed rather than reading `pendingChange`: SwiftUI dismisses
+    /// a confirmation dialog, which clears `pendingChange` through its binding, before the
+    /// button's task gets to run.
+    func confirm(_ change: PendingChange) async {
+        if let pending = pendingChange, pending.id != change.id { return }
         pendingChange = nil
         await run(change)
     }
@@ -269,6 +287,7 @@ final class KindStore {
         // The reads above suspend, so merge into whatever is loaded now rather than a stale copy.
         guard case .loaded(let all) = state else { return }
         let merged = Self.overlay(read, onto: all)
+        splitSnapshotIDs.formUnion(merged.filter(\.isSplit).map(\.id))
         for kind in merged where kind.members.contains(where: { read[$0.target] != nil }) {
             IconCache.invalidate(typeIdentifiers: kind.utis)
         }

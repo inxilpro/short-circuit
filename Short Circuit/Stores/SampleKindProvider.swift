@@ -52,7 +52,9 @@ nonisolated extension SampleKindProvider {
             id: "markdown", name: "Markdown", category: .documents,
             members: [
                 KindMember(target: .uti("net.daringfireball.markdown"), defaultApp: .textEdit),
-                KindMember(target: .uti("public.markdown"), defaultApp: .safari),
+                // Mirrors the dev Mac, where public.markdown is declared without conformance to
+                // public.item and macOS refuses to give it a handler.
+                KindMember(target: .uti("public.markdown"), defaultApp: .safari, isSettable: false),
             ],
             extensions: ["md", "markdown", "mdown", "mkd"], mimeTypes: ["text/markdown", "text/x-markdown"],
             candidates: [.textEdit, .safari, .notes]

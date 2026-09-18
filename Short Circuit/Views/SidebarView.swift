@@ -9,7 +9,7 @@ struct SidebarView: View {
         List(selection: $store.sidebarSelection) {
             Section {
                 Label("Split", systemImage: "exclamationmark.triangle")
-                    .badge(store.splitKinds.count)
+                    .badge(store.unresolvedSplitCount)
                     .tag(SidebarItem.split)
                 Label("Common", systemImage: "star")
                     .tag(SidebarItem.common)

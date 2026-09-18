@@ -4,6 +4,8 @@ struct KindIconView: View {
     let kind: Kind
     var size: CGFloat = 64
     var showsBadge = true
+    /// Shown in the Split section for Kinds that were split when loaded and have since been fixed.
+    var isResolved = false
 
     var body: some View {
         documentIcon
@@ -35,7 +37,13 @@ struct KindIconView: View {
     @ViewBuilder
     private var badge: some View {
         let badgeSize = size * 0.42
-        if let app = kind.defaultApp {
+        if isResolved {
+            Image(systemName: "checkmark.circle.fill")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, .green)
+                .font(.system(size: badgeSize * 0.7))
+                .frame(width: badgeSize, height: badgeSize)
+        } else if let app = kind.defaultApp {
             AppIconView(app: app, size: badgeSize)
                 .shadow(color: .black.opacity(0.25), radius: 1, y: 0.5)
         } else if kind.isSplit {
@@ -62,9 +70,13 @@ struct AppIconView: View {
 
 struct DefaultAppLabel: View {
     let kind: Kind
+    var isResolved = false
 
     var body: some View {
-        if kind.isSplit {
+        if isResolved {
+            Label("Resolved", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        } else if kind.isSplit {
             Label("Split", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
         } else if let app = kind.defaultApp {

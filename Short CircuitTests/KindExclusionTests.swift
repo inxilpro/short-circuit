@@ -59,6 +59,24 @@ struct KindExclusionTests {
         #expect(utis == ["com.apple.rtfd", "com.apple.iwork.pages.pages", "com.apple.photos.library"])
     }
 
+    @Test func installerPackagesAndPassesStayKinds() {
+        let types = [
+            Self.type("com.apple.bundle", "0x50", conforms: "public.directory", tags: ""),
+            Self.type("com.apple.package", "0x51", conforms: "public.directory", tags: ""),
+            Self.type("com.apple.installer-package-archive", "0x52", conforms: "public.data, public.archive", tags: ".pkg, application/x-newton-compatible-pkg"),
+            Self.type("com.apple.installer-package", "0x53", conforms: "com.apple.bundle, com.apple.package", tags: ".pkg"),
+            Self.type("com.apple.installer-meta-package", "0x54", conforms: "com.apple.bundle, com.apple.package", tags: ".mpkg"),
+            Self.type("com.apple.pkpass", "0x55", conforms: "com.apple.bundle, com.apple.package", tags: ".pkpass"),
+            Self.type("com.apple.systempreference.prefpane", "0x56", conforms: "com.apple.bundle, com.apple.package", tags: ".prefpane"),
+        ]
+        let claimed = ["com.apple.installer-package-archive", "com.apple.installer-package", "com.apple.installer-meta-package",
+                       "com.apple.pkpass", "com.apple.systempreference.prefpane"]
+        let utis = Set(Fixture.offlineBuilder.build(from: Self.snapshot(types: types, claiming: claimed)).flatMap(\.utis))
+        #expect(utis.isSuperset(of: ["com.apple.installer-package-archive", "com.apple.installer-package",
+                                     "com.apple.installer-meta-package", "com.apple.pkpass"]))
+        #expect(!utis.contains("com.apple.systempreference.prefpane"))
+    }
+
     @Test func vendorRawFormatsSharingOnlyAnExtensionStaySplit() {
         let types = [
             Self.type("com.leica.raw-image", "0x40", conforms: "public.camera-raw-image", tags: ".raw, image/x-leica-raw"),

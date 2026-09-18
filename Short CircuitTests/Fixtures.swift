@@ -15,5 +15,5 @@ nonisolated enum Fixture {
     }
 
     /// No live UTType lookups, so results depend only on the fixture.
-    static let offlineBuilder = KindBuilder(describe: { _ in nil }, liveSupertypes: { _ in [] })
+    static let offlineBuilder = KindBuilder(describe: { _ in nil }, liveSupertypes: { _ in [] }, isSettableType: { _ in true })
 }

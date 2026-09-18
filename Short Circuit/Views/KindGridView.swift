@@ -3,6 +3,7 @@ import SwiftUI
 struct KindGridView: View {
     let kinds: [Kind]
     @Binding var selection: Kind.ID?
+    var resolvedIDs: Set<Kind.ID> = []
 
     private let columns = [GridItem(.adaptive(minimum: 120, maximum: 150), spacing: 8, alignment: .top)]
 
@@ -10,7 +11,7 @@ struct KindGridView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(kinds) { kind in
-                    KindTile(kind: kind, isSelected: selection == kind.id)
+                    KindTile(kind: kind, isSelected: selection == kind.id, isResolved: resolvedIDs.contains(kind.id))
                         .onTapGesture { selection = kind.id }
                 }
             }
@@ -24,10 +25,11 @@ struct KindGridView: View {
 struct KindTile: View {
     let kind: Kind
     let isSelected: Bool
+    var isResolved = false
 
     var body: some View {
         VStack(spacing: 6) {
-            KindIconView(kind: kind, size: 64)
+            KindIconView(kind: kind, size: 64, isResolved: isResolved)
                 .padding(8)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -46,7 +48,7 @@ struct KindTile: View {
                     )
                     .foregroundStyle(isSelected ? Color.white : .primary)
 
-                DefaultAppLabel(kind: kind)
+                DefaultAppLabel(kind: kind, isResolved: isResolved)
                     .font(.caption)
                     .lineLimit(1)
             }

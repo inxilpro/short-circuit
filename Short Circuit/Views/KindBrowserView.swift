@@ -3,6 +3,11 @@ import SwiftUI
 struct KindBrowserView: View {
     @Environment(KindStore.self) private var store
 
+    /// Resolution is progress within the Split list; elsewhere a fixed Kind just shows its app.
+    private var resolvedIDs: Set<Kind.ID> {
+        store.sidebarSelection == .split ? store.resolvedSplitIDs : []
+    }
+
     var body: some View {
         @Bindable var store = store
 
@@ -25,8 +30,8 @@ struct KindBrowserView: View {
                 EmptyKindsView()
             } else {
                 switch store.layout {
-                case .grid: KindGridView(kinds: store.visibleKinds, selection: $store.selectedKindID)
-                case .list: KindTableView(kinds: store.visibleKinds, selection: $store.selectedKindID)
+                case .grid: KindGridView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs)
+                case .list: KindTableView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs)
                 }
             }
         }

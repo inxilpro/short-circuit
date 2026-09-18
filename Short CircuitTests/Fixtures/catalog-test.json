@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "generator": "unknown fields are ignored",
+  "kinds": [
+    {
+      "id": "legacy-picture",
+      "name": "Legacy picture",
+      "category": "images",
+      "common": 5,
+      "utis": ["public.radiance", "com.apple.pict"],
+      "extensions": ["pic", "pict", "hdr"],
+      "keywords": ["quickdraw"],
+      "reviewer": "extra fields are fine"
+    },
+    {
+      "id": "heic",
+      "name": "HEIC photo",
+      "category": "images",
+      "common": 1,
+      "utis": ["public.heic"],
+      "extensions": ["heic"]
+    },
+    {
+      "id": "heif",
+      "name": "HEIF image",
+      "category": "images",
+      "utis": ["public.heif"],
+      "extensions": [".heif", "heic"]
+    },
+    {
+      "id": "photoshop",
+      "name": "Photoshop document",
+      "category": "images",
+      "common": 9,
+      "utis": [],
+      "extensions": ["psd"]
+    },
+    {
+      "id": "wrong-category-pic",
+      "name": "Audio that claims .hdr",
+      "category": "audio",
+      "utis": [],
+      "extensions": ["hdr2"]
+    },
+    {
+      "id": "css",
+      "name": "Stylesheet",
+      "category": "code",
+      "utis": ["public.css"],
+      "extensions": ["css"]
+    },
+    {
+      "id": "absent",
+      "name": "Not on this Mac",
+      "category": "documents",
+      "common": 2,
+      "utis": ["com.example.nothing-claims-this"],
+      "extensions": ["nothing"]
+    },
+    {
+      "id": "bad-category",
+      "name": "Unknown category",
+      "category": "spreadsheets-and-such",
+      "utis": ["com.microsoft.word.mhtml", "org.ietf.mhtml"]
+    },
+    {
+      "name": "Missing id is skipped",
+      "utis": ["public.xml"]
+    }
+  ]
+}

@@ -19,7 +19,7 @@ struct LivePipelineDebugTests {
         let parsed = try #require(snapshot)
 
         var output: KindBuilder.Output?
-        let buildTime = clock.measure { output = KindBuilder().analyze(parsed) }
+        let buildTime = clock.measure { output = KindBuilder(catalog: Catalog.bundled).analyze(parsed) }
         let built = try #require(output)
 
         var enriched: [Kind] = []
@@ -71,6 +71,15 @@ struct LivePipelineDebugTests {
         let duplicateNames = Dictionary(grouping: enriched, by: \.name).filter { $0.value.count > 1 }.keys.sorted()
         lines.append("duplicate names: \(duplicateNames.count) \(duplicateNames.prefix(20))")
         lines.append("unresolved tag claims: \(built.unresolvedTags.count) \(built.unresolvedTags.sorted().prefix(40))")
+        lines.append("unsettable UTI members: \(built.unsettableUTIs.count) \(built.unsettableUTIs.sorted().prefix(30)); Kinds dropped as unsettable: \(built.droppedUnsettableKindCount)")
+        lines.append("catalog: \(Catalog.bundled.map { "\($0.kinds.count) entries" } ?? "not loaded"); catalog Kinds: \(enriched.filter { $0.catalogID != nil }.count)")
+        lines.append("unmatched catalog entries: \(built.unmatchedCatalogEntries)")
+        lines.append("unmatched catalog UTIs: \(built.unmatchedCatalogUTIs.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)" })")
+        let commonKinds = enriched.filter(\.isCommon).sorted { ($0.commonRank ?? 0, $0.name) < ($1.commonRank ?? 0, $1.name) }
+        lines.append("common (\(commonKinds.count)):")
+        for kind in commonKinds {
+            lines.append("  \(kind.commonRank ?? 0). \(kind.name) [\(kind.category.rawValue)] \(kind.members.map { "\($0.target)" }.joined(separator: ", ")) — default: \(kind.isSplit ? "split" : kind.defaultApp?.name ?? "none"), \(kind.candidates.count) apps")
+        }
         lines.append("app-private schemes: \(enriched.filter(\.isAppPrivate).count)")
         for probe in [".css", ".ts", ".go", ".rs"] {
             let owners = enriched.filter { $0.extensions.contains(String(probe.dropFirst())) }.map { "\($0.name) \($0.utis)" }

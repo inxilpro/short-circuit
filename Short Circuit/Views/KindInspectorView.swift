@@ -69,11 +69,11 @@ private struct KindInspectorForm: View {
             }
 
             Section("Members") {
-                ForEach(kind.members) { member in
+                ForEach(kind.settableMembers + kind.members.filter { !$0.isSettable }) { member in
                     MemberRow(
                         kindName: kind.name,
                         member: member,
-                        isOddOneOut: kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url,
+                        isOddOneOut: member.isSettable && kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url,
                         result: resultsByTarget[member.target],
                         choices: choices,
                         isEnabled: canEdit
@@ -308,15 +308,23 @@ private struct MemberRow: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
-                if let result {
+                if !member.isSettable {
+                    Text("macOS doesn’t use this type for files, so it can’t be changed.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if let result {
                     MemberResultLabel(result: result)
                 }
             }
 
             Spacer(minLength: 0)
 
-            memberMenu
+            if member.isSettable {
+                memberMenu
+            }
         }
+        .opacity(member.isSettable ? 1 : 0.6)
     }
 
     private var isBrowserMember: Bool {

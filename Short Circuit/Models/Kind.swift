@@ -45,6 +45,14 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
     /// A URL scheme registered by a single app for its own use (login callbacks and the like). Nothing
     /// else can meaningfully handle it, so it belongs outside Common.
     var isAppPrivate: Bool = false
+    /// Position in the curated Common list (lower first); nil when the Kind isn't common.
+    var commonRank: Int? = nil
+    /// Extra search terms from the catalog ("readme" for Markdown).
+    var keywords: [String] = []
+    /// The catalog entry this Kind came from, if any.
+    var catalogID: String? = nil
+
+    var isCommon: Bool { commonRank != nil }
 
     var utis: [String] {
         members.compactMap { if case .uti(let identifier) = $0.target { identifier } else { nil } }

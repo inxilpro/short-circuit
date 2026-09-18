@@ -215,10 +215,52 @@ struct KindStoreWriteTests {
         #expect(pending.plan.promptCount == 2)
         #expect(backend.calls.isEmpty)
 
-        await store.confirmPendingChange()
+        await ChangeConfirmationActions(store: store).replayContinue()
 
         #expect(store.pendingChange == nil)
         #expect(try kind("phone-call", in: store).defaultApp?.url == AppRef.messages.url)
+    }
+
+    /// SwiftUI clears the dialog's binding before running Continue's action. An earlier version
+    /// read `pendingChange` inside that action, found it empty, and applied nothing; tests missed
+    /// it because they called the store directly instead of replaying the dialog.
+    @Test func continueStillAppliesAfterTheDialogDismissesItself() async throws {
+        let (store, backend) = await makeStore()
+        await store.setDefault(.messages, for: try kind("phone-call", in: store))
+        let actions = ChangeConfirmationActions(store: store)
+        let shown = try #require(store.pendingChange)
+
+        actions.dismiss()
+        #expect(store.pendingChange == nil)
+        await actions.continueTapped(shown)
+
+        #expect(backend.calls.count == 2)
+        #expect(try kind("phone-call", in: store).defaultApp?.url == AppRef.messages.url)
+    }
+
+    @Test func cancelAppliesNothing() async throws {
+        let (store, backend) = await makeStore()
+        await store.setDefault(.messages, for: try kind("phone-call", in: store))
+
+        ChangeConfirmationActions(store: store).replayCancel()
+
+        #expect(store.pendingChange == nil)
+        #expect(backend.calls.isEmpty)
+        #expect(try kind("phone-call", in: store).isSplit)
+    }
+
+    @Test func aSupersededDialogCannotApplyItsOldPlan() async throws {
+        let (store, backend) = await makeStore()
+        await store.setDefault(.messages, for: try kind("phone-call", in: store))
+        let stale = try #require(store.pendingChange)
+        store.cancelPendingChange()
+        await store.setDefault(.notes, for: try kind("phone-call", in: store))
+        let current = try #require(store.pendingChange)
+
+        await ChangeConfirmationActions(store: store).continueTapped(stale)
+
+        #expect(backend.calls.isEmpty)
+        #expect(store.pendingChange?.id == current.id)
     }
 
     @Test func singlePromptAppliesWithoutConfirmation() async throws {
@@ -254,7 +296,7 @@ struct KindStoreWriteTests {
         #expect(store.pendingChange?.plan.promptCount == 2)
 
         backend.changeExternally(.scheme("mailto"), to: textEdit)
-        await store.confirmPendingChange()
+        await ChangeConfirmationActions(store: store).replayContinue()
 
         let revised = try #require(store.pendingChange)
         #expect(revised.isRevised)
@@ -287,23 +329,104 @@ struct KindStoreWriteTests {
         #expect(ChangeConfirmation.message(for: pending).contains("Default browser"))
         #expect(backend.calls.isEmpty)
 
-        await store.confirmPendingChange()
+        await ChangeConfirmationActions(store: store).replayContinue()
 
         #expect(backend.calls.map(\.target) == [.scheme("http")])
         #expect(Set(store.results(for: try kind("web-page", in: store)).map(\.target)) == WritePlan.browserRole)
     }
 
     @Test func partialApplyLeavesTheKindSplitFromLiveReads() async throws {
-        let (store, _) = await makeStore(behaviors: [.uti("public.markdown"): .rejectBeforeConsent])
+        let (store, _) = await makeStore(behaviors: [.uti("com.apple.rtfd"): .rejectBeforeConsent])
 
-        await store.setDefault(.preview, for: try kind("markdown", in: store))
-        await store.confirmPendingChange()
+        await store.setDefault(.notes, for: try kind("rtf", in: store))
+        await ChangeConfirmationActions(store: store).replayContinue()
 
+        let richText = try kind("rtf", in: store)
+        #expect(richText.isSplit)
+        #expect(try member(.uti("public.rtf"), of: "rtf", in: store) == AppRef.notes.url)
+        #expect(try member(.uti("com.apple.rtfd"), of: "rtf", in: store) == textEdit)
+        let failure = store.results(for: richText).first { $0.target == .uti("com.apple.rtfd") }
+        guard case .failed(_, 256, let message) = failure?.outcome else {
+            Issue.record("Expected a 256 failure, got \(String(describing: failure?.outcome))")
+            return
+        }
+        #expect(message.contains("rejected"))
+    }
+
+    /// An unsettable member (public.markdown on the dev Mac) doesn't make the Kind split, isn't
+    /// planned, and produces no result row.
+    @Test func unsettableMembersAreNeitherSplitNorPlanned() async throws {
+        let (store, backend) = await makeStore(behaviors: [.uti("public.markdown"): .rejectBeforeConsent])
         let markdown = try kind("markdown", in: store)
-        #expect(markdown.isSplit)
-        #expect(try member(.uti("net.daringfireball.markdown"), of: "markdown", in: store) == preview)
+        #expect(markdown.isSplit == false)
+        #expect(markdown.defaultApp?.url == textEdit)
+
+        await store.setDefault(.preview, for: markdown)
+
+        #expect(store.pendingChange == nil)
+        #expect(backend.calls.map(\.target) == [.uti("net.daringfireball.markdown")])
+        #expect(store.results(for: try kind("markdown", in: store)).map(\.target) == [.uti("net.daringfireball.markdown")])
+        #expect(store.results(for: try kind("markdown", in: store)).map(\.outcome) == [.changed])
+        #expect(try kind("markdown", in: store).isSplit == false)
         #expect(try member(.uti("public.markdown"), of: "markdown", in: store) == safari)
-        #expect(markdown.candidates.contains { $0.url == preview })
+    }
+
+    @Test func unsettableMembersCannotBeSetOneByOne() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(.preview, for: .uti("public.markdown"), in: try kind("markdown", in: store))
+
+        #expect(backend.calls.isEmpty)
+        #expect(store.pendingChange == nil)
+    }
+
+    @Test func majorityIgnoresUnsettableMembers() {
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [
+                KindMember(target: .uti("a"), defaultApp: .textEdit),
+                KindMember(target: .uti("b"), defaultApp: .safari, isSettable: false),
+                KindMember(target: .uti("c"), defaultApp: .safari, isSettable: false),
+            ],
+            extensions: [], mimeTypes: [], candidates: [.textEdit, .safari]
+        )
+
+        #expect(kind.majorityApp == .textEdit)
+    }
+
+    /// The Split list is fixed at load: a resolved Kind stays listed (and counts as resolved)
+    /// until an explicit refresh.
+    @Test func resolvedSplitKindsStayListedUntilRefresh() async throws {
+        let (store, _) = await makeStore()
+        let initialUnresolved = store.unresolvedSplitCount
+        let phone = try kind("phone-call", in: store)
+        #expect(store.splitKinds.contains { $0.id == phone.id })
+
+        await store.setDefault(.messages, for: phone)
+        await ChangeConfirmationActions(store: store).replayContinue()
+
+        #expect(try kind("phone-call", in: store).isSplit == false)
+        #expect(store.splitKinds.contains { $0.id == "phone-call" })
+        #expect(store.resolvedSplitIDs == ["phone-call"])
+        #expect(store.unresolvedSplitCount == initialUnresolved - 1)
+
+        await store.refresh(force: true)
+
+        #expect(!store.splitKinds.contains { $0.id == "phone-call" })
+        #expect(store.resolvedSplitIDs.isEmpty)
+    }
+
+    @Test func kindsThatBecomeSplitJoinTheListAndStayWhenFixed() async throws {
+        let (store, _) = await makeStore()
+        #expect(!store.splitKinds.contains { $0.id == "rtf" })
+
+        await store.setDefault(.notes, for: .uti("com.apple.rtfd"), in: try kind("rtf", in: store))
+        #expect(store.splitKinds.contains { $0.id == "rtf" })
+        #expect(!store.resolvedSplitIDs.contains("rtf"))
+
+        await store.setDefault(.notes, for: .uti("public.rtf"), in: try kind("rtf", in: store))
+        #expect(store.splitKinds.contains { $0.id == "rtf" })
+        #expect(store.resolvedSplitIDs.contains("rtf"))
     }
 
     @Test func fixSplitOnlyTouchesMembersOffTheMajorityApp() async throws {

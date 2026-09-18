@@ -11,7 +11,7 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         case declineSilently
         /// Throws NSUserCancelledError.
         case declineWithError
-        /// Throws Cocoa error 256 before any prompt, as `public.markdown` does on macOS 26.6.
+        /// Throws Cocoa error 256 before any prompt, as macOS 26.6 does for types it won't assign.
         case rejectBeforeConsent
     }
 
@@ -115,15 +115,15 @@ nonisolated extension HandlerWriter where Backend == SimulatedHandlerBackend {
         HandlerWriter(backend: SimulatedHandlerBackend(kinds: SampleKindProvider.kinds), rereadDelay: .zero, rereadAttempts: 0)
     }
 
-    /// Shows every outcome the UI has to handle: Markdown's `public.markdown` is rejected like
-    /// on macOS 26.6, `sms` is declined, `public.heif` is cancelled, and everything else is
-    /// accepted after a prompt-like pause.
+    /// Shows every outcome the UI has to handle: `com.apple.rtfd` is rejected with error 256,
+    /// `sms` is declined, `public.heif` is cancelled, and everything else is accepted after a
+    /// prompt-like pause.
     static var demo: Self {
         HandlerWriter(
             backend: SimulatedHandlerBackend(
                 kinds: SampleKindProvider.kinds,
                 behaviors: [
-                    .uti("public.markdown"): .rejectBeforeConsent,
+                    .uti("com.apple.rtfd"): .rejectBeforeConsent,
                     .scheme("sms"): .declineSilently,
                     .uti("public.heif"): .declineWithError,
                 ],

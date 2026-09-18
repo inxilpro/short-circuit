@@ -1,0 +1,2779 @@
+{
+  "version": 1,
+  "kinds": [
+    {
+      "id": "web-page",
+      "name": "Web browser",
+      "category": "web",
+      "utis": [
+        "public.html",
+        "public.xhtml"
+      ],
+      "extensions": [
+        "html",
+        "htm",
+        "xhtml",
+        "xht",
+        "shtml"
+      ],
+      "schemes": [
+        "http",
+        "https"
+      ],
+      "keywords": [
+        "browser",
+        "web page",
+        "website",
+        "hypertext",
+        "html",
+        "htm",
+        "xhtml",
+        "xht",
+        "shtml"
+      ],
+      "common": 1
+    },
+    {
+      "id": "email",
+      "name": "Email",
+      "category": "communication",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "mailto"
+      ],
+      "keywords": [
+        "mail",
+        "email client",
+        "compose",
+        "mailto"
+      ],
+      "common": 2
+    },
+    {
+      "id": "pdf",
+      "name": "PDF document",
+      "category": "documents",
+      "utis": [
+        "com.adobe.pdf"
+      ],
+      "extensions": [
+        "pdf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "portable document",
+        "ebook",
+        "pdf"
+      ],
+      "common": 3
+    },
+    {
+      "id": "jpeg",
+      "name": "JPEG image",
+      "category": "images",
+      "utis": [
+        "public.jpeg"
+      ],
+      "extensions": [
+        "jpg",
+        "jpeg",
+        "jpe"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "picture",
+        "jpg",
+        "jpeg",
+        "jpe"
+      ],
+      "common": 4
+    },
+    {
+      "id": "png",
+      "name": "PNG image",
+      "category": "images",
+      "utis": [
+        "public.png"
+      ],
+      "extensions": [
+        "png"
+      ],
+      "schemes": [],
+      "keywords": [
+        "picture",
+        "screenshot",
+        "transparency",
+        "png"
+      ],
+      "common": 5
+    },
+    {
+      "id": "heic",
+      "name": "HEIC image",
+      "category": "images",
+      "utis": [
+        "public.heic"
+      ],
+      "extensions": [
+        "heic"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "iPhone",
+        "heic"
+      ],
+      "common": 6
+    },
+    {
+      "id": "gif",
+      "name": "GIF image",
+      "category": "images",
+      "utis": [
+        "com.compuserve.gif"
+      ],
+      "extensions": [
+        "gif"
+      ],
+      "schemes": [],
+      "keywords": [
+        "animation",
+        "picture",
+        "gif"
+      ],
+      "common": 7
+    },
+    {
+      "id": "svg",
+      "name": "SVG image",
+      "category": "images",
+      "utis": [
+        "public.svg-image"
+      ],
+      "extensions": [
+        "svg",
+        "svgz"
+      ],
+      "schemes": [],
+      "keywords": [
+        "vector",
+        "scalable vector graphics",
+        "svg",
+        "svgz"
+      ],
+      "common": 8
+    },
+    {
+      "id": "webp",
+      "name": "WebP image",
+      "category": "images",
+      "utis": [
+        "org.webmproject.webp"
+      ],
+      "extensions": [
+        "webp"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "picture",
+        "webp"
+      ],
+      "common": 9
+    },
+    {
+      "id": "tiff",
+      "name": "TIFF image",
+      "category": "images",
+      "utis": [
+        "public.tiff"
+      ],
+      "extensions": [
+        "tif",
+        "tiff"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "scan",
+        "tif",
+        "tiff"
+      ],
+      "common": 10
+    },
+    {
+      "id": "dng",
+      "name": "DNG raw photo",
+      "category": "images",
+      "utis": [
+        "com.adobe.raw-image"
+      ],
+      "extensions": [
+        "dng"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "dng"
+      ],
+      "common": 11
+    },
+    {
+      "id": "plain-text",
+      "name": "Plain text",
+      "category": "documents",
+      "utis": [
+        "public.plain-text",
+        "public.utf8-plain-text",
+        "public.utf16-plain-text",
+        "public.utf16-external-plain-text",
+        "com.apple.traditional-mac-plain-text"
+      ],
+      "extensions": [
+        "txt",
+        "text"
+      ],
+      "schemes": [],
+      "keywords": [
+        "text file",
+        "notes",
+        "UTF-8",
+        "UTF-16",
+        "txt",
+        "text"
+      ],
+      "common": 12
+    },
+    {
+      "id": "markdown",
+      "name": "Markdown",
+      "category": "documents",
+      "utis": [
+        "net.daringfireball.markdown"
+      ],
+      "extensions": [
+        "md",
+        "markdown",
+        "mdown",
+        "mkd"
+      ],
+      "schemes": [],
+      "keywords": [
+        "readme",
+        "markup",
+        "text",
+        "md",
+        "markdown",
+        "mdown",
+        "mkd"
+      ],
+      "common": 13
+    },
+    {
+      "id": "rtf",
+      "name": "Rich text",
+      "category": "documents",
+      "utis": [
+        "public.rtf"
+      ],
+      "extensions": [
+        "rtf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "formatted text",
+        "document",
+        "rtf"
+      ],
+      "common": 14
+    },
+    {
+      "id": "word",
+      "name": "Word document",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.wordprocessingml.document",
+        "com.microsoft.word.openxmlformats.wordprocessingml.document",
+        "com.microsoft.word.strictopenxmlformats.wordprocessingml.document",
+        "org.strictopenxmlformats.wordprocessingml.document"
+      ],
+      "extensions": [
+        "docx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "word processing",
+        "Open XML",
+        "docx"
+      ],
+      "common": 15
+    },
+    {
+      "id": "excel",
+      "name": "Excel spreadsheet",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.spreadsheetml.sheet",
+        "com.microsoft.excel.openxmlformats.spreadsheetml.sheet"
+      ],
+      "extensions": [
+        "xlsx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "workbook",
+        "Open XML",
+        "xlsx"
+      ],
+      "common": 16
+    },
+    {
+      "id": "powerpoint",
+      "name": "PowerPoint presentation",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.presentationml.presentation"
+      ],
+      "extensions": [
+        "pptx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "slides",
+        "Open XML",
+        "pptx"
+      ],
+      "common": 17
+    },
+    {
+      "id": "pages",
+      "name": "Pages document",
+      "category": "documents",
+      "utis": [
+        "com.apple.iwork.pages.sffpages"
+      ],
+      "extensions": [
+        "pages"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Apple",
+        "iWork",
+        "word processing",
+        "pages"
+      ],
+      "common": 18
+    },
+    {
+      "id": "numbers",
+      "name": "Numbers spreadsheet",
+      "category": "documents",
+      "utis": [
+        "com.apple.iwork.numbers.sffnumbers"
+      ],
+      "extensions": [
+        "numbers"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Apple",
+        "iWork",
+        "workbook",
+        "numbers"
+      ],
+      "common": 19
+    },
+    {
+      "id": "keynote",
+      "name": "Keynote presentation",
+      "category": "documents",
+      "utis": [
+        "com.apple.iwork.keynote.sffkey"
+      ],
+      "extensions": [
+        "key"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Apple",
+        "iWork",
+        "slides",
+        "key"
+      ],
+      "common": 20
+    },
+    {
+      "id": "csv",
+      "name": "CSV table",
+      "category": "documents",
+      "utis": [
+        "public.comma-separated-values-text",
+        "com.araelium.querious.csv"
+      ],
+      "extensions": [
+        "csv"
+      ],
+      "schemes": [],
+      "keywords": [
+        "comma separated values",
+        "spreadsheet",
+        "data",
+        "csv"
+      ],
+      "common": 21
+    },
+    {
+      "id": "json",
+      "name": "JSON data",
+      "category": "code",
+      "utis": [
+        "public.json"
+      ],
+      "extensions": [
+        "json"
+      ],
+      "schemes": [],
+      "keywords": [
+        "JavaScript object notation",
+        "structured data",
+        "json"
+      ],
+      "common": 22
+    },
+    {
+      "id": "xml",
+      "name": "XML document",
+      "category": "code",
+      "utis": [
+        "public.xml"
+      ],
+      "extensions": [
+        "xml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "markup",
+        "structured data",
+        "xml"
+      ],
+      "common": 23
+    },
+    {
+      "id": "yaml",
+      "name": "YAML data",
+      "category": "code",
+      "utis": [
+        "public.yaml"
+      ],
+      "extensions": [
+        "yaml",
+        "yml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "configuration",
+        "structured data",
+        "yaml",
+        "yml"
+      ],
+      "common": 24
+    },
+    {
+      "id": "javascript",
+      "name": "JavaScript source",
+      "category": "code",
+      "utis": [
+        "com.netscape.javascript-source"
+      ],
+      "extensions": [
+        "js",
+        "mjs",
+        "javascript",
+        "jscript"
+      ],
+      "schemes": [],
+      "keywords": [
+        "script",
+        "ECMAScript",
+        "node",
+        "js",
+        "mjs",
+        "javascript",
+        "jscript"
+      ],
+      "common": 25
+    },
+    {
+      "id": "typescript",
+      "name": "TypeScript source",
+      "category": "code",
+      "utis": [
+        "com.microsoft.typescript"
+      ],
+      "extensions": [
+        "ts",
+        "tsx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "script",
+        "JavaScript",
+        "React",
+        "ts",
+        "tsx"
+      ],
+      "common": 26
+    },
+    {
+      "id": "python",
+      "name": "Python script",
+      "category": "code",
+      "utis": [
+        "public.python-script"
+      ],
+      "extensions": [
+        "py"
+      ],
+      "schemes": [],
+      "keywords": [
+        "source",
+        "script",
+        "py"
+      ],
+      "common": 27
+    },
+    {
+      "id": "shell",
+      "name": "Shell script",
+      "category": "code",
+      "utis": [
+        "public.shell-script"
+      ],
+      "extensions": [
+        "sh"
+      ],
+      "schemes": [],
+      "keywords": [
+        "terminal",
+        "command line",
+        "POSIX",
+        "sh"
+      ],
+      "common": 28
+    },
+    {
+      "id": "php",
+      "name": "PHP script",
+      "category": "code",
+      "utis": [
+        "public.php-script"
+      ],
+      "extensions": [
+        "php",
+        "php3",
+        "php4",
+        "phtml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "web",
+        "source",
+        "script",
+        "php",
+        "php3",
+        "php4",
+        "phtml"
+      ],
+      "common": 29
+    },
+    {
+      "id": "swift",
+      "name": "Swift source",
+      "category": "code",
+      "utis": [
+        "public.swift-source"
+      ],
+      "extensions": [
+        "swift"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Apple",
+        "source",
+        "swift"
+      ],
+      "common": 30
+    },
+    {
+      "id": "c",
+      "name": "C source",
+      "category": "code",
+      "utis": [
+        "public.c-source"
+      ],
+      "extensions": [
+        "c"
+      ],
+      "schemes": [],
+      "keywords": [
+        "programming",
+        "source",
+        "c"
+      ],
+      "common": 31
+    },
+    {
+      "id": "cpp",
+      "name": "C++ source",
+      "category": "code",
+      "utis": [
+        "public.c-plus-plus-source"
+      ],
+      "extensions": [
+        "cpp",
+        "cc",
+        "cp",
+        "cxx",
+        "c++"
+      ],
+      "schemes": [],
+      "keywords": [
+        "programming",
+        "source",
+        "cpp",
+        "cc",
+        "cp",
+        "cxx",
+        "c++"
+      ],
+      "common": 32
+    },
+    {
+      "id": "css",
+      "name": "CSS stylesheet",
+      "category": "code",
+      "utis": [
+        "public.css",
+        "com.blackpixel.kaleidoscope.css"
+      ],
+      "extensions": [
+        "css"
+      ],
+      "schemes": [],
+      "keywords": [
+        "cascading style sheets",
+        "web",
+        "style",
+        "css"
+      ],
+      "common": 33
+    },
+    {
+      "id": "sql",
+      "name": "SQL source",
+      "category": "code",
+      "utis": [
+        "org.iso.sql",
+        "com.araelium.querious.sql"
+      ],
+      "extensions": [
+        "sql",
+        "psql",
+        "mysql"
+      ],
+      "schemes": [],
+      "keywords": [
+        "database",
+        "query",
+        "structured query language",
+        "sql",
+        "psql",
+        "mysql"
+      ],
+      "common": 34
+    },
+    {
+      "id": "zip",
+      "name": "ZIP archive",
+      "category": "archives",
+      "utis": [
+        "public.zip-archive"
+      ],
+      "extensions": [
+        "zip"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "archive",
+        "zip"
+      ],
+      "common": 35
+    },
+    {
+      "id": "tar",
+      "name": "TAR archive",
+      "category": "archives",
+      "utis": [
+        "public.tar-archive"
+      ],
+      "extensions": [
+        "tar"
+      ],
+      "schemes": [],
+      "keywords": [
+        "tape archive",
+        "bundle",
+        "tar"
+      ],
+      "common": 36
+    },
+    {
+      "id": "gzip",
+      "name": "Gzip archive",
+      "category": "archives",
+      "utis": [
+        "org.gnu.gnu-zip-archive"
+      ],
+      "extensions": [
+        "gz",
+        "gzip"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "GNU zip",
+        "gz",
+        "gzip"
+      ],
+      "common": 37
+    },
+    {
+      "id": "7z",
+      "name": "7-Zip archive",
+      "category": "archives",
+      "utis": [
+        "org.7-zip.7-zip-archive"
+      ],
+      "extensions": [
+        "7z"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "7zip",
+        "7z"
+      ],
+      "common": 38
+    },
+    {
+      "id": "rar",
+      "name": "RAR archive",
+      "category": "archives",
+      "utis": [
+        "com.rarlab.rar-archive"
+      ],
+      "extensions": [
+        "rar"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "WinRAR",
+        "rar"
+      ],
+      "common": 39
+    },
+    {
+      "id": "dmg",
+      "name": "Mac disk image",
+      "category": "archives",
+      "utis": [
+        "com.apple.disk-image-udif"
+      ],
+      "extensions": [
+        "dmg",
+        "udif"
+      ],
+      "schemes": [],
+      "keywords": [
+        "disk image",
+        "mount",
+        "installer",
+        "dmg",
+        "udif"
+      ],
+      "common": 40
+    },
+    {
+      "id": "mp3",
+      "name": "MP3 audio",
+      "category": "audio",
+      "utis": [
+        "public.mp3"
+      ],
+      "extensions": [
+        "mp3",
+        "mpga"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "MPEG audio",
+        "mp3",
+        "mpga"
+      ],
+      "common": 41
+    },
+    {
+      "id": "m4a",
+      "name": "MPEG-4 audio",
+      "category": "audio",
+      "utis": [
+        "com.apple.m4a-audio",
+        "public.mpeg-4-audio"
+      ],
+      "extensions": [
+        "m4a"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "AAC",
+        "Apple Lossless",
+        "ALAC",
+        "m4a"
+      ],
+      "common": 42
+    },
+    {
+      "id": "wav",
+      "name": "WAV audio",
+      "category": "audio",
+      "utis": [
+        "public.wav",
+        "com.microsoft.waveform-audio"
+      ],
+      "extensions": [
+        "wav",
+        "wave",
+        "bwf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "waveform",
+        "broadcast wave",
+        "wav",
+        "wave",
+        "bwf"
+      ],
+      "common": 43
+    },
+    {
+      "id": "flac",
+      "name": "FLAC audio",
+      "category": "audio",
+      "utis": [
+        "org.xiph.flac"
+      ],
+      "extensions": [
+        "flac"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "lossless",
+        "flac"
+      ],
+      "common": 44
+    },
+    {
+      "id": "aiff",
+      "name": "AIFF audio",
+      "category": "audio",
+      "utis": [
+        "public.aiff-audio"
+      ],
+      "extensions": [
+        "aif",
+        "aiff"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "audio interchange",
+        "aif",
+        "aiff"
+      ],
+      "common": 45
+    },
+    {
+      "id": "mp4",
+      "name": "MPEG-4 video",
+      "category": "video",
+      "utis": [
+        "public.mpeg-4",
+        "public.mpeg-4-movie"
+      ],
+      "extensions": [
+        "mp4",
+        "mpg4"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "mp4",
+        "mpg4"
+      ],
+      "common": 46
+    },
+    {
+      "id": "mov",
+      "name": "QuickTime movie",
+      "category": "video",
+      "utis": [
+        "com.apple.quicktime-movie"
+      ],
+      "extensions": [
+        "mov",
+        "qt"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "mov",
+        "qt"
+      ],
+      "common": 47
+    },
+    {
+      "id": "mkv",
+      "name": "Matroska video",
+      "category": "video",
+      "utis": [],
+      "extensions": [
+        "mkv"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "Matroska",
+        "mkv"
+      ],
+      "common": 48
+    },
+    {
+      "id": "avi",
+      "name": "AVI video",
+      "category": "video",
+      "utis": [
+        "public.avi"
+      ],
+      "extensions": [
+        "avi",
+        "vfw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "avi",
+        "vfw"
+      ],
+      "common": 49
+    },
+    {
+      "id": "webm",
+      "name": "WebM video",
+      "category": "video",
+      "utis": [
+        "org.webmproject.webm"
+      ],
+      "extensions": [
+        "webm"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "webm"
+      ],
+      "common": 50
+    },
+    {
+      "id": "epub",
+      "name": "EPUB ebook",
+      "category": "documents",
+      "utis": [
+        "org.idpf.epub-container"
+      ],
+      "extensions": [
+        "epub"
+      ],
+      "schemes": [],
+      "keywords": [
+        "book",
+        "electronic publication",
+        "epub"
+      ],
+      "common": 51
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar event",
+      "category": "communication",
+      "utis": [
+        "com.apple.ical.ics"
+      ],
+      "extensions": [
+        "ics"
+      ],
+      "schemes": [],
+      "keywords": [
+        "iCalendar",
+        "appointment",
+        "invite",
+        "ics"
+      ],
+      "common": 52
+    },
+    {
+      "id": "contacts",
+      "name": "Contact card",
+      "category": "communication",
+      "utis": [
+        "public.vcard"
+      ],
+      "extensions": [
+        "vcf",
+        "vcard"
+      ],
+      "schemes": [],
+      "keywords": [
+        "address book",
+        "vCard",
+        "person",
+        "vcf",
+        "vcard"
+      ],
+      "common": 53
+    },
+    {
+      "id": "telephone",
+      "name": "Phone call",
+      "category": "communication",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "tel"
+      ],
+      "keywords": [
+        "telephone",
+        "dial",
+        "call"
+      ],
+      "common": 54
+    },
+    {
+      "id": "webcal",
+      "name": "Calendar subscription",
+      "category": "communication",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "webcal",
+        "webcals"
+      ],
+      "keywords": [
+        "calendar",
+        "subscribe",
+        "iCalendar"
+      ],
+      "common": 55
+    },
+    {
+      "id": "magnet",
+      "name": "Magnet link",
+      "category": "web",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "magnet"
+      ],
+      "keywords": [
+        "torrent",
+        "download",
+        "peer to peer"
+      ],
+      "common": 56
+    },
+    {
+      "id": "feed",
+      "name": "Feed subscription",
+      "category": "web",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "feed",
+        "rss"
+      ],
+      "keywords": [
+        "RSS",
+        "news",
+        "feed reader",
+        "syndication"
+      ],
+      "common": 57
+    },
+    {
+      "id": "ssh",
+      "name": "SSH link",
+      "category": "developer",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "ssh"
+      ],
+      "keywords": [
+        "terminal",
+        "remote login",
+        "secure shell"
+      ],
+      "common": 58
+    },
+    {
+      "id": "ftp",
+      "name": "FTP link",
+      "category": "web",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "ftp",
+        "ftps"
+      ],
+      "keywords": [
+        "file transfer",
+        "download",
+        "secure FTP"
+      ],
+      "common": 59
+    },
+    {
+      "id": "sms",
+      "name": "Text message",
+      "category": "communication",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "sms"
+      ],
+      "keywords": [
+        "SMS",
+        "messaging"
+      ],
+      "common": 60
+    },
+    {
+      "id": "bzip2",
+      "name": "Bzip2 archive",
+      "category": "archives",
+      "utis": [
+        "public.bzip2-archive"
+      ],
+      "extensions": [
+        "bz2",
+        "bz",
+        "bzip2"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "bz2",
+        "bz",
+        "bzip2"
+      ]
+    },
+    {
+      "id": "tar-bzip2",
+      "name": "Bzip2 TAR archive",
+      "category": "archives",
+      "utis": [
+        "public.tar-bzip2-archive"
+      ],
+      "extensions": [
+        "tbz",
+        "tbz2"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "tar.bz2",
+        "tbz",
+        "tbz2"
+      ]
+    },
+    {
+      "id": "tar-gzip",
+      "name": "Gzip TAR archive",
+      "category": "archives",
+      "utis": [
+        "org.gnu.gnu-zip-tar-archive"
+      ],
+      "extensions": [
+        "tgz"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "tar.gz",
+        "tgz"
+      ]
+    },
+    {
+      "id": "iso",
+      "name": "ISO disk image",
+      "category": "archives",
+      "utis": [
+        "public.iso-image"
+      ],
+      "extensions": [
+        "iso"
+      ],
+      "schemes": [],
+      "keywords": [
+        "disk image",
+        "CD",
+        "DVD",
+        "mount",
+        "iso"
+      ]
+    },
+    {
+      "id": "xip",
+      "name": "XIP archive",
+      "category": "archives",
+      "utis": [
+        "com.apple.xip-archive"
+      ],
+      "extensions": [
+        "xip"
+      ],
+      "schemes": [],
+      "keywords": [
+        "signed",
+        "compressed",
+        "xip"
+      ]
+    },
+    {
+      "id": "xz",
+      "name": "XZ archive",
+      "category": "archives",
+      "utis": [
+        "org.tukaani.xz-archive"
+      ],
+      "extensions": [
+        "xz"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "LZMA",
+        "xz"
+      ]
+    },
+    {
+      "id": "tar-xz",
+      "name": "XZ TAR archive",
+      "category": "archives",
+      "utis": [
+        "org.tukaani.tar-xz-archive"
+      ],
+      "extensions": [
+        "txz"
+      ],
+      "schemes": [],
+      "keywords": [
+        "compressed",
+        "tar.xz",
+        "txz"
+      ]
+    },
+    {
+      "id": "aac",
+      "name": "AAC audio",
+      "category": "audio",
+      "utis": [
+        "public.aac-audio"
+      ],
+      "extensions": [
+        "aac",
+        "adts"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "advanced audio coding",
+        "aac",
+        "adts"
+      ]
+    },
+    {
+      "id": "aifc",
+      "name": "Compressed AIFF audio",
+      "category": "audio",
+      "utis": [
+        "public.aifc-audio"
+      ],
+      "extensions": [
+        "aifc"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "AIFF-C",
+        "aifc"
+      ]
+    },
+    {
+      "id": "m3u",
+      "name": "M3U playlist",
+      "category": "audio",
+      "utis": [
+        "public.m3u-playlist",
+        "com.apple.music.m3u-playlist"
+      ],
+      "extensions": [
+        "m3u",
+        "m3u8"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "playlist",
+        "stream",
+        "m3u",
+        "m3u8"
+      ]
+    },
+    {
+      "id": "midi",
+      "name": "MIDI music",
+      "category": "audio",
+      "utis": [
+        "public.midi-audio"
+      ],
+      "extensions": [
+        "mid",
+        "midi",
+        "kar",
+        "smf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "instrument",
+        "sequence",
+        "karaoke",
+        "mid",
+        "midi",
+        "kar",
+        "smf"
+      ]
+    },
+    {
+      "id": "ogg",
+      "name": "Ogg audio",
+      "category": "audio",
+      "utis": [
+        "org.xiph.ogg-audio"
+      ],
+      "extensions": [
+        "ogg",
+        "oga",
+        "opus"
+      ],
+      "schemes": [],
+      "keywords": [
+        "music",
+        "Vorbis",
+        "Opus",
+        "ogg",
+        "oga",
+        "opus"
+      ]
+    },
+    {
+      "id": "applescript",
+      "name": "AppleScript source",
+      "category": "code",
+      "utis": [
+        "com.apple.applescript.text"
+      ],
+      "extensions": [
+        "applescript"
+      ],
+      "schemes": [],
+      "keywords": [
+        "automation",
+        "script",
+        "applescript"
+      ]
+    },
+    {
+      "id": "bash",
+      "name": "Bash script",
+      "category": "code",
+      "utis": [
+        "public.bash-script"
+      ],
+      "extensions": [
+        "bash"
+      ],
+      "schemes": [],
+      "keywords": [
+        "terminal",
+        "shell",
+        "command line",
+        "bash"
+      ]
+    },
+    {
+      "id": "c-header",
+      "name": "C header",
+      "category": "code",
+      "utis": [
+        "public.c-header"
+      ],
+      "extensions": [
+        "h"
+      ],
+      "schemes": [],
+      "keywords": [
+        "programming",
+        "source",
+        "h"
+      ]
+    },
+    {
+      "id": "cpp-header",
+      "name": "C++ header",
+      "category": "code",
+      "utis": [
+        "public.c-plus-plus-header",
+        "public.c-plus-plus-inline-header"
+      ],
+      "extensions": [
+        "hpp",
+        "hxx",
+        "hh",
+        "h++",
+        "hp",
+        "ipp",
+        "inl"
+      ],
+      "schemes": [],
+      "keywords": [
+        "programming",
+        "source",
+        "inline",
+        "hpp",
+        "hxx",
+        "hh",
+        "h++",
+        "hp",
+        "ipp",
+        "inl"
+      ]
+    },
+    {
+      "id": "java",
+      "name": "Java source",
+      "category": "code",
+      "utis": [
+        "com.sun.java-source"
+      ],
+      "extensions": [
+        "java",
+        "jav"
+      ],
+      "schemes": [],
+      "keywords": [
+        "programming",
+        "source",
+        "java",
+        "jav"
+      ]
+    },
+    {
+      "id": "objective-c",
+      "name": "Objective-C source",
+      "category": "code",
+      "utis": [
+        "public.objective-c-source"
+      ],
+      "extensions": [
+        "m"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Objective C",
+        "source",
+        "m"
+      ]
+    },
+    {
+      "id": "objective-cpp",
+      "name": "Objective-C++ source",
+      "category": "code",
+      "utis": [
+        "public.objective-c-plus-plus-source"
+      ],
+      "extensions": [
+        "mm"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Objective C++",
+        "source",
+        "mm"
+      ]
+    },
+    {
+      "id": "perl",
+      "name": "Perl script",
+      "category": "code",
+      "utis": [
+        "public.perl-script"
+      ],
+      "extensions": [
+        "pl",
+        "pm"
+      ],
+      "schemes": [],
+      "keywords": [
+        "source",
+        "script",
+        "pl",
+        "pm"
+      ]
+    },
+    {
+      "id": "ruby",
+      "name": "Ruby script",
+      "category": "code",
+      "utis": [
+        "public.ruby-script"
+      ],
+      "extensions": [
+        "rb",
+        "rbw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "source",
+        "script",
+        "rb",
+        "rbw"
+      ]
+    },
+    {
+      "id": "patch",
+      "name": "Source patch",
+      "category": "code",
+      "utis": [
+        "public.patch-file"
+      ],
+      "extensions": [
+        "patch",
+        "diff"
+      ],
+      "schemes": [],
+      "keywords": [
+        "difference",
+        "git",
+        "source",
+        "patch",
+        "diff"
+      ]
+    },
+    {
+      "id": "zsh",
+      "name": "Zsh script",
+      "category": "code",
+      "utis": [
+        "public.zsh-script"
+      ],
+      "extensions": [
+        "zsh"
+      ],
+      "schemes": [],
+      "keywords": [
+        "terminal",
+        "shell",
+        "command line",
+        "zsh"
+      ]
+    },
+    {
+      "id": "email-message",
+      "name": "Email message",
+      "category": "communication",
+      "utis": [
+        "com.apple.mail.email"
+      ],
+      "extensions": [
+        "eml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "mail",
+        "saved message",
+        "RFC 822",
+        "eml"
+      ]
+    },
+    {
+      "id": "facetime",
+      "name": "FaceTime call",
+      "category": "communication",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "facetime",
+        "facetime-audio"
+      ],
+      "keywords": [
+        "video call",
+        "audio call"
+      ]
+    },
+    {
+      "id": "property-list",
+      "name": "Property list",
+      "category": "developer",
+      "utis": [
+        "com.apple.property-list",
+        "com.apple.xml-property-list",
+        "com.apple.binary-property-list",
+        "com.apple.ascii-property-list"
+      ],
+      "extensions": [
+        "plist"
+      ],
+      "schemes": [],
+      "keywords": [
+        "preferences",
+        "configuration",
+        "XML",
+        "binary",
+        "plist"
+      ]
+    },
+    {
+      "id": "sqlite",
+      "name": "SQLite database",
+      "category": "developer",
+      "utis": [
+        "org.sqlite.sqlite"
+      ],
+      "extensions": [
+        "sqlite",
+        "sqlite3",
+        "db"
+      ],
+      "schemes": [],
+      "keywords": [
+        "SQL",
+        "database",
+        "sqlite",
+        "sqlite3",
+        "db"
+      ]
+    },
+    {
+      "id": "epub-folder",
+      "name": "EPUB folder",
+      "category": "documents",
+      "utis": [
+        "org.idpf.epub-folder",
+        "com.apple.ibooks.epub"
+      ],
+      "extensions": [
+        "epub"
+      ],
+      "schemes": [],
+      "keywords": [
+        "book",
+        "unpacked",
+        "package",
+        "epub"
+      ]
+    },
+    {
+      "id": "excel-legacy",
+      "name": "Excel 97–2004 spreadsheet",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.excel.xls"
+      ],
+      "extensions": [
+        "xls"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "workbook",
+        "xls"
+      ]
+    },
+    {
+      "id": "excel-binary",
+      "name": "Excel binary spreadsheet",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.excel.sheet.binary.macroenabled"
+      ],
+      "extensions": [
+        "xlsb"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "workbook",
+        "xlsb"
+      ]
+    },
+    {
+      "id": "excel-macro",
+      "name": "Excel macro spreadsheet",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.spreadsheetml.sheet.macroenabled",
+        "com.microsoft.excel.openxmlformats.spreadsheetml.sheet.macroenabled"
+      ],
+      "extensions": [
+        "xlsm"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "macro enabled",
+        "workbook",
+        "xlsm"
+      ]
+    },
+    {
+      "id": "excel-template",
+      "name": "Excel template",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.spreadsheetml.template",
+        "com.microsoft.excel.openxmlformats.spreadsheetml.template"
+      ],
+      "extensions": [
+        "xltx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "stationery",
+        "xltx"
+      ]
+    },
+    {
+      "id": "excel-xml",
+      "name": "Excel XML spreadsheet",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.excel.xml"
+      ],
+      "extensions": [
+        "xml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "document",
+        "legacy",
+        "xml"
+      ]
+    },
+    {
+      "id": "keynote-package",
+      "name": "Keynote package",
+      "category": "documents",
+      "utis": [
+        "com.apple.iwork.keynote.key"
+      ],
+      "extensions": [
+        "key"
+      ],
+      "schemes": [],
+      "keywords": [
+        "document",
+        "legacy",
+        "key"
+      ]
+    },
+    {
+      "id": "numbers-package",
+      "name": "Numbers package",
+      "category": "documents",
+      "utis": [
+        "com.apple.iwork.numbers.numbers"
+      ],
+      "extensions": [
+        "numbers"
+      ],
+      "schemes": [],
+      "keywords": [
+        "document",
+        "legacy",
+        "numbers"
+      ]
+    },
+    {
+      "id": "pages-package",
+      "name": "Pages package",
+      "category": "documents",
+      "utis": [
+        "com.apple.iwork.pages.pages"
+      ],
+      "extensions": [
+        "pages"
+      ],
+      "schemes": [],
+      "keywords": [
+        "document",
+        "legacy",
+        "pages"
+      ]
+    },
+    {
+      "id": "powerpoint-legacy",
+      "name": "PowerPoint 97–2004 presentation",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.powerpoint.ppt"
+      ],
+      "extensions": [
+        "ppt"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "slides",
+        "ppt"
+      ]
+    },
+    {
+      "id": "powerpoint-macro",
+      "name": "PowerPoint macro presentation",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.presentationml.presentation.macroenabled"
+      ],
+      "extensions": [
+        "pptm"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "macro enabled",
+        "slides",
+        "pptm"
+      ]
+    },
+    {
+      "id": "powerpoint-show",
+      "name": "PowerPoint slideshow",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.presentationml.slideshow"
+      ],
+      "extensions": [
+        "ppsx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "slides",
+        "ppsx"
+      ]
+    },
+    {
+      "id": "powerpoint-template",
+      "name": "PowerPoint template",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.presentationml.template"
+      ],
+      "extensions": [
+        "potx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "slides",
+        "stationery",
+        "potx"
+      ]
+    },
+    {
+      "id": "rtfd",
+      "name": "Rich text with attachments",
+      "category": "documents",
+      "utis": [
+        "com.apple.rtfd"
+      ],
+      "extensions": [
+        "rtfd"
+      ],
+      "schemes": [],
+      "keywords": [
+        "formatted text",
+        "images",
+        "document",
+        "rtfd"
+      ]
+    },
+    {
+      "id": "tsv",
+      "name": "Tab-separated table",
+      "category": "documents",
+      "utis": [
+        "public.tab-separated-values-text",
+        "com.araelium.querious.tab"
+      ],
+      "extensions": [
+        "tsv",
+        "tab"
+      ],
+      "schemes": [],
+      "keywords": [
+        "tab separated values",
+        "spreadsheet",
+        "data",
+        "tsv",
+        "tab"
+      ]
+    },
+    {
+      "id": "word-2003-xml",
+      "name": "Word 2003 XML document",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.word.wordml"
+      ],
+      "extensions": [
+        "xml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "document",
+        "legacy",
+        "xml"
+      ]
+    },
+    {
+      "id": "word-legacy",
+      "name": "Word 97–2004 document",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.word.doc"
+      ],
+      "extensions": [
+        "doc"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "word processing",
+        "doc"
+      ]
+    },
+    {
+      "id": "word-macro",
+      "name": "Word macro document",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.wordprocessingml.document.macroenabled",
+        "com.microsoft.word.openxmlformats.wordprocessingml.document.macroenabled"
+      ],
+      "extensions": [
+        "docm"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "macro enabled",
+        "docm"
+      ]
+    },
+    {
+      "id": "word-template",
+      "name": "Word template",
+      "category": "documents",
+      "utis": [
+        "org.openxmlformats.wordprocessingml.template",
+        "com.microsoft.word.openxmlformats.wordprocessingml.template"
+      ],
+      "extensions": [
+        "dotx"
+      ],
+      "schemes": [],
+      "keywords": [
+        "Microsoft",
+        "Office",
+        "stationery",
+        "dotx"
+      ]
+    },
+    {
+      "id": "word-xml",
+      "name": "Word XML document",
+      "category": "documents",
+      "utis": [
+        "com.microsoft.word.wordprocessingml"
+      ],
+      "extensions": [
+        "xml"
+      ],
+      "schemes": [],
+      "keywords": [
+        "document",
+        "legacy",
+        "xml"
+      ]
+    },
+    {
+      "id": "avif",
+      "name": "AVIF image",
+      "category": "images",
+      "utis": [
+        "public.avif"
+      ],
+      "extensions": [
+        "avif"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "AV1",
+        "avif"
+      ]
+    },
+    {
+      "id": "bmp",
+      "name": "Bitmap image",
+      "category": "images",
+      "utis": [
+        "com.microsoft.bmp"
+      ],
+      "extensions": [
+        "bmp",
+        "dib"
+      ],
+      "schemes": [],
+      "keywords": [
+        "bitmap",
+        "picture",
+        "bmp",
+        "dib"
+      ]
+    },
+    {
+      "id": "canon-cr2",
+      "name": "Canon CR2 raw photo",
+      "category": "images",
+      "utis": [
+        "com.canon.cr2-raw-image"
+      ],
+      "extensions": [
+        "cr2"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "cr2"
+      ]
+    },
+    {
+      "id": "canon-cr3",
+      "name": "Canon CR3 raw photo",
+      "category": "images",
+      "utis": [
+        "com.canon.cr3-raw-image"
+      ],
+      "extensions": [
+        "cr3"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "cr3"
+      ]
+    },
+    {
+      "id": "canon-crw",
+      "name": "Canon CRW raw photo",
+      "category": "images",
+      "utis": [
+        "com.canon.crw-raw-image"
+      ],
+      "extensions": [
+        "crw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "crw"
+      ]
+    },
+    {
+      "id": "canon-tiff",
+      "name": "Canon TIFF raw photo",
+      "category": "images",
+      "utis": [
+        "com.canon.tif-raw-image"
+      ],
+      "extensions": [
+        "tif"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "tif"
+      ]
+    },
+    {
+      "id": "eps",
+      "name": "EPS artwork",
+      "category": "images",
+      "utis": [
+        "com.adobe.encapsulated-postscript"
+      ],
+      "extensions": [
+        "eps"
+      ],
+      "schemes": [],
+      "keywords": [
+        "vector",
+        "encapsulated PostScript",
+        "eps"
+      ]
+    },
+    {
+      "id": "fujifilm-raf",
+      "name": "Fujifilm RAF raw photo",
+      "category": "images",
+      "utis": [
+        "com.fuji.raw-image"
+      ],
+      "extensions": [
+        "raf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "raf"
+      ]
+    },
+    {
+      "id": "hasselblad-3fr",
+      "name": "Hasselblad 3FR raw photo",
+      "category": "images",
+      "utis": [
+        "com.hasselblad.3fr-raw-image"
+      ],
+      "extensions": [
+        "3fr"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "3fr"
+      ]
+    },
+    {
+      "id": "hasselblad-fff",
+      "name": "Hasselblad FFF raw photo",
+      "category": "images",
+      "utis": [
+        "com.hasselblad.fff-raw-image"
+      ],
+      "extensions": [
+        "fff"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "fff"
+      ]
+    },
+    {
+      "id": "heif",
+      "name": "HEIF image",
+      "category": "images",
+      "utis": [
+        "public.heif"
+      ],
+      "extensions": [
+        "heif",
+        "hif"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "high efficiency",
+        "heif",
+        "hif"
+      ]
+    },
+    {
+      "id": "illustrator",
+      "name": "Illustrator artwork",
+      "category": "images",
+      "utis": [
+        "com.adobe.illustrator.ai-image"
+      ],
+      "extensions": [
+        "ai"
+      ],
+      "schemes": [],
+      "keywords": [
+        "vector",
+        "Adobe",
+        "ai"
+      ]
+    },
+    {
+      "id": "jpeg-2000",
+      "name": "JPEG 2000 image",
+      "category": "images",
+      "utis": [
+        "public.jpeg-2000"
+      ],
+      "extensions": [
+        "jp2",
+        "jpf",
+        "jpx",
+        "j2k",
+        "j2c"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "jp2",
+        "jpf",
+        "jpx",
+        "j2k",
+        "j2c"
+      ]
+    },
+    {
+      "id": "jpeg-xl",
+      "name": "JPEG XL image",
+      "category": "images",
+      "utis": [
+        "public.jpeg-xl"
+      ],
+      "extensions": [
+        "jxl"
+      ],
+      "schemes": [],
+      "keywords": [
+        "photo",
+        "jxl"
+      ]
+    },
+    {
+      "id": "leica-raw",
+      "name": "Leica raw photo",
+      "category": "images",
+      "utis": [
+        "com.leica.raw-image"
+      ],
+      "extensions": [
+        "raw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography"
+      ]
+    },
+    {
+      "id": "leica-rwl",
+      "name": "Leica RWL raw photo",
+      "category": "images",
+      "utis": [
+        "com.leica.rwl-raw-image"
+      ],
+      "extensions": [
+        "rwl"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "rwl"
+      ]
+    },
+    {
+      "id": "nikon-nef",
+      "name": "Nikon NEF raw photo",
+      "category": "images",
+      "utis": [
+        "com.nikon.raw-image"
+      ],
+      "extensions": [
+        "nef"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "nef"
+      ]
+    },
+    {
+      "id": "nikon-nrw",
+      "name": "Nikon NRW raw photo",
+      "category": "images",
+      "utis": [
+        "com.nikon.nrw-raw-image"
+      ],
+      "extensions": [
+        "nrw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "nrw"
+      ]
+    },
+    {
+      "id": "olympus-orf",
+      "name": "Olympus ORF raw photo",
+      "category": "images",
+      "utis": [
+        "com.olympus.raw-image"
+      ],
+      "extensions": [
+        "orf",
+        "ori"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "orf",
+        "ori"
+      ]
+    },
+    {
+      "id": "openexr",
+      "name": "OpenEXR image",
+      "category": "images",
+      "utis": [
+        "com.ilm.openexr-image"
+      ],
+      "extensions": [
+        "exr"
+      ],
+      "schemes": [],
+      "keywords": [
+        "HDR",
+        "render",
+        "exr"
+      ]
+    },
+    {
+      "id": "panasonic-raw",
+      "name": "Panasonic raw photo",
+      "category": "images",
+      "utis": [
+        "com.panasonic.raw-image"
+      ],
+      "extensions": [
+        "raw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography"
+      ]
+    },
+    {
+      "id": "panasonic-rw2",
+      "name": "Panasonic RW2 raw photo",
+      "category": "images",
+      "utis": [
+        "com.panasonic.rw2-raw-image"
+      ],
+      "extensions": [
+        "rw2"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "rw2"
+      ]
+    },
+    {
+      "id": "pentax-pef",
+      "name": "Pentax PEF raw photo",
+      "category": "images",
+      "utis": [
+        "com.pentax.raw-image"
+      ],
+      "extensions": [
+        "pef"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "pef"
+      ]
+    },
+    {
+      "id": "phase-one-iiq",
+      "name": "Phase One IIQ raw photo",
+      "category": "images",
+      "utis": [
+        "com.phaseone.raw-image"
+      ],
+      "extensions": [
+        "iiq"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "iiq"
+      ]
+    },
+    {
+      "id": "photoshop",
+      "name": "Photoshop image",
+      "category": "images",
+      "utis": [
+        "com.adobe.photoshop-image"
+      ],
+      "extensions": [
+        "psd"
+      ],
+      "schemes": [],
+      "keywords": [
+        "layers",
+        "photo",
+        "Adobe",
+        "psd"
+      ]
+    },
+    {
+      "id": "photoshop-large",
+      "name": "Photoshop large image",
+      "category": "images",
+      "utis": [
+        "com.adobe.photoshop-large-image"
+      ],
+      "extensions": [
+        "psb"
+      ],
+      "schemes": [],
+      "keywords": [
+        "layers",
+        "photo",
+        "Adobe",
+        "psb"
+      ]
+    },
+    {
+      "id": "pict",
+      "name": "PICT image",
+      "category": "images",
+      "utis": [
+        "com.apple.pict"
+      ],
+      "extensions": [
+        "pict",
+        "pct",
+        "pic"
+      ],
+      "schemes": [],
+      "keywords": [
+        "QuickDraw",
+        "picture",
+        "pict",
+        "pct",
+        "pic"
+      ]
+    },
+    {
+      "id": "radiance",
+      "name": "Radiance image",
+      "category": "images",
+      "utis": [
+        "public.radiance"
+      ],
+      "extensions": [
+        "hdr",
+        "pic"
+      ],
+      "schemes": [],
+      "keywords": [
+        "HDR",
+        "render",
+        "hdr",
+        "pic"
+      ]
+    },
+    {
+      "id": "samsung-srw",
+      "name": "Samsung SRW raw photo",
+      "category": "images",
+      "utis": [
+        "com.samsung.raw-image"
+      ],
+      "extensions": [
+        "srw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "srw"
+      ]
+    },
+    {
+      "id": "sony-arw",
+      "name": "Sony ARW raw photo",
+      "category": "images",
+      "utis": [
+        "com.sony.arw-raw-image"
+      ],
+      "extensions": [
+        "arw"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "arw"
+      ]
+    },
+    {
+      "id": "sony-sr2",
+      "name": "Sony SR2 raw photo",
+      "category": "images",
+      "utis": [
+        "com.sony.sr2-raw-image"
+      ],
+      "extensions": [
+        "sr2"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "sr2"
+      ]
+    },
+    {
+      "id": "sony-srf",
+      "name": "Sony SRF raw photo",
+      "category": "images",
+      "utis": [
+        "com.sony.raw-image"
+      ],
+      "extensions": [
+        "srf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "camera",
+        "raw",
+        "photography",
+        "srf"
+      ]
+    },
+    {
+      "id": "opentype",
+      "name": "OpenType font",
+      "category": "other",
+      "utis": [
+        "public.opentype-font"
+      ],
+      "extensions": [
+        "otf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "typeface",
+        "typography",
+        "otf"
+      ]
+    },
+    {
+      "id": "truetype",
+      "name": "TrueType font",
+      "category": "other",
+      "utis": [
+        "public.truetype-font",
+        "public.truetype-ttf-font"
+      ],
+      "extensions": [
+        "ttf"
+      ],
+      "schemes": [],
+      "keywords": [
+        "typeface",
+        "typography",
+        "ttf"
+      ]
+    },
+    {
+      "id": "m4v",
+      "name": "M4V video",
+      "category": "video",
+      "utis": [
+        "com.apple.m4v-video"
+      ],
+      "extensions": [
+        "m4v"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "MPEG-4",
+        "m4v"
+      ]
+    },
+    {
+      "id": "mpeg-ts",
+      "name": "MPEG transport stream",
+      "category": "video",
+      "utis": [
+        "public.mpeg-2-transport-stream"
+      ],
+      "extensions": [
+        "ts"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "transport stream",
+        "ts"
+      ]
+    },
+    {
+      "id": "mpeg",
+      "name": "MPEG video",
+      "category": "video",
+      "utis": [
+        "public.mpeg"
+      ],
+      "extensions": [
+        "mpeg",
+        "mpg",
+        "mpe"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "mpeg",
+        "mpg",
+        "mpe"
+      ]
+    },
+    {
+      "id": "mpeg2",
+      "name": "MPEG-2 video",
+      "category": "video",
+      "utis": [
+        "public.mpeg-2-video"
+      ],
+      "extensions": [
+        "m2v"
+      ],
+      "schemes": [],
+      "keywords": [
+        "movie",
+        "video",
+        "m2v"
+      ]
+    },
+    {
+      "id": "sftp",
+      "name": "SFTP link",
+      "category": "web",
+      "utis": [],
+      "extensions": [],
+      "schemes": [
+        "sftp"
+      ],
+      "keywords": [
+        "file transfer",
+        "SSH",
+        "download"
+      ]
+    }
+  ]
+}

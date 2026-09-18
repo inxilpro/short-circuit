@@ -3,6 +3,7 @@ import SwiftUI
 struct KindTableView: View {
     let kinds: [Kind]
     @Binding var selection: Kind.ID?
+    var resolvedIDs: Set<Kind.ID> = []
 
     var body: some View {
         Table(kinds, selection: $selection) {
@@ -19,7 +20,7 @@ struct KindTableView: View {
                     if let app = kind.defaultApp {
                         AppIconView(app: app, size: 16)
                     }
-                    DefaultAppLabel(kind: kind)
+                    DefaultAppLabel(kind: kind, isResolved: resolvedIDs.contains(kind.id))
                 }
             }
             .width(min: 110, ideal: 140)
