@@ -45,3 +45,15 @@ The `dump-truth` ground-truth analysis lists which apps claim each Markdown UTI,
 ## Update: hypothesis 2 ruled out
 
 The independent dump analysis (`Documentation/spikes/dump-format.md`) shows Mud and Microsoft Word both claim `public.markdown` explicitly, and Mud and Xcode claim `net.daringfireball.markdown`. Mud was a direct claimant of the type whose change failed, so a missing direct claim is not the cause of error 256. Hypotheses 1 and 3 remain open.
+
+## Hand test: browser role and XHTML (2026-09-18, macOS 26.6.2)
+
+Chris set the Web browser Kind to Google Chrome and then back to Arc through the app. Each change showed one macOS prompt. `http`, `https` and `public.html` changed together both times. `public.xhtml` stayed on Sublime Text both times.
+
+- The locked browser role on 26.6 is `http` + `https` + `public.html`. `public.xhtml` is not part of it and is set like any other type.
+- Setting the role through the `http` scheme alone is enough to move all three.
+- The `NSWorkspace` scheme setter worked from the app with a single consent prompt.
+
+## Resolved: why `public.markdown` fails with 256
+
+`UTType("public.markdown")` on this Mac has no supertypes. It is declared only by Word's imported declaration and conforms to neither `public.item` nor `public.data`. `.md` resolves to `net.daringfireball.markdown`, so no file is ever a `public.markdown`. macOS refuses to assign a handler to such a type, without prompting. The app now marks these members unsettable (`KindMember.isSettable`), leaves them out of split detection, and never calls the setter for them. Hypothesis 1 was close; hypotheses 2 and 3 are ruled out.
