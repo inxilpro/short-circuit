@@ -22,11 +22,16 @@ Final state matches the starting state.
 - **The deprecated setter can report success without changing anything** (status 0, handler unchanged). Either it prompts asynchronously and the re-read raced it, or it is silently ignored on 26.6. Either way it is unreliable; the plan's decision to skip it stands.
 - **A Kind can be partially applied.** Setting "Markdown" changed one member and failed on the other, so the write UX must report per-member results and leave the Kind marked split, rather than assume all-or-nothing.
 
-## Still unknown (the typed notes were not captured in the output)
+## Prompts observed (reported by Chris)
 
-- How many consent prompts appeared in test 1: one per UTI, or only for the one that succeeded?
-- Whether the 256 error came with a prompt that was declined, or with no prompt at all.
-- Whether the deprecated API showed any prompt.
+Exactly two prompts appeared: one for `net.daringfireball.markdown` → Mud and one for the restore to Sublime Text. So:
+
+- **One prompt per successful member change.** A Kind with N members costs up to N prompts.
+- **The 256 failure on `public.markdown` showed no prompt.** It was rejected before consent, not declined by the user.
+- **The deprecated LS setter never prompts.** Its status 0 with no change means it is silently ignored on 26.6, which settles it as unusable.
+
+## Still unknown
+
 - Whether `setDefaultApplication(at:toOpenFileAt:)` succeeds for a `.md` file where the `public.markdown` content-type call fails (plan milestone 0, fourth question). Not yet tested.
 
 ## Hypotheses for the `public.markdown` failure
