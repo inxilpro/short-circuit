@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import UniformTypeIdentifiers
@@ -8,12 +9,64 @@ enum SidebarItem: Hashable {
     case category(KindCategory)
     case all
     case applications
+
+    /// How the last-used section is remembered between launches.
+    var storageKey: String {
+        switch self {
+        case .split: "split"
+        case .common: "common"
+        case .category(let category): "category.\(category.rawValue)"
+        case .all: "all"
+        case .applications: "applications"
+        }
+    }
+
+    init?(storageKey: String) {
+        switch storageKey {
+        case "split": self = .split
+        case "common": self = .common
+        case "all": self = .all
+        case "applications": self = .applications
+        default:
+            guard storageKey.hasPrefix("category."),
+                  let category = KindCategory(rawValue: String(storageKey.dropFirst("category.".count)))
+            else { return nil }
+            self = .category(category)
+        }
+    }
 }
 
 enum BrowserLayout: String, CaseIterable, Identifiable {
     case grid, list
 
     var id: Self { self }
+}
+
+/// What an "Other…" app choice will be applied to once the user picks an app.
+enum AppChoiceTarget: Equatable {
+    case kind(Kind.ID)
+    case member(Kind.ID, KindMember.Target)
+
+    var kindID: Kind.ID {
+        switch self {
+        case .kind(let id), .member(let id, _): id
+        }
+    }
+}
+
+/// A status line under the window. Failures stay until dismissed, so they can't be missed.
+struct StatusMessage: Equatable {
+    var text: String
+    var isFailure = false
+}
+
+/// The view choices that are remembered between launches.
+enum PreferenceKey {
+    static let layout = "browserLayout"
+    static let sidebar = "sidebarSelection"
+    static let inspector = "inspectorPresented"
+    static let shadowedMembers = "showsShadowedMembers"
+    static let appFolder = "lastAppFolder"
 }
 
 @Observable
@@ -28,6 +81,8 @@ final class KindStore {
         case idle
         case applying(Kind.ID)
         case applyingBatch
+        /// Restoring previous apps for an Undo; the Kinds involved show progress like a change.
+        case undoing([Kind.ID])
     }
 
     /// A "Make default for…" run from the Applications view.
@@ -56,12 +111,36 @@ final class KindStore {
     }
     private(set) var isRefreshing = false
     var searchText = ""
-    var sidebarSelection: SidebarItem? = .common
+    var sidebarSelection: SidebarItem? = .common {
+        didSet { defaults?.set(sidebarSelection?.storageKey, forKey: PreferenceKey.sidebar) }
+    }
     var selectedKindID: Kind.ID?
-    var layout: BrowserLayout = .grid
-    var isInspectorPresented = true
-    var showsShadowedMembers = false
-    private(set) var transientMessage: String?
+    var layout: BrowserLayout = .grid {
+        didSet { defaults?.set(layout.rawValue, forKey: PreferenceKey.layout) }
+    }
+    var isInspectorPresented = true {
+        didSet { defaults?.set(isInspectorPresented, forKey: PreferenceKey.inspector) }
+    }
+    var showsShadowedMembers = false {
+        didSet { defaults?.set(showsShadowedMembers, forKey: PreferenceKey.shadowedMembers) }
+    }
+    private(set) var message: StatusMessage?
+    /// Set while the "Other…" app sheet is up; cleared when it completes or is cancelled.
+    private(set) var pendingAppChoice: AppChoiceTarget?
+    /// Where "Other…" opened last: apps outside /Applications are the reason it exists.
+    private(set) var lastAppFolder: URL? {
+        didSet { defaults?.set(lastAppFolder?.path(percentEncoded: false), forKey: PreferenceKey.appFolder) }
+    }
+    var isChoosingFileToIdentify = false
+    /// Bumped to ask the window to move focus to the search field.
+    private(set) var searchFocusRequests = 0
+    @ObservationIgnored private let defaults: UserDefaults?
+    /// Where views keep their own remembered state (table columns), matching the store's.
+    var preferences: UserDefaults? { defaults }
+    /// The window's undo manager, set by the window. Changes register their reversal here.
+    @ObservationIgnored weak var undoManager: UndoManager?
+    /// The restore an Undo started, so tests (and nothing else) can wait for it.
+    @ObservationIgnored private(set) var undoTask: Task<Void, Never>?
     /// One app-wide gate: consent prompts from two batches must never interleave, and a batch's
     /// live reads are only valid while nothing else is writing.
     private(set) var activity: WriteActivity = .idle
@@ -83,9 +162,23 @@ final class KindStore {
     var showsOfferedKinds = false
     @ObservationIgnored private var appIndexCache: AppIndex?
 
-    init(provider: any KindProviding, writer: any HandlerWriting) {
+    /// `defaults` remembers the view between launches; nil (tests, previews) remembers nothing.
+    init(provider: any KindProviding, writer: any HandlerWriting, defaults: UserDefaults? = nil) {
         self.provider = provider
         self.writer = writer
+        self.defaults = defaults
+        guard let defaults else { return }
+        if let raw = defaults.string(forKey: PreferenceKey.layout), let layout = BrowserLayout(rawValue: raw) {
+            self.layout = layout
+        }
+        if let raw = defaults.string(forKey: PreferenceKey.sidebar), let item = SidebarItem(storageKey: raw) {
+            sidebarSelection = item
+        }
+        if defaults.object(forKey: PreferenceKey.inspector) != nil {
+            isInspectorPresented = defaults.bool(forKey: PreferenceKey.inspector)
+        }
+        showsShadowedMembers = defaults.bool(forKey: PreferenceKey.shadowedMembers)
+        lastAppFolder = defaults.string(forKey: PreferenceKey.appFolder).map { URL(filePath: $0, directoryHint: .isDirectory) }
     }
 
     var kinds: [Kind] {
@@ -198,13 +291,18 @@ final class KindStore {
             if let selectedKindID, !ids.contains(selectedKindID) {
                 self.selectedKindID = nil
             }
+            // A remembered category can empty out when apps are removed, and its sidebar row
+            // disappears with it.
+            if case .category(let category) = sidebarSelection, !categoriesWithKinds.contains(category) {
+                sidebarSelection = .common
+            }
         } catch {
             guard generation == loadGeneration else { return }
             // Keep showing stale data on a failed refresh rather than blanking the window.
             if kinds.isEmpty {
                 state = .failed(error.localizedDescription)
             } else {
-                showMessage("Refresh failed: \(error.localizedDescription)")
+                showMessage("Refresh failed: \(error.localizedDescription)", isFailure: true)
             }
         }
     }
@@ -258,6 +356,19 @@ final class KindStore {
             batchRun?.currentKindID = nil
         }
 
+        var restores: [UndoRecord.Restore] = []
+        var touchedKindIDs: [Kind.ID] = []
+        defer {
+            let count = touchedKindIDs.count
+            registerUndo(UndoRecord(
+                actionName: count == 1
+                    ? "Make \(app.name) the Default for 1 Type"
+                    : "Make \(app.name) the Default for \(count) Types",
+                restores: restores,
+                kindIDs: touchedKindIDs
+            ))
+        }
+
         for item in plan.items {
             if batchRun?.stopRequested == true {
                 batchRun?.notStartedKindIDs.append(item.id)
@@ -270,6 +381,7 @@ final class KindStore {
             results[kind.id] = nil
 
             let (supported, unsupported) = kind.eligibility(of: kind.effectiveMembers, for: app)
+            let before = await currentHandlers(for: supported.map(\.target))
             let base = batchRun?.changesStarted ?? 0
             let applied = supported.isEmpty ? [] : await writer.apply(app: app, targets: supported.map(\.target)) { [weak self] step in
                 guard let self, self.batchRun?.stopRequested != true else { return false }
@@ -278,6 +390,11 @@ final class KindStore {
                 return true
             }
             results[kind.id] = Self.finalResults(applied: applied, unsupported: unsupported, app: app)
+            let kindRestores = Self.restores(for: applied, before: before, app: app)
+            if !kindRestores.isEmpty {
+                restores += kindRestores
+                touchedKindIDs.append(kind.id)
+            }
             await reloadHandlers(for: kind.members.map(\.target) + applied.map(\.target))
             batchRun?.finishedKindIDs.append(kind.id)
         }
@@ -296,7 +413,29 @@ final class KindStore {
         isInspectorPresented = true
     }
 
-    func revealKind(forFileAt url: URL) {
+    /// A dropped app can't be a file to identify; it's someone reaching for "make this the
+    /// default", so point them at where that works instead of saying no type matches.
+    func handleDrop(of url: URL, ignoredCount: Int = 0) {
+        let type = (try? url.resourceValues(forKeys: [.contentTypeKey]))?.contentType
+        guard type?.conforms(to: .application) == true else {
+            revealKind(forFileAt: url, ignoredCount: ignoredCount)
+            return
+        }
+        if sidebarSelection == .applications {
+            let canonical = AppIdentity.canonical(url)
+            if let summary = appIndex.summaries.first(where: { AppIdentity.canonical($0.app.url) == canonical }) {
+                selectApp(summary.app.url)
+                return
+            }
+            showMessage("\(url.deletingPathExtension().lastPathComponent) doesn’t open any of the listed types.")
+            return
+        }
+        showMessage("To make an app the default, drop it on “Opens With” in the inspector, or on one identifier.")
+    }
+
+    /// `ignoredCount` is how many other files were dropped along with this one; only one type
+    /// can be shown, so the rest are mentioned rather than silently dropped.
+    func revealKind(forFileAt url: URL, ignoredCount: Int = 0) {
         let type = (try? url.resourceValues(forKeys: [.contentTypeKey]))?.contentType
             ?? UTType(filenameExtension: url.pathExtension)
 
@@ -314,10 +453,18 @@ final class KindStore {
         }
         selectedKindID = kind.id
         isInspectorPresented = true
+        if ignoredCount > 0 {
+            showMessage("Showing the type of “\(url.lastPathComponent)”. Drop one file at a time to see each type.")
+        }
     }
 
     func isApplying(_ kind: Kind) -> Bool {
-        activity == .applying(kind.id) || (activity == .applyingBatch && batchRun?.currentKindID == kind.id)
+        switch activity {
+        case .idle: false
+        case .applying(let id): id == kind.id
+        case .applyingBatch: batchRun?.currentKindID == kind.id
+        case .undoing(let ids): ids.contains(kind.id)
+        }
     }
 
     func results(for kind: Kind) -> [MemberResult] {
@@ -355,7 +502,7 @@ final class KindStore {
             return
         }
         guard !members.isEmpty else {
-            showMessage("None of \(kind.name)’s types is preferred for an extension. Set them one by one below.")
+            showMessage("Files with \(kind.name)’s extensions open according to other types, so there’s nothing to set for it as a whole. Set its identifiers one by one in the inspector.")
             return
         }
         activity = .applying(kind.id)
@@ -368,6 +515,7 @@ final class KindStore {
         let (supported, unsupported) = kind.eligibility(of: members, for: app)
         let targets = supported.map(\.target)
         let appName = AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app)
+        let before = await currentHandlers(for: targets)
 
         let applied = targets.isEmpty ? [] : await writer.apply(app: app, targets: targets) { [weak self] step in
             self?.progress = step
@@ -376,13 +524,124 @@ final class KindStore {
         let outcome = Self.finalResults(applied: applied, unsupported: unsupported, app: app)
 
         if supported.isEmpty {
-            showMessage("\(appName) can’t open \(members.count == 1 ? "this type" : "any of these types").")
+            showMessage("\(appName) can’t open \(members.count == 1 ? "this type" : "any of these types").", isFailure: true)
         } else if outcome.allSatisfy({ $0.outcome == .skipped(.alreadyDefault) }) {
             showMessage("\(kind.name) already opens with \(appName).")
         } else {
             results[kind.id] = outcome
         }
         await reloadHandlers(for: members.map(\.target) + applied.map(\.target))
+        registerUndo(UndoRecord(
+            actionName: members.count == 1 && kind.members.count > 1
+                ? "Set Default App for \(members[0].target.displayName)"
+                : "Set Default App for “\(kind.name)”",
+            restores: Self.restores(for: applied, before: before, app: app),
+            kindIDs: [kind.id]
+        ))
+    }
+
+    // MARK: Undo
+
+    /// How to put back what a change moved: each changed target and the app it had before.
+    struct UndoRecord {
+        struct Restore: Equatable {
+            var target: KindMember.Target
+            var app: AppRef
+        }
+
+        var actionName: String
+        var restores: [Restore]
+        var kindIDs: [Kind.ID]
+    }
+
+    /// Live reads, not the displayed Kind: the undo has to restore what macOS actually had. The
+    /// browser role is read whole, since one `http` call moves all of it.
+    private func currentHandlers(for targets: [KindMember.Target]) async -> [KindMember.Target: AppRef] {
+        var read: [KindMember.Target: AppRef] = [:]
+        let all = targets.contains(where: WritePlan.browserRole.contains) ? targets + WritePlan.browserTargets : targets
+        for target in all where read[target] == nil {
+            if let app = await writer.currentHandler(for: target) { read[target] = app }
+        }
+        return read
+    }
+
+    /// Targets that changed and had a different app before. A type that had no default can't be
+    /// given "no default" back, so it's left out. The browser role goes back through one `http`
+    /// restore, since https and HTML follow it; restoring them one by one would re-run the
+    /// browser change with whichever app happened to be listed for them.
+    static func restores(for applied: [MemberResult], before: [KindMember.Target: AppRef], app: AppRef) -> [UndoRecord.Restore] {
+        var restores: [UndoRecord.Restore] = []
+        var browserRestored = false
+        for result in applied where result.outcome == .changed {
+            if WritePlan.browserRole.contains(result.target) {
+                guard !browserRestored else { continue }
+                browserRestored = true
+                let previous = before[WritePlan.browserCall] ?? before[result.target]
+                if let previous, !AppIdentity.same(previous.url, app.url) {
+                    restores.append(.init(target: WritePlan.browserCall, app: previous))
+                }
+            } else if let previous = before[result.target], !AppIdentity.same(previous.url, app.url) {
+                restores.append(.init(target: result.target, app: previous))
+            }
+        }
+        return restores
+    }
+
+    private func registerUndo(_ record: UndoRecord) {
+        guard let undoManager, !record.restores.isEmpty else { return }
+        undoManager.beginUndoGrouping()
+        undoManager.registerUndo(withTarget: self) { store in
+            store.undoTask = Task { await store.performUndo(record) }
+        }
+        undoManager.setActionName(record.actionName)
+        undoManager.endUndoGrouping()
+    }
+
+    /// Restores each changed target through the same writer, so macOS asks again for every
+    /// change, exactly as it did the first time. A declined prompt stops the rest: the user just
+    /// said no, and carrying on would ask again for the same intent.
+    func performUndo(_ record: UndoRecord) async {
+        guard canWrite else {
+            showMessage("Undo didn’t run because another change was still in progress. Change the types back from the inspector.", isFailure: true)
+            return
+        }
+        activity = .undoing(record.kindIDs)
+        defer {
+            activity = .idle
+            progress = nil
+        }
+        let prompts = record.restores.count
+        showMessage(prompts == 1
+            ? "Restoring the previous app. macOS will ask you to confirm the change."
+            : "Restoring the previous apps. macOS will ask you to confirm each of \(prompts) changes.")
+
+        // One call per restore, so a decline stops before the very next prompt.
+        var outcomes: [MemberResult] = []
+        var notAttempted = 0
+        for restore in record.restores {
+            if outcomes.contains(where: \.outcome.stopsUndo) {
+                notAttempted += 1
+                continue
+            }
+            outcomes += await writer.apply(app: restore.app, targets: [restore.target]) { [weak self] step in
+                self?.progress = step
+                return true
+            }
+        }
+
+        for id in record.kindIDs {
+            guard let kind = kinds.first(where: { $0.id == id }) else { continue }
+            let own = Set(kind.members.map(\.target))
+            results[id] = outcomes.filter { own.contains($0.target) }
+        }
+        await reloadHandlers(for: record.restores.map(\.target) + outcomes.map(\.target))
+
+        if outcomes.contains(where: \.outcome.stopsUndo) {
+            let rest = notAttempted == 0 ? "" : notAttempted == 1 ? " One change wasn’t attempted." : " \(notAttempted) changes weren’t attempted."
+            showMessage("Undo stopped: macOS didn’t make a change.\(rest)", isFailure: true)
+        } else {
+            showMessage(prompts == 1 ? "Restored the previous app." : "Restored the previous apps.")
+        }
     }
 
     /// One result per target: what a performed step reports wins, so a browser member covered
@@ -420,7 +679,7 @@ final class KindStore {
             for index in kind.members.indices {
                 guard let handler = handlers[kind.members[index].target] else { continue }
                 kind.members[index].defaultApp = handler
-                if let handler, !kind.candidates.contains(where: { $0.url == handler.url }) {
+                if let handler, !kind.candidates.contains(where: { AppIdentity.same($0.url, handler.url) }) {
                     kind.candidates.append(handler)
                 }
             }
@@ -428,13 +687,76 @@ final class KindStore {
         }
     }
 
-    func showMessage(_ message: String) {
-        transientMessage = message
+    /// Information fades after a few seconds; failures stay until dismissed. Both are announced,
+    /// since a line that appears at the bottom of the window is invisible to VoiceOver otherwise.
+    func showMessage(_ text: String, isFailure: Bool = false) {
+        message = StatusMessage(text: text, isFailure: isFailure)
+        announce(text)
         messageTask?.cancel()
+        guard !isFailure else { return }
         messageTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }
-            self?.transientMessage = nil
+            self?.message = nil
+        }
+    }
+
+    private func announce(_ text: String) {
+        guard let app = NSApp else { return }
+        NSAccessibility.post(element: app, notification: .announcementRequested, userInfo: [
+            .announcement: text,
+            .priority: NSAccessibilityPriorityLevel.high.rawValue,
+        ])
+    }
+
+    func dismissMessage() {
+        messageTask?.cancel()
+        message = nil
+    }
+
+    func focusSearch() {
+        searchFocusRequests += 1
+    }
+
+    // MARK: Choosing an app with a panel
+
+    func requestOtherApp(for target: AppChoiceTarget) {
+        guard canWrite else {
+            showMessage("Another change is still in progress.")
+            return
+        }
+        pendingAppChoice = target
+    }
+
+    func cancelAppChoice() {
+        pendingAppChoice = nil
+    }
+
+    /// "Choose an app to open Markdown files." or, for one type, names it.
+    var appChoicePrompt: String {
+        guard let pendingAppChoice, let kind = kinds.first(where: { $0.id == pendingAppChoice.kindID }) else {
+            return "Choose an app."
+        }
+        switch pendingAppChoice {
+        case .kind:
+            return "Choose an app to open \(kind.name) files."
+        case .member(_, let target):
+            if WritePlan.browserRole.contains(target) { return "Choose your default web browser." }
+            return "Choose an app to open \(target.displayName) (\(kind.name))."
+        }
+    }
+
+    func completeAppChoice(_ url: URL) async {
+        guard let target = pendingAppChoice else { return }
+        pendingAppChoice = nil
+        lastAppFolder = url.deletingLastPathComponent()
+        guard let kind = kinds.first(where: { $0.id == target.kindID }) else { return }
+        let app = HandlerService.appRef(for: url)
+        switch target {
+        case .kind:
+            await setDefault(app, for: kind)
+        case .member(_, let member):
+            await setDefault(app, for: member, in: kind)
         }
     }
 }
@@ -515,4 +837,14 @@ struct KindMatcher {
     }
 
     private static let tooGeneric: Set<UTType> = [.item, .content, .data, .compositeContent]
+}
+
+private extension MemberResult.Outcome {
+    /// Anything but a completed change: the user declined, or macOS refused.
+    var stopsUndo: Bool {
+        switch self {
+        case .changed, .skipped: false
+        case .unchangedAfterSuccess, .declined, .failed: true
+        }
+    }
 }

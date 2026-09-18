@@ -10,6 +10,7 @@ struct KindIconView: View {
     var body: some View {
         documentIcon
             .frame(width: size, height: size)
+            .accessibilityHidden(true)
             .overlay(alignment: .bottomTrailing) {
                 if showsBadge {
                     badge

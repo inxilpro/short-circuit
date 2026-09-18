@@ -85,9 +85,10 @@ nonisolated struct WritePlan: Hashable, Sendable {
 
     var affectedTargets: [KindMember.Target] { steps.flatMap(\.covers) }
 
+    /// Safari alone has three spellings (`/Applications`, the Cryptex and Preboot paths), and
+    /// a re-read can return any of them.
     static func sameApp(_ lhs: URL?, _ rhs: URL?) -> Bool {
-        guard let lhs, let rhs else { return lhs == nil && rhs == nil }
-        return lhs.standardizedFileURL.resolvingSymlinksInPath().path == rhs.standardizedFileURL.resolvingSymlinksInPath().path
+        AppIdentity.same(lhs, rhs)
     }
 }
 

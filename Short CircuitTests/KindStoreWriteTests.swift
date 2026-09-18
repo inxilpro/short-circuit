@@ -480,7 +480,7 @@ struct AppLabelsTests {
 
         await store.setDefault(new, for: kind)
 
-        #expect(store.transientMessage?.contains("Adobe Illustrator (30.0.0)") == true)
+        #expect(store.message?.text.contains("Adobe Illustrator (30.0.0)") == true)
         #expect(backend.calls.isEmpty)
     }
 }
@@ -528,7 +528,7 @@ struct MemberCandidateWriteTests {
         await store.setDefault(.mail, for: .scheme("webcal"), in: try kind("calendar-event", in: store))
 
         #expect(backend.calls.isEmpty)
-        #expect(store.transientMessage?.contains("can’t open this type") == true)
+        #expect(store.message?.text.contains("can’t open this type") == true)
     }
 
     @Test func memberMenusOfferOnlyThatMembersApps() async throws {

@@ -24,7 +24,7 @@ struct KindBrowserView: View {
 
         switch store.state {
         case .loading:
-            ProgressView("Reading Launch Services…")
+            ProgressView("Loading Types…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed(let message):
             ContentUnavailableView {
@@ -41,8 +41,22 @@ struct KindBrowserView: View {
                 EmptyKindsView()
             } else {
                 switch store.layout {
-                case .grid: KindGridView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs, secondary: splitSecondary)
-                case .list: KindTableView(kinds: store.visibleKinds, selection: $store.selectedKindID, resolvedIDs: resolvedIDs)
+                case .grid:
+                    KindGridView(
+                        kinds: store.visibleKinds,
+                        selection: $store.selectedKindID,
+                        resolvedIDs: resolvedIDs,
+                        secondary: splitSecondary,
+                        onActivate: { store.isInspectorPresented = true },
+                        onToggleDetails: { store.isInspectorPresented.toggle() }
+                    )
+                case .list:
+                    KindTableView(
+                        kinds: store.visibleKinds,
+                        selection: $store.selectedKindID,
+                        resolvedIDs: resolvedIDs,
+                        onActivate: { store.isInspectorPresented = true }
+                    )
                 }
             }
         }
@@ -58,7 +72,7 @@ private struct EmptyKindsView: View {
                 ContentUnavailableView(
                     "No Fixable Splits",
                     systemImage: "checkmark.seal",
-                    description: Text("No type has members in different apps that one app could bring together.")
+                    description: Text("No type has identifiers in different apps that one app could bring together.")
                 )
             } else {
                 ContentUnavailableView("No Types", systemImage: "doc.questionmark")
@@ -67,7 +81,7 @@ private struct EmptyKindsView: View {
             ContentUnavailableView {
                 Label("No Results for “\(store.searchText)”", systemImage: "magnifyingglass")
             } description: {
-                Text("Search by name, .ext, MIME type, UTI, or scheme:")
+                Text("Search by name, extension (.md), MIME type, identifier, or link scheme (mailto:).")
             } actions: {
                 if store.hiddenMatchesInAllTypes > 0 {
                     Button("Show \(store.hiddenMatchesInAllTypes) in All Types") {

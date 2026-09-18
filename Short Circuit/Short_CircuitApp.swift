@@ -8,14 +8,19 @@ struct Short_CircuitApp: App {
     /// and they pair the simulated writer with the sample data it was built from.
     private static func makeStore() -> KindStore {
         #if DEBUG
-        if DebugSnapshotter.directory != nil, DebugSnapshotter.isLive {
-            return KindStore(provider: LiveKindProvider(), writer: RefusingHandlerWriter())
-        }
         if DebugSnapshotter.directory != nil {
-            return KindStore(provider: SampleKindProvider(delay: .milliseconds(400)), writer: SimulatedHandlerWriter.demo)
+            // A throwaway defaults domain, so snapshot runs neither inherit nor overwrite the
+            // view state a person left behind.
+            let suite = "com.inxilpro.short-circuit.snapshots"
+            UserDefaults.standard.removePersistentDomain(forName: suite)
+            let defaults = UserDefaults(suiteName: suite)
+            if DebugSnapshotter.isLive {
+                return KindStore(provider: LiveKindProvider(), writer: RefusingHandlerWriter(), defaults: defaults)
+            }
+            return KindStore(provider: SampleKindProvider(delay: .milliseconds(400)), writer: SimulatedHandlerWriter.demo, defaults: defaults)
         }
         #endif
-        return KindStore(provider: LiveKindProvider(), writer: LiveHandlerWriter.live)
+        return KindStore(provider: LiveKindProvider(), writer: LiveHandlerWriter.live, defaults: .standard)
     }
 
     var body: some Scene {
@@ -25,21 +30,7 @@ struct Short_CircuitApp: App {
         }
         .defaultSize(width: 1100, height: 680)
         .commands {
-            CommandGroup(after: .toolbar) {
-                Button("Refresh") {
-                    IconCache.invalidate()
-                    Task { await store.refresh(force: true) }
-                }
-                .keyboardShortcut("r")
-                .disabled(store.isRefreshing || store.isWriting)
-            }
-            #if DEBUG
-            CommandMenu("Debug") {
-                Button("Export Launch Services Snapshot…") {
-                    Task { await SnapshotExportCommand.run(kinds: store.kinds) }
-                }
-            }
-            #endif
+            AppCommands(store: store)
         }
     }
 }

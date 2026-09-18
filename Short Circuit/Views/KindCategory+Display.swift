@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension KindCategory {
-    var title: String {
+    nonisolated var title: String {
         switch self {
         case .documents: "Documents"
         case .images: "Images"
@@ -91,10 +91,16 @@ extension Kind {
         return extensions.filter { !governed.contains($0.lowercased()) }
     }
 
+    /// False when every settable member is shadowed: a whole-type change would reach nothing, so
+    /// only the per-type menus apply.
+    var hasWholeTypeTargets: Bool {
+        !effectiveMembers.isEmpty
+    }
+
     /// Whether `member` can be set to `app`. A member already on the app counts, even if the
     /// candidate list somehow omits it.
     func member(_ member: KindMember, accepts app: AppRef) -> Bool {
-        member.accepts(app) || (member.isSettable && member.defaultApp?.url == app.url)
+        member.accepts(app) || (member.isSettable && AppIdentity.same(member.defaultApp?.url, app.url))
     }
 
     /// Whether a change of `member` to `app` can actually be made. Browser-role members all change

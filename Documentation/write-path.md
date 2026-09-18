@@ -92,13 +92,31 @@ macOS only accepts an app it lists for that exact type. Setting any other app fa
 - **Planning:** members that don't accept the chosen app make no setter call. They are reported as a neutral "X can't open this type" row, and counted separately in the summary ("1 changed · 1 not supported"). If their app differs, the Kind honestly stays split.
 - **Fix Split:** picks the current app that the most settable members can take. Ties go to the app more members already use. If some members can't take it, the button reads "Use X Where Possible" and names the members that will stay.
 - **Menus:** the per-member ⋯ menu lists only that member's candidates, plus "Other…". The Kind-level picker marks partially supported apps with a quiet note such as "1 of 2 types".
-- **"Other…":** an app picked there can still reach the setter on a member whose candidates are unknown. A 256 then reads "macOS rejected this app for this type without asking. It only allows apps that declare support for the type."
+- **"Other…":** a sheet on the window (`.fileImporter`) that starts in the last folder used. Dropping an app from Finder on Opens With or on one identifier row takes the same path. An app picked there can still reach the setter on a member whose candidates are unknown. A 256 then reads "macOS rejected this app for this type without asking. It only allows apps that declare support for the type."
 
 
 
 Some types, such as `public.markdown` on macOS 26.6, make the content-type setter fail with `NSCocoaErrorDomain` 256 and no prompt. That member is reported as failed: "macOS rejected changing the default app for this type without asking. Nothing was changed."
 
 There is **no automatic fallback**. An earlier version retried through `setDefaultApplication(at:toOpenFileAt:)` with a `sample.<ext>` file. It was removed because a sample `.md` file resolves to `net.daringfireball.markdown`, not `public.markdown`, so the retry could have changed a type the user never approved. Any future experiment with that API needs a hands-on test and must account for the file's resolved type in the plan.
+
+## Undo
+
+Every change registers one undo group with the window's `UndoManager`: a whole type, one identifier, Fix Split, an app chosen with Other… or dropped on the inspector, and an Applications batch. Edit reads “Undo Set Default App for “Markdown”” or “Undo Make Photos the Default for 3 Types”.
+
+- **What it restores:**
+  - Before a change, the store reads the live handler of every target it will touch, and the whole browser role if any browser target is involved.
+  - Undo puts back the previous app of each target whose result was `changed`.
+  - Targets that had no default are left out, because there is no "no default" to set.
+- **How:** through the same writer, one target per call.
+  - macOS asks again for every restore, and the status line says so when the undo starts.
+  - The browser role goes back as a single `http` call with `http`'s previous app. https and HTML follow it.
+- **Stopping:** a declined or failed restore stops the rest. The persistent banner says how many weren't attempted, and per-type results show in the inspector.
+- **No Redo:** whether a restore worked is only known after its prompt, so a Redo registered in advance could claim a change macOS refused.
+- **Busy:** undo runs under the same app-wide gate. If another change is in progress it does nothing and says so.
+- **Scope:** undo lasts for the session only.
+
+Tests: `UndoTests` (simulated backend).
 
 ## Concurrency and refresh
 

@@ -14,9 +14,39 @@ enum DebugSnapshotter {
         ProcessInfo.processInfo.environment["SC_SNAPSHOT_LIVE"] == "1"
     }
 
+    /// SC_SNAPSHOT_ONLY=menus,keyboard runs just those groups, for a quick check of one area.
+    static var only: Set<String>? {
+        ProcessInfo.processInfo.environment["SC_SNAPSHOT_ONLY"].map { Set($0.split(separator: ",").map(String.init)) }
+    }
+
     static func run(store: KindStore) async {
         guard let directory else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        if let only {
+            while case .loading = store.state { try? await Task.sleep(for: .milliseconds(100)) }
+            try? await Task.sleep(for: .milliseconds(500))
+            if only.contains("menus") {
+                await dumpMenus(store: store, to: directory)
+                store.sidebarSelection = .all
+                store.selectedKindID = "rtf"
+                try? await Task.sleep(for: .milliseconds(500))
+                await dumpMenus(store: store, to: directory, name: "menus-selected")
+            }
+            if only.contains("keyboard") { await runKeyboardStates(store: store, directory: directory) }
+            if only.contains("batch") { await runApplicationsStates(store: store, directory: directory) }
+            if only.contains("undo") { await runUndoStates(store: store, directory: directory) }
+            if only.contains("apps") {
+                store.sidebarSelection = .applications
+                try? await Task.sleep(for: .milliseconds(1500))
+                if let first = store.appIndex.summaries.max(by: { $0.explicitCount < $1.explicitCount }) {
+                    store.selectApp(first.app.url)
+                    try? await Task.sleep(for: .milliseconds(1500))
+                }
+            }
+            NSApp.terminate(nil)
+            return
+        }
 
         if isLive {
             await runLive(store: store, directory: directory)
@@ -73,8 +103,141 @@ enum DebugSnapshotter {
             await snapshot("drop-unknown-\(suffix)", to: directory)
         }
         await runWriteStates(store: store, directory: directory)
+        await runUndoStates(store: store, directory: directory)
         await runApplicationsStates(store: store, directory: directory)
+        await runKeyboardStates(store: store, directory: directory)
+        await runMessageStates(store: store, directory: directory)
+        await dumpMenus(store: store, to: directory)
         NSApp.terminate(nil)
+    }
+
+    private static var mainWindow: NSWindow? {
+        NSApp.windows.first { $0.isVisible && $0.contentView != nil && $0.sheetParent == nil }
+    }
+
+    /// Drives the grid with real key events and logs what each one selected, since focus and
+    /// key handling can't be seen in a still image. Restores the pasteboard it borrows for ⌘C.
+    private static func runKeyboardStates(store: KindStore, directory: URL) async {
+        guard let window = mainWindow, let content = window.contentView else { return }
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.appearance = NSAppearance(named: .aqua)
+        store.searchText = ""
+        store.layout = .grid
+        store.sidebarSelection = .all
+        store.isInspectorPresented = true
+        store.selectedKindID = nil
+        try? await Task.sleep(for: .milliseconds(700))
+
+        var log: [String] = []
+        func record(_ step: String) {
+            log.append("\(step): selection=\(store.selectedKindID ?? "nil") inspector=\(store.isInspectorPresented)")
+        }
+
+        // The first tile sits just right of the sidebar, below the toolbar.
+        let point = NSPoint(x: 290, y: content.frame.height - 130)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) {
+                window.sendEvent(event)
+            }
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        record("click first tile")
+
+        let steps: [(String, UInt16, String, NSEvent.ModifierFlags)] = [
+            ("right", 124, String(UnicodeScalar(NSRightArrowFunctionKey)!), [.function, .numericPad]),
+            ("right", 124, String(UnicodeScalar(NSRightArrowFunctionKey)!), [.function, .numericPad]),
+            ("down", 125, String(UnicodeScalar(NSDownArrowFunctionKey)!), [.function, .numericPad]),
+            ("left", 123, String(UnicodeScalar(NSLeftArrowFunctionKey)!), [.function, .numericPad]),
+            ("up", 126, String(UnicodeScalar(NSUpArrowFunctionKey)!), [.function, .numericPad]),
+            ("end", 119, String(UnicodeScalar(NSEndFunctionKey)!), [.function]),
+            ("home", 115, String(UnicodeScalar(NSHomeFunctionKey)!), [.function]),
+            ("type p", 35, "p", []),
+            ("type l", 37, "l", []),
+            ("space", 49, " ", []),
+            ("space", 49, " ", []),
+        ]
+        for (name, code, characters, flags) in steps {
+            send(key: code, characters: characters, flags: flags, to: window)
+            try? await Task.sleep(for: .milliseconds(250))
+            record(name)
+        }
+        await snapshot("keyboard-focused-light", to: directory, settle: .milliseconds(300))
+
+        let saved = NSPasteboard.general.string(forType: .string)
+        NSPasteboard.general.clearContents()
+        let copyItem = NSApp.mainMenu?.item(withTitle: "Edit")?.submenu?.item(withTitle: "Copy")
+        copyItem?.menu?.update()
+        log.append("Edit ▸ Copy enabled: \(copyItem?.isEnabled == true), first responder: \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nil")")
+        if let copy = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: "c", charactersIgnoringModifiers: "c", isARepeat: false, keyCode: 8) {
+            log.append("⌘C handled by menu: \(NSApp.mainMenu?.performKeyEquivalent(with: copy) == true)")
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        if NSPasteboard.general.string(forType: .string) == nil {
+            log.append("window is key: \(window.isKeyWindow), app active: \(NSApp.isActive)")
+            log.append("copy: via the window's responder chain handled: \(window.firstResponder?.tryToPerform(#selector(NSText.copy(_:)), with: nil) == true)")
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        log.append("⌘C pasteboard: \(NSPasteboard.general.string(forType: .string) ?? "nil")")
+        log.append("⌘C types: \(NSPasteboard.general.types?.map(\.rawValue).joined(separator: ", ") ?? "none")")
+        NSPasteboard.general.clearContents()
+        if let saved { NSPasteboard.general.setString(saved, forType: .string) }
+
+        send(key: 53, characters: "\u{1b}", flags: [], to: window)
+        try? await Task.sleep(for: .milliseconds(250))
+        record("escape")
+
+        if let find = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: "f", charactersIgnoringModifiers: "f", isARepeat: false, keyCode: 3) {
+            log.append("⌘F handled by menu: \(NSApp.mainMenu?.performKeyEquivalent(with: find) == true)")
+        }
+        try? await Task.sleep(for: .milliseconds(400))
+        let responder = window.firstResponder
+        let inSearch = (responder as? NSTextView)?.delegate is NSSearchField || responder is NSSearchField
+        log.append("after ⌘F first responder: \(responder.map { String(describing: type(of: $0)) } ?? "nil"), in search field: \(inSearch)")
+        window.makeFirstResponder(nil)
+
+        store.selectedKindID = "markdown"
+        window.makeFirstResponder(nil)
+        await snapshot("keyboard-unfocused-light", to: directory)
+
+        try? log.joined(separator: "\n").write(to: directory.appending(path: "keyboard.txt"), atomically: true, encoding: .utf8)
+    }
+
+    private static func send(key code: UInt16, characters: String, flags: NSEvent.ModifierFlags, to window: NSWindow) {
+        for type in [NSEvent.EventType.keyDown, .keyUp] {
+            if let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code) {
+                window.sendEvent(event)
+            }
+        }
+    }
+
+    /// Undo runs the restore through the simulated writer, exactly as a person's ⌘Z would.
+    private static func runUndoStates(store: KindStore, directory: URL) async {
+        guard store.writer is SimulatedHandlerWriter, let undoManager = store.undoManager else { return }
+        NSApp.appearance = NSAppearance(named: .aqua)
+        store.searchText = ""
+        store.sidebarSelection = .all
+        store.layout = .grid
+        guard let png = store.kinds.first(where: { $0.id == "png" }) else { return }
+        store.selectedKindID = png.id
+        await store.setDefault(.photos, for: png)
+        await snapshot("undo-before-light", to: directory)
+        let name = undoManager.undoMenuItemTitle
+        undoManager.undo()
+        await snapshot("undo-applying-light", to: directory, settle: .milliseconds(500))
+        await store.undoTask?.value
+        await snapshot("undo-done-light", to: directory)
+        try? "menu item: \(name)\nafter: \(store.kinds.first { $0.id == "png" }?.defaultApp?.name ?? "nil")\n".write(to: directory.appending(path: "undo.txt"), atomically: true, encoding: .utf8)
+    }
+
+    private static func runMessageStates(store: KindStore, directory: URL) async {
+        NSApp.appearance = NSAppearance(named: .aqua)
+        store.showMessage("Refresh failed: lsregister exited with status 1.", isFailure: true)
+        await snapshot("message-failure-light", to: directory)
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        await snapshot("message-failure-dark", to: directory)
+        store.dismissMessage()
+        NSApp.appearance = NSAppearance(named: .aqua)
     }
 
     private static func runWriteStates(store: KindStore, directory: URL) async {
@@ -240,6 +403,11 @@ enum DebugSnapshotter {
         store.selectedKindID = markdown?.id
         await snapshot("live-markdown-inspector", to: directory)
 
+        if let noWholeType = store.kinds.first(where: { !$0.hasWholeTypeTargets && $0.settableMembers.count > 0 }) {
+            store.selectedKindID = noWholeType.id
+            await snapshot("live-no-whole-type-inspector", to: directory)
+        }
+
         let web = store.kinds.first { $0.schemes.contains("http") }
         store.selectedKindID = web?.id
         await snapshot("live-webpage-inspector", to: directory)
@@ -340,6 +508,38 @@ enum DebugSnapshotter {
         try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
     }
 
+
+    /// Writes the menu bar as text, with shortcuts and enabled state after validation, because
+    /// menus can't be captured as images and many items come from SwiftUI rather than our code.
+    static func dumpMenus(store: KindStore, to directory: URL, name: String = "menus") async {
+        func describe(_ menu: NSMenu, depth: Int) -> [String] {
+            // What AppKit does as a menu opens; SwiftUI rebuilds its items here.
+            menu.delegate?.menuNeedsUpdate?(menu)
+            menu.update()
+            return menu.items.flatMap { item -> [String] in
+                if item.isSeparatorItem { return [String(repeating: "  ", count: depth) + "—"] }
+                var line = String(repeating: "  ", count: depth) + item.title
+                if !item.keyEquivalent.isEmpty {
+                    line += "  [\(modifierText(item.keyEquivalentModifierMask))\(item.keyEquivalent == " " ? "Space" : item.keyEquivalent.uppercased())]"
+                }
+                if !item.isEnabled { line += "  (disabled)" }
+                if item.isHidden { line += "  (hidden)" }
+                return [line] + (item.submenu.map { describe($0, depth: depth + 1) } ?? [])
+            }
+        }
+        guard let main = NSApp.mainMenu else { return }
+        let text = describe(main, depth: 0).joined(separator: "\n")
+        try? text.write(to: directory.appending(path: "\(name).txt"), atomically: true, encoding: .utf8)
+    }
+
+    private static func modifierText(_ flags: NSEvent.ModifierFlags) -> String {
+        var text = ""
+        if flags.contains(.control) { text += "⌃" }
+        if flags.contains(.option) { text += "⌥" }
+        if flags.contains(.shift) { text += "⇧" }
+        if flags.contains(.command) { text += "⌘" }
+        return text
+    }
 
     private static func snapshot(_ name: String, to directory: URL, settle: Duration = .milliseconds(700)) async {
         try? await Task.sleep(for: settle)

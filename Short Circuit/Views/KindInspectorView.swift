@@ -12,6 +12,8 @@ struct KindEditing {
     var setDefault: (AppRef) -> Void
     var setMemberDefault: (AppRef, KindMember.Target) -> Void
     var fixSplit: () -> Void
+    /// Opens the app panel as a sheet on the window; nil target means the whole type.
+    var chooseOtherApp: (KindMember.Target?) -> Void = { _ in }
 }
 
 struct KindInspectorView: View {
@@ -53,8 +55,22 @@ private struct KindInspectorForm: View {
             }
 
             Section("Opens With") {
-                OpensWithPicker(kind: kind, choices: choices, isEnabled: canEdit) { app in
-                    editing?.setDefault(app)
+                if kind.hasWholeTypeTargets {
+                    OpensWithPicker(kind: kind, choices: choices, isEnabled: canEdit) { app in
+                        editing?.setDefault(app)
+                    } onChooseOther: {
+                        editing?.chooseOtherApp(nil)
+                    }
+                    .appDropTarget(isEnabled: canEdit) { app in
+                        editing?.setDefault(app)
+                    }
+                } else {
+                    // Every declared type here loses its extensions to another type, so changing
+                    // "the whole type" would change nothing a file ever uses.
+                    Label("Files with these extensions open according to other types on this Mac, so there’s nothing to set for this type as a whole. You can still set each identifier below.", systemImage: "info.circle")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if kind.members.contains(where: { WritePlan.browserRole.contains($0.target) }) {
                     BrowserRoleNotice()
@@ -76,7 +92,7 @@ private struct KindInspectorForm: View {
                 }
             }
 
-            Section("Members") {
+            Section("Identifiers") {
                 ForEach(kind.effectiveMembers) { member in
                     memberRow(member, isOddOneOut: kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url)
                 }
@@ -87,7 +103,7 @@ private struct KindInspectorForm: View {
                         }
                     } label: {
                         HStack(spacing: 6) {
-                            Text("Other declared types (\(kind.shadowedMembers.count))")
+                            Text("Not used for files (\(kind.shadowedMembers.count))")
                                 .foregroundStyle(.secondary)
                             if kind.shadowedMembersDiffer {
                                 Text("· differs")
@@ -106,7 +122,7 @@ private struct KindInspectorForm: View {
                 Section("Extensions") {
                     ChipList(items: kind.extensions.map { ".\($0)" })
                     if !kind.extensionsHandledElsewhere.isEmpty {
-                        Text("\(Self.formatted(kind.extensionsHandledElsewhere)) \(kind.extensionsHandledElsewhere.count == 1 ? "files are" : "files are") handled by a type outside this Kind.")
+                        Text(Self.handledElsewhereText(kind.extensionsHandledElsewhere))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -134,6 +150,8 @@ private struct KindInspectorForm: View {
             isEnabled: canEdit
         ) { app in
             editing?.setMemberDefault(app, member.target)
+        } onChooseOther: {
+            editing?.chooseOtherApp(member.target)
         }
     }
 
@@ -149,10 +167,17 @@ private struct KindInspectorForm: View {
         return "Not the preferred type for any extension on this Mac. \(Self.formatted(governed)) prefer \(handlers)."
     }
 
+    /// ".md, .markdown, and .mkd", or the first three and "others" for longer lists.
     static func formatted(_ extensions: [String]) -> String {
-        let dotted = extensions.prefix(3).map { ".\($0)" }
-        let list = dotted.count > 1 ? dotted.dropLast().joined(separator: ", ") + " and " + dotted.last! : dotted.first ?? ""
-        return extensions.count > 3 ? list + " and others" : list
+        var items = extensions.prefix(3).map { ".\($0)" }
+        if extensions.count > 3 { items.append(String(localized: "others")) }
+        return items.formatted(.list(type: .and))
+    }
+
+    static func handledElsewhereText(_ extensions: [String]) -> String {
+        extensions.count == 1
+            ? String(localized: "\(formatted(extensions)) files open according to a different type.")
+            : String(localized: "\(formatted(extensions)) files open according to different types.")
     }
 
     private var header: some View {
@@ -173,23 +198,6 @@ private struct KindInspectorForm: View {
     }
 }
 
-/// Long candidate lists are alphabetical, so the apps members already use are pulled to the top
-/// where they can be found without scanning twenty names.
-private struct AppChoices {
-    var current: [AppRef]
-    var others: [AppRef]
-    var labels: AppLabels
-
-    var all: [AppRef] { current + others }
-
-    init(kind: Kind) {
-        var seen = Set<URL>()
-        current = kind.members.compactMap(\.defaultApp).filter { seen.insert($0.url).inserted }
-        others = kind.candidates.filter { seen.insert($0.url).inserted }
-        labels = kind.labelContext
-    }
-}
-
 private enum AppChoice: Hashable {
     case none
     case app(URL)
@@ -201,6 +209,7 @@ private struct OpensWithPicker: View {
     let choices: AppChoices
     let isEnabled: Bool
     let onChoose: (AppRef) -> Void
+    let onChooseOther: () -> Void
 
     var body: some View {
         Picker("Default app", selection: selection) {
@@ -250,19 +259,10 @@ private struct OpensWithPicker: View {
                 case .app(let url):
                     if let app = choices.all.first(where: { $0.url == url }) { onChoose(app) }
                 case .other:
-                    chooseOtherApp(forOpening: kind.name, then: onChoose)
+                    onChooseOther()
                 }
             }
         )
-    }
-}
-
-/// Deferred so the modal panel doesn't run inside a SwiftUI binding update.
-private func chooseOtherApp(forOpening kindName: String, then onChoose: @escaping (AppRef) -> Void) {
-    Task { @MainActor in
-        if let app = ApplicationChooser.chooseApplication(forOpening: kindName) {
-            onChoose(app)
-        }
     }
 }
 
@@ -327,6 +327,7 @@ struct ResultSummary: View {
             }
         }
         .font(.callout)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -337,7 +338,7 @@ private struct SplitNotice: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("These members open in different apps, so files of this type may not open where you expect.", systemImage: "exclamationmark.triangle.fill")
+            Label("These identifiers open in different apps, so files of this type may not open where you expect.", systemImage: "exclamationmark.triangle.fill")
                 .symbolRenderingMode(.multicolor)
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
@@ -360,26 +361,35 @@ private struct MemberRow: View {
     let choices: AppChoices
     let isEnabled: Bool
     let onChoose: (AppRef) -> Void
+    let onChooseOther: () -> Void
+
+    /// Members that don't decide what opens are dimmed, but their caption, which explains why,
+    /// stays at full secondary contrast.
+    private var dimming: Double { caption == nil ? 1 : 0.6 }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: member.target.isScheme ? "link" : "doc")
                 .foregroundStyle(.secondary)
                 .frame(width: 16)
+                .opacity(dimming)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                // Identifiers have no natural break points, so shrink rather than hyphenate them.
+                // Identifiers have no natural break points, so truncate in the middle, where two
+                // similar ones are least likely to differ, and show the whole thing on hover.
                 Text(member.target.displayName)
                     .font(.callout.monospaced())
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
                     .help(member.target.displayName)
+                    .opacity(dimming)
 
                 HStack(spacing: 4) {
                     if let app = member.defaultApp {
                         AppIconView(app: app, size: 14)
+                            .accessibilityHidden(true)
                         Text(choices.labels.label(for: app))
                     } else {
                         Text("No default")
@@ -389,10 +399,12 @@ private struct MemberRow: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .symbolRenderingMode(.multicolor)
                             .help("Opens in a different app than the rest of this type")
+                            .accessibilityLabel("Opens in a different app than the rest of this type")
                     }
                 }
                 .font(.callout)
                 .foregroundStyle(.secondary)
+                .opacity(dimming)
 
                 if caption == nil, let governed = member.governedExtensions, !governed.isEmpty {
                     ChipList(items: governed.map { ".\($0)" }, size: .small)
@@ -401,7 +413,7 @@ private struct MemberRow: View {
                 if let caption {
                     Text(caption)
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if member.isSettable, let result {
@@ -415,7 +427,20 @@ private struct MemberRow: View {
                 memberMenu
             }
         }
-        .opacity(caption == nil ? 1 : 0.6)
+        .appDropTarget(isEnabled: isEnabled && member.isSettable) { app in
+            onChoose(app)
+        }
+        .contextMenu {
+            if member.isSettable {
+                memberMenuItems
+                Divider()
+            }
+            Button("Copy Identifier") { Pasteboard.copy(member.target.displayName) }
+            if let app = member.defaultApp {
+                Divider()
+                RevealAppButton(app: app)
+            }
+        }
     }
 
     private var isBrowserMember: Bool {
@@ -424,26 +449,29 @@ private struct MemberRow: View {
 
     /// Browser members can't be changed alone, so their menu offers the browser-wide action
     /// under its real name instead of pretending to set one member.
+    @ViewBuilder
+    private var memberMenuItems: some View {
+        Section(isBrowserMember ? "Default Browser (http, https, HTML files)" : "Open \(member.target.displayName) With") {
+            ForEach(kind.candidates(for: member)) { app in
+                Button {
+                    onChoose(app)
+                } label: {
+                    Label {
+                        Text(isBrowserMember ? "Make \(choices.labels.label(for: app)) the Default Browser" : choices.labels.label(for: app))
+                    } icon: {
+                        AppIconView(app: app, size: 16)
+                    }
+                }
+                .disabled(AppIdentity.same(app.url, member.defaultApp?.url) && !isBrowserMember)
+            }
+        }
+        Divider()
+        Button("Other…", action: onChooseOther)
+    }
+
     private var memberMenu: some View {
         Menu {
-            Section(isBrowserMember ? "Default Browser (http, https, HTML files)" : "Open \(member.target.displayName) With") {
-                ForEach(kind.candidates(for: member)) { app in
-                    Button {
-                        onChoose(app)
-                    } label: {
-                        Label {
-                            Text(isBrowserMember ? "Make \(choices.labels.label(for: app)) the Default Browser" : choices.labels.label(for: app))
-                        } icon: {
-                            AppIconView(app: app, size: 16)
-                        }
-                    }
-                    .disabled(app.url == member.defaultApp?.url && !isBrowserMember)
-                }
-            }
-            Divider()
-            Button("Other…") {
-                chooseOtherApp(forOpening: isBrowserMember ? "web pages and links" : "\(member.target.displayName) (\(kind.name))", then: onChoose)
-            }
+            memberMenuItems
         } label: {
             Image(systemName: isBrowserMember ? "globe" : "ellipsis.circle")
         }
@@ -452,9 +480,10 @@ private struct MemberRow: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(!isEnabled)
+        .accessibilityLabel(isBrowserMember ? "Change Default Browser" : "Choose App for \(member.target.displayName)")
         .help(isBrowserMember
               ? "Change the default browser, which macOS uses for http, https, and HTML files"
-              : "Set just this member")
+              : "Choose an app for just this identifier")
     }
 }
 
@@ -529,7 +558,10 @@ private struct ChipList: View {
                     .padding(.horizontal, size == .small ? 5 : 6)
                     .padding(.vertical, size == .small ? 1 : 2)
                     .background(.quaternary, in: Capsule())
-                    .textSelection(.enabled)
+                    .draggable(item)
+                    .contextMenu {
+                        Button("Copy “\(item)”") { Pasteboard.copy(item) }
+                    }
             }
         }
     }

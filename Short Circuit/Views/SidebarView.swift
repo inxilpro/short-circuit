@@ -26,7 +26,7 @@ struct SidebarView: View {
             }
 
             Section {
-                Label("Applications", systemImage: "app.dashed")
+                Label("Applications", systemImage: "app")
                     .tag(SidebarItem.applications)
             }
         }

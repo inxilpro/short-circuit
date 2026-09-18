@@ -1,8 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Environment(KindStore.self) private var store
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.undoManager) private var undoManager
     @State private var isDropTargeted = false
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         @Bindable var store = store
@@ -13,14 +17,32 @@ struct ContentView: View {
             KindBrowserView()
                 .navigationTitle(title)
                 .navigationSubtitle(subtitle)
-                .searchable(text: $store.searchText, placement: .toolbar, prompt: "Name, .ext, MIME, UTI, or scheme:")
+                .searchable(text: $store.searchText, placement: .toolbar, prompt: searchPrompt)
+                .searchFocused($isSearchFocused)
                 .toolbar { toolbar }
                 .inspector(isPresented: inspectorPresented) {
                     KindInspectorView(kind: store.selectedKind, editing: store.selectedKind.map(editing(for:)))
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
                 }
+                .fileImporter(isPresented: identifyingFile, allowedContentTypes: [.item]) { result in
+                    if case .success(let url) = result { store.revealKind(forFileAt: url) }
+                }
+                .fileDialogMessage("Choose a file to see which type it is and what opens it.")
+                .fileDialogConfirmationLabel("Show Type")
         }
         .frame(minWidth: 820, minHeight: 480)
+        .fileImporter(isPresented: choosingApp, allowedContentTypes: [.application], allowsMultipleSelection: false) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                Task { await store.completeAppChoice(url) }
+            } else {
+                store.cancelAppChoice()
+            }
+        } onCancellation: {
+            store.cancelAppChoice()
+        }
+        .fileDialogDefaultDirectory(store.lastAppFolder ?? URL(filePath: "/Applications", directoryHint: .isDirectory))
+        .fileDialogMessage(Text(store.appChoicePrompt))
+        .fileDialogConfirmationLabel("Choose")
         .overlay(alignment: .bottom) { messageBanner }
         .overlay {
             if isDropTargeted {
@@ -31,11 +53,15 @@ struct ContentView: View {
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            guard let url = urls.first(where: \.isFileURL) else { return false }
-            store.revealKind(forFileAt: url)
+            let files = urls.filter(\.isFileURL)
+            guard let url = files.first else { return false }
+            store.handleDrop(of: url, ignoredCount: files.count - 1)
             return true
         } isTargeted: { isDropTargeted = $0 }
-        .animation(.default, value: store.transientMessage)
+        .animation(reduceMotion ? nil : .default, value: store.message)
+        .onChange(of: store.searchFocusRequests) { isSearchFocused = true }
+        .onChange(of: undoManager, initial: true) { store.undoManager = undoManager }
+        .defaultAppStorage(store.preferences ?? .standard)
         .task {
             #if DEBUG
             // Started alongside the load so the snapshot run can capture the loading state.
@@ -43,6 +69,18 @@ struct ContentView: View {
             #endif
             await store.refresh()
         }
+    }
+
+    private var searchPrompt: Text {
+        store.sidebarSelection == .applications ? Text("Search Apps") : Text("Search Types")
+    }
+
+    private var choosingApp: Binding<Bool> {
+        Binding(get: { store.pendingAppChoice != nil }, set: { if !$0 { store.cancelAppChoice() } })
+    }
+
+    private var identifyingFile: Binding<Bool> {
+        Binding(get: { store.isChoosingFileToIdentify }, set: { store.isChoosingFileToIdentify = $0 })
     }
 
     /// The Applications view has its own detail pane, so the Kind inspector steps aside there.
@@ -63,7 +101,10 @@ struct ContentView: View {
             results: store.results(for: kind),
             setDefault: { app in Task { await store.setDefault(app, for: kind) } },
             setMemberDefault: { app, target in Task { await store.setDefault(app, for: target, in: kind) } },
-            fixSplit: { Task { await store.fixSplit(kind) } }
+            fixSplit: { Task { await store.fixSplit(kind) } },
+            chooseOtherApp: { target in
+                store.requestOtherApp(for: target.map { .member(kind.id, $0) } ?? .kind(kind.id))
+            }
         )
     }
 
@@ -75,14 +116,15 @@ struct ContentView: View {
                 Label("List", systemImage: "list.bullet").tag(BrowserLayout.list)
             }
             .pickerStyle(.segmented)
-            .help("Show as icons or list")
+            .help("Show types as icons or as a list")
+            .disabled(store.sidebarSelection == .applications)
         }
 
         if store.isRefreshing, case .loaded = store.state {
             ToolbarItem(placement: .primaryAction) {
                 ProgressView()
                     .controlSize(.small)
-                    .help("Reading Launch Services…")
+                    .help("Loading types…")
             }
         }
 
@@ -94,49 +136,65 @@ struct ContentView: View {
                 Label("Refresh", systemImage: "arrow.clockwise")
             }
             .disabled(store.isRefreshing || store.isWriting)
-            .help("Re-read Launch Services (⌘R)")
+            .help("Read the list of apps and types again")
         }
 
         ToolbarItem(placement: .primaryAction) {
             Button {
                 store.isInspectorPresented.toggle()
             } label: {
-                Label("Inspector", systemImage: "sidebar.right")
+                Label(inspectorPresented.wrappedValue ? "Hide Inspector" : "Show Inspector", systemImage: "sidebar.right")
             }
-            .help("Show or hide the inspector")
+            .help(inspectorPresented.wrappedValue ? "Hide Inspector" : "Show Inspector")
+            .disabled(store.sidebarSelection == .applications)
         }
     }
 
     @ViewBuilder
     private var messageBanner: some View {
-        if let message = store.transientMessage {
-            Label(message, systemImage: "questionmark.folder")
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .glassEffect()
-                .padding(.bottom, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+        if let message = store.message {
+            HStack(spacing: 10) {
+                Label(message.text, systemImage: message.isFailure ? "exclamationmark.triangle.fill" : "info.circle")
+                    .symbolRenderingMode(message.isFailure ? .multicolor : .monochrome)
+                    .fixedSize(horizontal: false, vertical: true)
+                if message.isFailure {
+                    Button {
+                        store.dismissMessage()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityLabel("Dismiss")
+                    .help("Dismiss")
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: 560)
+            .glassEffect()
+            .padding(.bottom, 20)
+            .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
         }
     }
 
     private var title: String {
         switch store.sidebarSelection {
-        case .split: "Split"
-        case .common, nil: "Common"
+        case .split: String(localized: "Split")
+        case .common, nil: String(localized: "Common")
         case .category(let category): category.title
-        case .all: "All Types"
-        case .applications: "Applications"
+        case .all: String(localized: "All Types")
+        case .applications: String(localized: "Applications")
         }
     }
 
-    private var subtitle: String {
-        guard case .loaded = store.state else { return "" }
+    private var subtitle: Text {
+        guard case .loaded = store.state else { return Text(verbatim: "") }
         if store.sidebarSelection == .applications {
-            let count = store.appIndex.summaries.count
-            return count == 1 ? "1 app" : "\(count) apps"
+            return Text("^[\(store.appIndex.summaries.count) app](inflect: true)")
         }
-        let count = store.visibleKinds.count
-        return count == 1 ? "1 type" : "\(count) types"
+        return Text("^[\(store.visibleKinds.count) type](inflect: true)")
     }
 }
 
