@@ -26,8 +26,7 @@ nonisolated struct MemberResult: Identifiable, Hashable, Sendable {
     var id: KindMember.Target { target }
 }
 
-/// The calls a change will make, built from live reads. The store shows this to the user and
-/// hands the same value back for execution, so what runs is what was reviewed.
+/// The calls a change will make, built from live reads immediately before they run.
 nonisolated struct WritePlan: Hashable, Sendable {
     struct Step: Hashable, Sendable {
         var call: KindMember.Target
@@ -37,15 +36,14 @@ nonisolated struct WritePlan: Hashable, Sendable {
     }
 
     static let browserCall = KindMember.Target.scheme("http")
-    /// macOS treats these as one "default browser" role. Whether `public.xhtml` really follows
-    /// the `http` call is unverified: live data on the dev Mac has it on a different app.
+    /// macOS changes these together as the "default browser". Measured by hand on macOS 26.6.2:
+    /// one `http` call moved all three, while `public.xhtml` stayed put, so XHTML is set on its own.
     static let browserTargets: [KindMember.Target] = [
-        .scheme("http"), .scheme("https"), .uti("public.html"), .uti("public.xhtml"),
+        .scheme("http"), .scheme("https"), .uti("public.html"),
     ]
     static let browserRole = Set(browserTargets)
 
     var app: URL
-    var requested: [KindMember.Target]
     var steps: [Step]
     var skipped: [KindMember.Target]
 
@@ -75,7 +73,6 @@ nonisolated struct WritePlan: Hashable, Sendable {
         }
 
         self.app = app
-        self.requested = unique
         self.steps = steps
         self.skipped = skipped
     }
@@ -86,30 +83,28 @@ nonisolated struct WritePlan: Hashable, Sendable {
 
     var affectedTargets: [KindMember.Target] { steps.flatMap(\.covers) }
 
-    /// True when running `self` would make no call that `approved` didn't already include.
-    func isWithin(_ approved: WritePlan) -> Bool {
-        guard Self.sameApp(app, approved.app) else { return false }
-        return steps.allSatisfy { step in
-            approved.steps.contains { $0.call == step.call && Set(step.covers).isSubset(of: $0.covers) }
-        }
-    }
-
     static func sameApp(_ lhs: URL?, _ rhs: URL?) -> Bool {
         guard let lhs, let rhs else { return lhs == nil && rhs == nil }
         return lhs.standardizedFileURL.resolvingSymlinksInPath().path == rhs.standardizedFileURL.resolvingSymlinksInPath().path
     }
 }
 
-nonisolated enum WriteExecution: Hashable, Sendable {
-    case completed([MemberResult])
-    /// The system changed since the plan was approved and running it now would make calls the
-    /// user never saw. Nothing was changed; the fresh plan needs its own approval.
-    case needsApproval(WritePlan)
+/// Reported before each setter call so the UI can explain the system prompt that follows.
+nonisolated struct WriteProgress: Hashable, Sendable {
+    /// 1-based position of the call about to be made.
+    var step: Int
+    var total: Int
+    var call: WritePlan.Step
 }
 
 nonisolated protocol HandlerWriting: Sendable {
-    func plan(app: AppRef, targets: [KindMember.Target]) async -> WritePlan
-    func execute(_ approved: WritePlan) async -> WriteExecution
+    /// Plans from live reads and runs that plan straight away. Each setter call is gated by its own
+    /// macOS consent prompt, so the app asks nothing further.
+    func apply(
+        app: AppRef,
+        targets: [KindMember.Target],
+        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Void
+    ) async -> [MemberResult]
     func currentHandler(for target: KindMember.Target) async -> AppRef?
 }
 
@@ -137,20 +132,23 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
         return WritePlan(app: app.url, targets: targets) { current[$0] ?? nil }
     }
 
-    /// Re-plans from live reads first and refuses to run anything wider than what was approved.
     /// Calls run one at a time so macOS shows its consent prompts one after another.
-    func execute(_ approved: WritePlan) async -> WriteExecution {
-        let fresh = await plan(app: HandlerService.appRef(for: approved.app), targets: approved.requested)
-        guard fresh.isWithin(approved) else { return .needsApproval(fresh) }
+    func apply(
+        app: AppRef,
+        targets: [KindMember.Target],
+        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Void
+    ) async -> [MemberResult] {
+        let plan = await plan(app: app, targets: targets)
 
         var results: [MemberResult] = []
-        for target in fresh.skipped {
+        for target in plan.skipped {
             results.append(MemberResult(target: target, outcome: .skipped(.alreadyDefault), handlerAfter: await currentHandler(for: target)))
         }
-        for step in fresh.steps {
-            results.append(contentsOf: await perform(step, app: fresh.app))
+        for (index, step) in plan.steps.enumerated() {
+            await onProgress(WriteProgress(step: index + 1, total: plan.steps.count, call: step))
+            results.append(contentsOf: await perform(step, app: plan.app))
         }
-        return .completed(results)
+        return results
     }
 
     private func perform(_ step: WritePlan.Step, app: URL) async -> [MemberResult] {

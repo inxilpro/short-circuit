@@ -2,9 +2,10 @@ import SwiftUI
 
 /// Everything the inspector needs to change handlers. Passing nil keeps the inspector read-only.
 struct KindEditing {
-    /// False while any change anywhere in the app is planning, applying, or awaiting confirmation.
+    /// False while any change is applying anywhere in the app, or a refresh is running.
     var isEnabled = true
     var isApplying = false
+    var progress: WriteProgress?
     var results: [MemberResult] = []
     var setDefault: (AppRef) -> Void
     var setMemberDefault: (AppRef, KindMember.Target) -> Void
@@ -57,7 +58,7 @@ private struct KindInspectorForm: View {
                     BrowserRoleNotice()
                 }
                 if editing?.isApplying == true {
-                    ApplyingNotice()
+                    ApplyingNotice(progress: editing?.progress)
                 } else if let results = editing?.results, !results.isEmpty {
                     ResultSummary(results: results)
                 }
@@ -203,16 +204,32 @@ private func chooseOtherApp(forOpening kindName: String, then onChoose: @escapin
     }
 }
 
+/// Explains each macOS consent prompt as it appears, since the app no longer warns up front.
 private struct ApplyingNotice: View {
+    let progress: WriteProgress?
+
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             ProgressView()
                 .controlSize(.small)
-            Text("Waiting for macOS — confirm each prompt to apply the change.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.callout)
+                if let progress {
+                    Text(progress.call.changesBrowser ? "Default browser (http, https, and HTML files)" : progress.call.call.friendlyName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var title: String {
+        guard let progress else { return "Checking current apps…" }
+        return progress.total == 1
+            ? "Waiting for macOS to confirm the change…"
+            : "Waiting for macOS… change \(progress.step) of \(progress.total)"
     }
 }
 
@@ -335,7 +352,7 @@ private struct MemberRow: View {
     /// under its real name instead of pretending to set one member.
     private var memberMenu: some View {
         Menu {
-            Section(isBrowserMember ? "Default Browser (http, https, HTML, XHTML)" : "Open \(member.target.displayName) With") {
+            Section(isBrowserMember ? "Default Browser (http, https, HTML files)" : "Open \(member.target.displayName) With") {
                 ForEach(choices.all) { app in
                     Button {
                         onChoose(app)
@@ -362,14 +379,14 @@ private struct MemberRow: View {
         .fixedSize()
         .disabled(!isEnabled)
         .help(isBrowserMember
-              ? "Change the default browser. Each of these types is checked again afterward."
+              ? "Change the default browser, which macOS uses for http, https, and HTML files"
               : "Set just this member")
     }
 }
 
 private struct BrowserRoleNotice: View {
     var body: some View {
-        Label("macOS treats these as your default browser, so this changes the default browser. Each type is checked again afterward; XHTML may not follow.", systemImage: "globe")
+        Label("macOS treats http, https, and HTML files as your default browser, so changing any of them changes all three.", systemImage: "globe")
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -452,8 +469,8 @@ private extension MemberResult.Outcome {
     }
 }
 
-private func previewEditing(results: [MemberResult] = [], isEnabled: Bool = true, isApplying: Bool = false) -> KindEditing {
-    KindEditing(isEnabled: isEnabled, isApplying: isApplying, results: results, setDefault: { _ in }, setMemberDefault: { _, _ in }, fixSplit: {})
+private func previewEditing(results: [MemberResult] = [], isEnabled: Bool = true, isApplying: Bool = false, progress: WriteProgress? = nil) -> KindEditing {
+    KindEditing(isEnabled: isEnabled, isApplying: isApplying, progress: progress, results: results, setDefault: { _ in }, setMemberDefault: { _, _ in }, fixSplit: {})
 }
 
 #Preview("Split") {
@@ -473,7 +490,7 @@ private func previewEditing(results: [MemberResult] = [], isEnabled: Bool = true
 }
 
 #Preview("Applying") {
-    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "web-page" }, editing: previewEditing(isEnabled: false, isApplying: true))
+    KindInspectorView(kind: SampleKindProvider.kinds.first { $0.id == "web-page" }, editing: previewEditing(isEnabled: false, isApplying: true, progress: WriteProgress(step: 1, total: 2, call: WritePlan.Step(call: .scheme("http"), covers: WritePlan.browserTargets))))
         .frame(width: 320, height: 640)
 }
 

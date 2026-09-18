@@ -20,12 +20,12 @@ struct KindIconView: View {
 
     @ViewBuilder
     private var documentIcon: some View {
-        if let uti = kind.utis.first {
+        if let uti = kind.iconTypeIdentifier {
             Image(nsImage: IconCache.icon(forTypeIdentifier: uti))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
         } else {
-            Image(systemName: "link")
+            Image(systemName: kind.utis.isEmpty ? "link" : "doc")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .fontWeight(.light)

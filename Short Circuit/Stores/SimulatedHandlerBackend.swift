@@ -32,8 +32,9 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
     private let browserFollowers: Set<KindMember.Target>
     private let latency: Duration
 
-    /// `browserFollowers` are the targets an accepted `http` call also changes. Real coupling is
-    /// only partly known (`public.xhtml` is unverified), so tests choose it explicitly.
+    /// `browserFollowers` are the targets an accepted `http` call also changes. The default is the
+    /// measured browser role (http, https, public.html); tests can narrow it to check that results
+    /// come from re-reads rather than assumptions.
     init(
         handlers: [KindMember.Target: URL],
         behaviors: [KindMember.Target: Behavior] = [:],

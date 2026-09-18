@@ -24,19 +24,8 @@ final class KindStore {
         case failed(String)
     }
 
-    struct PendingChange: Identifiable {
-        var id = UUID()
-        var kindID: Kind.ID
-        var kindName: String
-        var appName: String
-        var plan: WritePlan
-        /// Set when the system changed after an earlier approval and this plan replaces it.
-        var isRevised = false
-    }
-
     enum WriteActivity: Equatable {
         case idle
-        case planning(Kind.ID)
         case applying(Kind.ID)
     }
 
@@ -60,7 +49,8 @@ final class KindStore {
     private var splitSnapshotIDs: Set<Kind.ID> = []
     private var writeGeneration = 0
     private var verifiedHandlers: [KindMember.Target: AppRef?] = [:]
-    var pendingChange: PendingChange?
+    /// The setter call currently waiting on a macOS consent prompt, if any.
+    private(set) var progress: WriteProgress?
 
     init(provider: any KindProviding, writer: any HandlerWriting) {
         self.provider = provider
@@ -71,8 +61,13 @@ final class KindStore {
         if case .loaded(let kinds) = state { kinds } else { [] }
     }
 
-    /// Types only one app can open offer nothing to choose, so the curated views hide them.
+    /// The catalog's curated list, in its own order, regardless of how many apps are installed.
     var commonKinds: [Kind] {
+        kinds.filter(\.isCommon).sorted(by: Self.catalogOrder)
+    }
+
+    /// Types only one app can open offer nothing to choose, so the category views hide them.
+    var choosableKinds: [Kind] {
         kinds.filter { $0.candidates.count >= 2 }
     }
 
@@ -91,7 +86,7 @@ final class KindStore {
     }
 
     var categoriesWithKinds: [KindCategory] {
-        let present = Set(commonKinds.map(\.category))
+        let present = Set(choosableKinds.map(\.category))
         return KindCategory.allCases.filter(present.contains)
     }
 
@@ -105,10 +100,21 @@ final class KindStore {
         switch item {
         case .split: splitKinds
         case .common, nil: commonKinds
-        case .category(let category): commonKinds.filter { $0.category == category }
+        case .category(let category): choosableKinds.filter { $0.category == category }.sorted(by: Self.catalogOrder)
         case .all: kinds
         case .applications: []
         }
+    }
+
+    /// Curated Kinds first (ranked, then the rest of the catalog), then heuristic ones, each
+    /// alphabetical within its tier, so familiar formats lead over obscure ones.
+    static func catalogOrder(_ lhs: Kind, _ rhs: Kind) -> Bool {
+        func tier(_ kind: Kind) -> Int {
+            kind.isCommon ? 0 : kind.catalogID != nil ? 1 : 2
+        }
+        if tier(lhs) != tier(rhs) { return tier(lhs) < tier(rhs) }
+        if let left = lhs.commonRank, let right = rhs.commonRank, left != right { return left < right }
+        return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
     }
 
     var scopedKinds: [Kind] {
@@ -126,7 +132,7 @@ final class KindStore {
 
     var isWriting: Bool { activity != .idle }
 
-    var canWrite: Bool { activity == .idle && !isRefreshing && pendingChange == nil }
+    var canWrite: Bool { activity == .idle && !isRefreshing }
 
     func refresh(force: Bool = false) async {
         // A refresh started mid-write would read handlers from before the change and overwrite
@@ -187,7 +193,7 @@ final class KindStore {
     }
 
     func isApplying(_ kind: Kind) -> Bool {
-        activity == .applying(kind.id) || activity == .planning(kind.id)
+        activity == .applying(kind.id)
     }
 
     func results(for kind: Kind) -> [MemberResult] {
@@ -210,68 +216,32 @@ final class KindStore {
         await requestChange(majority, targets: kind.settableMembers.map(\.target), in: kind)
     }
 
-    /// Plans from live reads, not the displayed Kind, so the confirmation describes what will
-    /// actually run. Several prompts, or anything touching the browser role, is confirmed first.
+    /// Applies straight away: macOS asks the user to confirm every handler change itself, so an
+    /// app-level confirmation only doubled the questions. The writer plans from live reads, not
+    /// the displayed Kind, immediately before it runs.
     private func requestChange(_ app: AppRef, targets: [KindMember.Target], in kind: Kind) async {
         guard canWrite else {
             showMessage("Another change is still in progress.")
             return
         }
-        activity = .planning(kind.id)
-        let plan = await writer.plan(app: app, targets: targets)
-        activity = .idle
-
-        let change = PendingChange(kindID: kind.id, kindName: kind.name, appName: AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app), plan: plan)
-        guard plan.promptCount > 0 else {
-            await settleWithoutChanges(change)
-            return
+        activity = .applying(kind.id)
+        results[kind.id] = nil
+        defer {
+            activity = .idle
+            progress = nil
         }
-        if plan.promptCount > 1 || plan.changesBrowser {
-            pendingChange = change
+
+        let outcome = await writer.apply(app: app, targets: targets) { [weak self] step in
+            self?.progress = step
+        }
+        let affected = outcome.map(\.target)
+        if outcome.allSatisfy({ $0.outcome == .skipped(.alreadyDefault) }) {
+            let appName = AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app)
+            showMessage("\(kind.name) already opens with \(appName).")
         } else {
-            await run(change)
+            results[kind.id] = outcome
         }
-    }
-
-    /// Takes the change the dialog showed rather than reading `pendingChange`: SwiftUI dismisses
-    /// a confirmation dialog, which clears `pendingChange` through its binding, before the
-    /// button's task gets to run.
-    func confirm(_ change: PendingChange) async {
-        if let pending = pendingChange, pending.id != change.id { return }
-        pendingChange = nil
-        await run(change)
-    }
-
-    func cancelPendingChange() {
-        pendingChange = nil
-    }
-
-    private func run(_ change: PendingChange) async {
-        guard activity == .idle, !isRefreshing else { return }
-        activity = .applying(change.kindID)
-        results[change.kindID] = nil
-        defer { activity = .idle }
-
-        switch await writer.execute(change.plan) {
-        case .completed(let outcome):
-            results[change.kindID] = outcome
-            await reloadHandlers(for: change.plan.requested + change.plan.affectedTargets)
-        case .needsApproval(let fresh):
-            var revised = change
-            revised.id = UUID()
-            revised.plan = fresh
-            revised.isRevised = true
-            if fresh.promptCount == 0 {
-                await settleWithoutChanges(revised)
-            } else {
-                pendingChange = revised
-            }
-        }
-    }
-
-    private func settleWithoutChanges(_ change: PendingChange) async {
-        showMessage("\(change.kindName) already opens with \(change.appName).")
-        await reloadHandlers(for: change.plan.requested)
+        await reloadHandlers(for: targets + affected)
     }
 
     /// Re-reads handlers from the system rather than trusting the writer's outcome, since a Kind
@@ -361,6 +331,7 @@ struct KindSearch {
                 || kind.mimeTypes.contains { $0.lowercased().contains(query) }
                 || kind.utis.contains { $0.lowercased().contains(query) }
                 || kind.schemes.contains { $0.lowercased().hasPrefix(query) }
+                || kind.keywords.contains { $0.lowercased().contains(query) }
         }
     }
 }

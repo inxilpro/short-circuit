@@ -19,20 +19,6 @@ struct ContentView: View {
                     KindInspectorView(kind: store.selectedKind, editing: store.selectedKind.map(editing(for:)))
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
                 }
-                .confirmationDialog(
-                    store.pendingChange.map(ChangeConfirmation.title(for:)) ?? "",
-                    isPresented: isConfirmingChange,
-                    presenting: store.pendingChange
-                ) { change in
-                    Button("Continue") {
-                        Task { await confirmationActions.continueTapped(change) }
-                    }
-                    Button("Cancel", role: .cancel) {
-                        confirmationActions.dismiss()
-                    }
-                } message: { change in
-                    Text(ChangeConfirmation.message(for: change))
-                }
         }
         .frame(minWidth: 820, minHeight: 480)
         .overlay(alignment: .bottom) { messageBanner }
@@ -59,21 +45,11 @@ struct ContentView: View {
         }
     }
 
-    private var confirmationActions: ChangeConfirmationActions {
-        ChangeConfirmationActions(store: store)
-    }
-
-    private var isConfirmingChange: Binding<Bool> {
-        Binding(
-            get: { store.pendingChange != nil },
-            set: { if !$0 { confirmationActions.dismiss() } }
-        )
-    }
-
     private func editing(for kind: Kind) -> KindEditing {
         KindEditing(
             isEnabled: store.canWrite,
             isApplying: store.isApplying(kind),
+            progress: store.isApplying(kind) ? store.progress : nil,
             results: store.results(for: kind),
             setDefault: { app in Task { await store.setDefault(app, for: kind) } },
             setMemberDefault: { app, target in Task { await store.setDefault(app, for: target, in: kind) } },

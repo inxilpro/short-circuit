@@ -47,7 +47,35 @@ nonisolated extension AppRef {
 }
 
 nonisolated extension SampleKindProvider {
-    static let kinds: [Kind] = [
+    static let kinds: [Kind] = uncatalogued.map { kind in
+        guard let entry = sampleCatalog[kind.id] else { return kind }
+        var kind = kind
+        kind.catalogID = kind.id
+        kind.commonRank = entry.rank
+        kind.keywords = entry.keywords
+        return kind
+    }
+
+    /// A small stand-in for Catalog.json: ranks for the Common list and extra search words.
+    /// AppleScript and Gzip are catalogued but not common, like much of the real catalog.
+    private static let sampleCatalog: [Kind.ID: (rank: Int?, keywords: [String])] = [
+        "web-page": (1, ["browser", "website", "link", "url"]),
+        "pdf": (2, ["acrobat", "document"]),
+        "jpeg": (3, ["photo", "picture", "jpg"]),
+        "png": (4, ["screenshot", "image"]),
+        "plain-text": (5, ["txt", "notes"]),
+        "markdown": (6, ["readme"]),
+        "email": (7, ["mail", "message"]),
+        "zip": (8, ["compressed", "archive"]),
+        "mp3": (9, ["music", "song"]),
+        "mpeg4-video": (10, ["movie", "film"]),
+        "heic": (11, ["photo", "iphone"]),
+        "calendar-event": (12, ["invite", "meeting"]),
+        "applescript": (nil, ["automation"]),
+        "gzip": (nil, ["compressed", "tarball"]),
+    ]
+
+    private static let uncatalogued: [Kind] = [
         Kind(
             id: "markdown", name: "Markdown", category: .documents,
             members: [
@@ -167,7 +195,8 @@ nonisolated extension SampleKindProvider {
                 KindMember(target: .scheme("http"), defaultApp: .safari),
                 KindMember(target: .scheme("https"), defaultApp: .safari),
                 KindMember(target: .uti("public.html"), defaultApp: .safari),
-                KindMember(target: .uti("public.xhtml"), defaultApp: .safari),
+                // Mirrors the dev Mac: XHTML isn't part of the default browser, so it can drift.
+                KindMember(target: .uti("public.xhtml"), defaultApp: .textEdit),
             ],
             extensions: ["html", "htm", "xhtml"], mimeTypes: ["text/html", "application/xhtml+xml"],
             candidates: [.safari, .textEdit]

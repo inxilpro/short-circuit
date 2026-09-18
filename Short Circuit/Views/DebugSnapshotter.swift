@@ -78,7 +78,7 @@ enum DebugSnapshotter {
 
     private static func runWriteStates(store: KindStore, directory: URL) async {
         // Refuse outright rather than risk driving the real setter from an unattended run.
-        guard let simulated = store.writer as? SimulatedHandlerWriter else {
+        guard store.writer is SimulatedHandlerWriter else {
             print("DebugSnapshotter: skipping write states; the store does not use the simulated writer.")
             return
         }
@@ -90,13 +90,13 @@ enum DebugSnapshotter {
         store.sidebarSelection = .all
         store.isInspectorPresented = true
 
+        // The demo backend pauses 1.2 s per call, standing in for the user answering each prompt,
+        // so a capture taken mid-run shows the inline progress.
         if let phone = kind("phone-call") {
             store.selectedKindID = phone.id
-            await store.setDefault(.messages, for: phone)
-            await snapshot("write-confirm-light", to: directory)
-            let confirming = Task { await ChangeConfirmationActions(store: store).replayContinue() }
-            await snapshot("write-applying-light", to: directory)
-            await confirming.value
+            let applying = Task { await store.setDefault(.messages, for: phone) }
+            await snapshot("write-applying-light", to: directory, settle: .milliseconds(500))
+            await applying.value
             await snapshot("write-results-light", to: directory)
         }
 
@@ -111,7 +111,6 @@ enum DebugSnapshotter {
         if let richText = kind("rtf") {
             store.selectedKindID = richText.id
             await store.setDefault(.notes, for: richText)
-            await ChangeConfirmationActions(store: store).replayContinue()
             await snapshot("write-partial-failure-light", to: directory)
             NSApp.appearance = NSAppearance(named: .darkAqua)
             await snapshot("write-partial-failure-dark", to: directory)
@@ -132,25 +131,27 @@ enum DebugSnapshotter {
             await snapshot("write-declined-light", to: directory)
         }
 
+        // Web page: the browser role is one call, and XHTML is its own second call.
         if let web = kind("web-page") {
             store.selectedKindID = web.id
-            await store.setDefault(.textEdit, for: .uti("public.xhtml"), in: web)
-            await snapshot("write-browser-confirm-light", to: directory)
-            await ChangeConfirmationActions(store: store).replayContinue()
+            await snapshot("write-browser-before-light", to: directory)
+            let applying = Task { await store.setDefault(.textEdit, for: .uti("public.html"), in: web) }
+            await snapshot("write-browser-applying-light", to: directory, settle: .milliseconds(500))
+            await applying.value
             await snapshot("write-browser-role-light", to: directory)
         }
+        if let web = kind("web-page") {
+            let applying = Task { await store.setDefault(.safari, for: web) }
+            await waitForStep(2, in: store)
+            await snapshot("write-browser-xhtml-step2-light", to: directory, settle: .milliseconds(300))
+            await applying.value
+            await snapshot("write-browser-xhtml-results-light", to: directory)
+        }
+    }
 
-        // Another app changes a member while the dialog is open, so the approved plan is too
-        // narrow and has to be shown again.
-        if let email = kind("email") {
-            store.selectedKindID = email.id
-            simulated.backend.changeExternally(.uti("com.apple.mail.email"), to: AppRef.textEdit.url)
-            simulated.backend.changeExternally(.uti("public.email-message"), to: AppRef.textEdit.url)
-            await store.setDefault(.mail, for: email)
-            simulated.backend.changeExternally(.scheme("mailto"), to: AppRef.textEdit.url)
-            await ChangeConfirmationActions(store: store).replayContinue()
-            await snapshot("write-revised-confirm-light", to: directory)
-            ChangeConfirmationActions(store: store).replayCancel()
+    private static func waitForStep(_ step: Int, in store: KindStore) async {
+        for _ in 0..<100 where (store.progress?.step ?? 0) < step {
+            try? await Task.sleep(for: .milliseconds(50))
         }
     }
 
@@ -228,11 +229,15 @@ enum DebugSnapshotter {
         let kinds = store.kinds
         var lines = ["# Live data stats", "", "- First load: \(loadTime.formatted(.units(allowed: [.seconds, .milliseconds])))",
                      "- Forced refresh: \(forcedRefreshTime.formatted(.units(allowed: [.seconds, .milliseconds])))",
-                     "- Kinds: \(kinds.count), common (≥2 candidates): \(store.commonKinds.count), split: \(store.splitKinds.count)", ""]
+                     "- Kinds: \(kinds.count), common (catalog): \(store.commonKinds.count), choosable (≥2 candidates): \(store.choosableKinds.count), split: \(store.splitKinds.count)", ""]
 
-        lines.append("## Categories (all / common)")
+        lines.append("## Common, in order")
+        lines += store.commonKinds.enumerated().map { "\($0.offset + 1). \($0.element.name) (rank \($0.element.commonRank ?? 0))" }
+        lines.append("")
+
+        lines.append("## Categories (all / choosable)")
         for category in KindCategory.allCases {
-            lines.append("- \(category.rawValue): \(kinds.filter { $0.category == category }.count) / \(store.commonKinds.filter { $0.category == category }.count)")
+            lines.append("- \(category.rawValue): \(kinds.filter { $0.category == category }.count) / \(store.choosableKinds.filter { $0.category == category }.count)")
         }
 
         lines += ["", "## Split Kinds"]
@@ -258,8 +263,8 @@ enum DebugSnapshotter {
             lines.append("- \(kind.name): \(kind.candidates.count) — \(kind.candidates.map(\.name).joined(separator: ", "))")
         }
 
-        lines += ["", "## Common Kinds in Other (first 60)"]
-        lines += store.commonKinds.filter { $0.category == .other }.prefix(60).map { "- \($0.name) [\($0.id)] \($0.utis.first ?? $0.schemes.first ?? "")" }
+        lines += ["", "## Choosable Kinds in Other (first 60)"]
+        lines += store.choosableKinds.filter { $0.category == .other }.prefix(60).map { "- \($0.name) [\($0.id)] \($0.utis.first ?? $0.schemes.first ?? "")" }
 
         try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
     }

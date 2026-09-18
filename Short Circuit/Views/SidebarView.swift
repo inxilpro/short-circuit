@@ -12,6 +12,7 @@ struct SidebarView: View {
                     .badge(store.unresolvedSplitCount)
                     .tag(SidebarItem.split)
                 Label("Common", systemImage: "star")
+                    .badge(store.commonKinds.count)
                     .tag(SidebarItem.common)
             }
 
