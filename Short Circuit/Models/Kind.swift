@@ -27,6 +27,14 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
     /// False for identifiers macOS refuses to assign a handler to, such as a UTI declared without
     /// conformance to public.item. No file resolves to such a type, so it must not count as a split.
     var isSettable: Bool = true
+    /// Apps macOS lists for this member alone. The setter rejects any other app with error 256 and
+    /// no prompt, and a Kind's candidates are a union, so not every candidate fits every member.
+    /// Nil when unknown, which places no restriction.
+    var candidateURLs: Set<URL>? = nil
+
+    func accepts(_ app: AppRef) -> Bool {
+        isSettable && (candidateURLs?.contains(app.url) ?? true)
+    }
 
     var id: Target { target }
 }
