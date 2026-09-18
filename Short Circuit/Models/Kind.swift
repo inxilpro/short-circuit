@@ -24,6 +24,9 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
 
     var target: Target
     var defaultApp: AppRef?
+    /// False for identifiers macOS refuses to assign a handler to, such as a UTI declared without
+    /// conformance to public.item. No file resolves to such a type, so it must not count as a split.
+    var isSettable: Bool = true
 
     var id: Target { target }
 }
@@ -51,13 +54,17 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
         members.compactMap { if case .scheme(let scheme) = $0.target { scheme } else { nil } }
     }
 
+    var settableMembers: [KindMember] {
+        members.filter(\.isSettable)
+    }
+
     var isSplit: Bool {
-        Set(members.map(\.defaultApp?.url)).count > 1
+        Set(settableMembers.map(\.defaultApp?.url)).count > 1
     }
 
     /// Nil when the Kind is split or nothing handles it.
     var defaultApp: AppRef? {
-        isSplit ? nil : members.first?.defaultApp
+        isSplit ? nil : settableMembers.first?.defaultApp
     }
 }
 
