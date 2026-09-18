@@ -42,6 +42,12 @@ struct LivePipelineDebugTests {
             prefKinds[label, default: 0] += 1
         }
 
+        let ungoverned = enriched.map { kind in
+            var kind = kind
+            for index in kind.members.indices { kind.members[index].governedExtensions = nil }
+            return kind
+        }
+        let shadowed = enriched.flatMap(\.members).filter { $0.isSettable && $0.governedExtensions == [] }
         let multiCandidate = enriched.filter { $0.candidates.count >= 2 }
         let split = enriched.filter(\.isSplit)
         let largest = built.kinds.sorted { ($0.members.count, $1.name) > ($1.members.count, $0.name) }.prefix(10)
@@ -87,6 +93,11 @@ struct LivePipelineDebugTests {
                 restrictedPairs += 1
                 restrictedKinds.insert(kind.id)
             }
+        }
+        lines.append("split without governed extensions: \(ungoverned.filter(\.isSplit).count); with: \(split.count)")
+        lines.append("shadowed settable UTI members: \(shadowed.count); Kinds with unclaimed extensions: \(enriched.filter { !$0.unclaimedExtensions.isEmpty }.count)")
+        for kind in enriched.filter({ !$0.unclaimedExtensions.isEmpty }).prefix(25) {
+            lines.append("  unclaimed: \(kind.name): \(kind.unclaimedExtensions)")
         }
         lines.append("(Kind, member) pairs rejecting ≥1 Kind candidate: \(restrictedPairs) across \(restrictedKinds.count) Kinds")
         var blockedSplits: [String] = []

@@ -41,6 +41,25 @@ Every covered target's result still comes from a live re-read, so if a browser t
 
 The same hand test confirmed that the (since removed) confirmation dialog's Continue button applied the change in the real app.
 
+## Effective and shadowed members
+
+Several types can declare the same extension, but macOS resolves each extension to one type, and only that type's handler decides what opens the file. `KindMember.governedExtensions` records which extensions a member wins. A member is **effective** if it is a URL scheme or wins at least one extension. A settable member that wins nothing is **shadowed**.
+
+**Planning:**
+- Whole-Kind changes and Fix Split target effective members only. That means fewer prompts and no changes nobody would notice.
+- A shadowed member changes only through its own ⋯ menu.
+- Progress and result counts follow the effective members.
+
+**Split and Fix Split:**
+- A Kind is split only when its effective members differ **and** some app could unify them (`Kind.unifyingCandidates`, the apps every effective member accepts).
+- Fix Split chooses from those, preferring the app most effective members already use, so it always fits every effective member.
+- If effective members differ but no app fits them all (for example `facetime:` and `facetime-audio:` on the dev Mac), the Kind shows "Mixed" with a neutral note. It gets no ⚠, isn't in the Split list, and has no Fix Split button.
+
+**Inspector:**
+- Effective members come first, each with chips for the extensions it governs.
+- Shadowed members sit dimmed in a collapsed "Other declared types (N)" disclosure, captioned "No files use this type on this Mac…".
+- Extensions no member wins are noted under Extensions as handled by a type outside the Kind.
+
 ## Per-member candidates
 
 macOS only accepts an app it lists for that exact type. Setting any other app fails with `NSCocoaErrorDomain` 256 and no prompt.

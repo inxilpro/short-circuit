@@ -41,6 +41,7 @@ final class KindStore {
     var selectedKindID: Kind.ID?
     var layout: BrowserLayout = .grid
     var isInspectorPresented = true
+    var showsShadowedMembers = false
     private(set) var transientMessage: String?
     /// One app-wide gate: consent prompts from two batches must never interleave, and a batch's
     /// live reads are only valid while nothing else is writing.
@@ -202,8 +203,10 @@ final class KindStore {
 
     /// Unsettable members are left out of every plan: macOS refuses them without a prompt, and
     /// no file resolves to them, so a call could only fail.
+    /// Covers only the members whose handlers decide what opens; shadowed members would cost a
+    /// prompt each and change nothing a user could notice. They change through their own menu.
     func setDefault(_ app: AppRef, for kind: Kind) async {
-        await requestChange(app, members: kind.settableMembers, in: kind)
+        await requestChange(app, members: kind.effectiveMembers, in: kind)
     }
 
     func setDefault(_ app: AppRef, for target: KindMember.Target, in kind: Kind) async {
@@ -212,8 +215,8 @@ final class KindStore {
     }
 
     func fixSplit(_ kind: Kind) async {
-        guard let choice = kind.fixSplitChoice else { return }
-        await requestChange(choice.app, members: kind.settableMembers, in: kind)
+        guard let app = kind.fixSplitApp else { return }
+        await requestChange(app, members: kind.effectiveMembers, in: kind)
     }
 
     /// Applies straight away: macOS asks the user to confirm every handler change itself, so an

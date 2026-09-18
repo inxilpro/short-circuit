@@ -548,7 +548,7 @@ struct MemberCandidateWriteTests {
         #expect(calendarEvent.supportNote(for: .calendar) == nil)
     }
 
-    @Test func fixSplitPicksTheAppThatReachesTheMostMembers() {
+    @Test func fixSplitUsesAnAppEveryEffectiveMemberAccepts() {
         let kind = Kind(
             id: "k", name: "K", category: .documents,
             members: [
@@ -559,22 +559,37 @@ struct MemberCandidateWriteTests {
             extensions: [], mimeTypes: [], candidates: [.textEdit, .safari]
         )
 
-        #expect(kind.fixSplitChoice == Kind.FixSplitChoice(app: .safari, unreachable: []))
+        #expect(kind.isSplit)
+        #expect(kind.fixSplitApp == .safari)
     }
 
-    @Test func fixSplitSaysWhichMembersWillStay() {
-        let stuck = member(.uti("c"), withCandidates: [AppRef.preview.url], on: .preview)
+    @Test func fixSplitPrefersTheAppMostMembersAlreadyUse() {
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [
+                member(.uti("a"), withCandidates: nil, on: .textEdit),
+                member(.uti("b"), withCandidates: nil, on: .safari),
+                member(.uti("c"), withCandidates: nil, on: .safari),
+            ],
+            extensions: [], mimeTypes: [], candidates: [.textEdit, .safari]
+        )
+
+        #expect(kind.fixSplitApp == .safari)
+    }
+
+    @Test func noUnifyingAppMeansMixedButNotSplit() {
         let kind = Kind(
             id: "k", name: "K", category: .documents,
             members: [
                 member(.uti("a"), withCandidates: [AppRef.textEdit.url], on: .textEdit),
-                member(.uti("b"), withCandidates: [AppRef.textEdit.url], on: .textEdit),
-                stuck,
+                member(.uti("c"), withCandidates: [AppRef.preview.url], on: .preview),
             ],
             extensions: [], mimeTypes: [], candidates: [.textEdit, .preview]
         )
 
-        #expect(kind.fixSplitChoice == Kind.FixSplitChoice(app: .textEdit, unreachable: [stuck]))
+        #expect(kind.hasMixedHandlers)
+        #expect(!kind.isSplit)
+        #expect(kind.fixSplitApp == nil)
     }
 
     @Test func unknownCandidatesPlaceNoRestriction() {
@@ -600,5 +615,79 @@ struct MemberCandidateWriteTests {
             return
         }
         #expect(message.contains("only allows apps that declare support for the type"))
+    }
+}
+
+/// Members that no file resolves to don't decide anything: sample MPEG-4 audio has a shadowed
+/// `public.mpeg-4-audio` (on Music) beside `com.apple.m4a-audio`, which wins `.m4a` and `.m4b`.
+@MainActor
+struct EffectiveMemberTests {
+    private func makeStore() async -> (KindStore, SimulatedHandlerBackend) {
+        let backend = SimulatedHandlerBackend(kinds: SampleKindProvider.kinds)
+        let store = KindStore(provider: SimulatedKindProvider(backend: backend), writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
+        await store.refresh()
+        return (store, backend)
+    }
+
+    private func kind(_ id: Kind.ID, in store: KindStore) throws -> Kind {
+        try #require(store.kinds.first { $0.id == id })
+    }
+
+    @Test func aShadowedMemberOnAnotherAppIsNotASplit() async throws {
+        let (store, _) = await makeStore()
+        let mpeg4Audio = try kind("mpeg4-audio", in: store)
+
+        #expect(mpeg4Audio.shadowedMembers.map(\.target) == [.uti("public.mpeg-4-audio")])
+        #expect(!mpeg4Audio.isSplit)
+        #expect(mpeg4Audio.defaultApp?.url == AppRef.quickTime.url)
+        #expect(!store.splitKinds.contains { $0.id == "mpeg4-audio" })
+    }
+
+    @Test func settingTheWholeKindTouchesEffectiveMembersOnly() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(.books, for: try kind("mpeg4-audio", in: store))
+
+        #expect(backend.calls.map(\.target) == [.uti("com.apple.m4a-audio")])
+        #expect(store.results(for: try kind("mpeg4-audio", in: store)).map(\.target) == [.uti("com.apple.m4a-audio")])
+        #expect(await backend.currentHandler(for: .uti("public.mpeg-4-audio")) == AppRef.music.url)
+    }
+
+    @Test func aShadowedMemberStillChangesThroughItsOwnMenu() async throws {
+        let (store, backend) = await makeStore()
+
+        await store.setDefault(.quickTime, for: .uti("public.mpeg-4-audio"), in: try kind("mpeg4-audio", in: store))
+
+        #expect(backend.calls.map(\.target) == [.uti("public.mpeg-4-audio")])
+    }
+
+    @Test func supportNoteCountsEffectiveMembersOnly() {
+        let kind = Kind(
+            id: "k", name: "K", category: .documents,
+            members: [
+                KindMember(target: .uti("a"), defaultApp: .textEdit, candidateURLs: [AppRef.textEdit.url], governedExtensions: ["a"]),
+                KindMember(target: .uti("b"), defaultApp: .preview, candidateURLs: [AppRef.preview.url], governedExtensions: []),
+            ],
+            extensions: ["a"], mimeTypes: [], candidates: [.textEdit, .preview]
+        )
+
+        #expect(kind.supportNote(for: .textEdit) == nil)
+    }
+
+    @Test func schemesWithNoCommonAppAreMixedButNeverListedAsSplit() async throws {
+        let (store, _) = await makeStore()
+        let audioCall = try kind("audio-call", in: store)
+
+        #expect(audioCall.hasMixedHandlers)
+        #expect(!audioCall.isSplit)
+        #expect(audioCall.fixSplitApp == nil)
+        #expect(!store.splitKinds.contains { $0.id == "audio-call" })
+    }
+
+    @Test func extensionsNoMemberWinsAreReportedAsHandledElsewhere() async throws {
+        let (store, _) = await makeStore()
+
+        #expect(try kind("markdown", in: store).extensionsHandledElsewhere == ["mkd"])
+        #expect(try kind("rtf", in: store).extensionsHandledElsewhere.isEmpty)
     }
 }

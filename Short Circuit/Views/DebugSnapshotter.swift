@@ -125,6 +125,23 @@ enum DebugSnapshotter {
             await snapshot("inert-member-after-set-light", to: directory)
         }
 
+        // Effective vs shadowed members, and a mix no single app can fix.
+        if let mpeg4Audio = kind("mpeg4-audio") {
+            store.selectedKindID = mpeg4Audio.id
+            await snapshot("members-shadowed-collapsed-light", to: directory)
+            store.showsShadowedMembers = true
+            await snapshot("members-shadowed-expanded-light", to: directory)
+            store.showsShadowedMembers = false
+        }
+        if let markdown = kind("markdown") {
+            store.selectedKindID = markdown.id
+            await snapshot("members-governed-light", to: directory)
+        }
+        if let audioCall = kind("audio-call") {
+            store.selectedKindID = audioCall.id
+            await snapshot("members-mixed-not-split-light", to: directory)
+        }
+
         // Mail is a candidate for the Kind, but only Calendar lists webcal:.
         if let calendarEvent = kind("calendar-event") {
             store.selectedKindID = calendarEvent.id

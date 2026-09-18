@@ -74,6 +74,9 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
     var keywords: [String] = []
     /// The catalog entry this Kind came from, if any.
     var catalogID: String? = nil
+    /// Extensions this Kind lists whose files macOS resolves to a type outside it (a `dyn.` type or
+    /// another Kind's UTI), so this Kind's default doesn't decide what opens them.
+    var unclaimedExtensions: [String] = []
 
     var isCommon: Bool { commonRank != nil }
 

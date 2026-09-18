@@ -55,11 +55,27 @@ extension KindMember.Target {
 }
 
 extension Kind {
-    /// The app most settable members point at, used to decide which members are the odd ones out.
+    /// The app most effective members point at, used to decide which members are the odd ones out.
     var majorityApp: AppRef? {
-        let apps = settableMembers.compactMap(\.defaultApp)
+        let apps = effectiveMembers.compactMap(\.defaultApp)
         let counts = Dictionary(apps.map { ($0.url, 1) }, uniquingKeysWith: +)
         return apps.max { counts[$0.url, default: 0] < counts[$1.url, default: 0] }
+    }
+
+    /// Settable members no file resolves to on this Mac: another type wins their extensions, so
+    /// their handler never decides anything. They only change through their own menu.
+    var shadowedMembers: [KindMember] {
+        let effective = Set(effectiveMembers.map(\.target))
+        return settableMembers.filter { !effective.contains($0.target) }
+    }
+
+    /// Extensions listed for the Kind that none of its members wins, so files with them open
+    /// according to some other type. Empty while any member's governed extensions are unknown.
+    var extensionsHandledElsewhere: [String] {
+        let utiMembers = members.filter { if case .uti = $0.target { true } else { false } }
+        guard !utiMembers.isEmpty, utiMembers.allSatisfy({ $0.governedExtensions != nil }) else { return [] }
+        let governed = Set(utiMembers.flatMap { $0.governedExtensions ?? [] }.map { $0.lowercased() })
+        return extensions.filter { !governed.contains($0.lowercased()) }
     }
 
     /// Whether `member` can be set to `app`. A member already on the app counts, even if the
@@ -75,31 +91,24 @@ extension Kind {
             .filter { seen.insert($0.url).inserted && self.member(member, accepts: $0) }
     }
 
-    /// "2 of 3 types" when the app can take only some settable members; nil when it takes all.
+    /// "2 of 3 types" when the app can take only some effective members; nil when it takes all.
     func supportNote(for app: AppRef) -> String? {
-        let settable = settableMembers
-        let accepted = settable.filter { member($0, accepts: app) }.count
-        guard settable.count > 1, accepted < settable.count else { return nil }
-        return "\(accepted) of \(settable.count) types"
+        let effective = effectiveMembers
+        let accepted = effective.filter { member($0, accepts: app) }.count
+        guard effective.count > 1, accepted < effective.count else { return nil }
+        return "\(accepted) of \(effective.count) types"
     }
 
-    struct FixSplitChoice: Equatable {
-        var app: AppRef
-        /// Settable members that will keep their current app because the chosen one can't open them.
-        var unreachable: [KindMember]
-    }
-
-    /// The current app that the most settable members can be moved to (ties go to the app more
-    /// members already use), plus the members it can't reach.
-    var fixSplitChoice: FixSplitChoice? {
-        let settable = settableMembers
-        var seen = Set<URL>()
-        let apps = settable.compactMap(\.defaultApp).filter { seen.insert($0.url).inserted }
-        func score(_ app: AppRef) -> (Int, Int) {
-            (settable.filter { member($0, accepts: app) }.count, settable.filter { $0.defaultApp?.url == app.url }.count)
+    /// The app that can take every effective member, preferring the one most of them already
+    /// use; candidate order breaks ties. Nil when no single app fits, which is never a split.
+    var fixSplitApp: AppRef? {
+        let unifying = unifyingCandidates
+        let effective = effectiveMembers
+        func users(_ app: AppRef) -> Int {
+            effective.filter { $0.defaultApp?.url == app.url }.count
         }
-        guard let best = apps.max(by: { score($0) < score($1) }) else { return nil }
-        return FixSplitChoice(app: best, unreachable: settable.filter { !member($0, accepts: best) })
+        let most = unifying.map(users).max() ?? 0
+        return unifying.first { users($0) == most }
     }
 
     /// The UTI whose document icon represents this Kind. Finder shows the icon of the type a

@@ -8,6 +8,10 @@ nonisolated protocol HandlerLookup: Sendable {
     func applicationURLs(forContentType identifier: String) -> [URL]
     func defaultApplicationURL(forScheme scheme: String) -> URL?
     func applicationURLs(forScheme scheme: String) -> [URL]
+    /// The declared types macOS resolves this extension to: one for a flat file and one for a package
+    /// directory (`.pages` is both). `dyn.` results mean no declared type wins and are left out.
+    func contentTypes(forFilenameExtension ext: String) -> Set<String>
+    func declaredExtensions(forContentType identifier: String) -> [String]
 }
 
 /// Live default-handler lookups through NSWorkspace. Launch Services answers these from its own
@@ -33,6 +37,14 @@ nonisolated struct HandlerService: HandlerLookup {
     func applicationURLs(forScheme scheme: String) -> [URL] {
         guard let probe = Self.probeURL(forScheme: scheme) else { return [] }
         return NSWorkspace.shared.urlsForApplications(toOpen: probe)
+    }
+
+    func contentTypes(forFilenameExtension ext: String) -> Set<String> {
+        Set([UTType.data, .package].compactMap { UTType(filenameExtension: ext, conformingTo: $0) }.filter { !$0.isDynamic }.map(\.identifier))
+    }
+
+    func declaredExtensions(forContentType identifier: String) -> [String] {
+        UTType(identifier)?.tags[.filenameExtension] ?? []
     }
 
     func defaultApplication(forContentType identifier: String) -> AppRef? {

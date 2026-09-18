@@ -6,6 +6,8 @@ struct KindEditing {
     var isEnabled = true
     var isApplying = false
     var progress: WriteProgress?
+    var showsShadowedMembers = false
+    var setShowsShadowedMembers: (Bool) -> Void = { _ in }
     var results: [MemberResult] = []
     var setDefault: (AppRef) -> Void
     var setMemberDefault: (AppRef, KindMember.Target) -> Void
@@ -66,27 +68,42 @@ private struct KindInspectorForm: View {
                     SplitNotice(kind: kind, isEnabled: canEdit) {
                         editing?.fixSplit()
                     }
+                } else if kind.hasMixedHandlers {
+                    Label("These open in different apps, and no single app handles all of them.", systemImage: "info.circle")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
             Section("Members") {
-                ForEach(kind.settableMembers + kind.members.filter { !$0.isSettable }) { member in
-                    MemberRow(
-                        kind: kind,
-                        member: member,
-                        isOddOneOut: member.isSettable && kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url,
-                        result: resultsByTarget[member.target],
-                        choices: choices,
-                        isEnabled: canEdit
-                    ) { app in
-                        editing?.setMemberDefault(app, member.target)
+                ForEach(kind.effectiveMembers) { member in
+                    memberRow(member, isOddOneOut: kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url)
+                }
+                if !kind.shadowedMembers.isEmpty {
+                    DisclosureGroup(isExpanded: showsShadowed) {
+                        ForEach(kind.shadowedMembers) { member in
+                            memberRow(member, caption: shadowedCaption)
+                        }
+                    } label: {
+                        Text("Other declared types (\(kind.shadowedMembers.count))")
+                            .foregroundStyle(.secondary)
                     }
+                }
+                ForEach(kind.members.filter { !$0.isSettable }) { member in
+                    memberRow(member, caption: "macOS doesn’t use this type for files, so it can’t be changed.")
                 }
             }
 
             if !kind.extensions.isEmpty {
                 Section("Extensions") {
                     ChipList(items: kind.extensions.map { ".\($0)" })
+                    if !kind.extensionsHandledElsewhere.isEmpty {
+                        Text("\(Self.formatted(kind.extensionsHandledElsewhere)) \(kind.extensionsHandledElsewhere.count == 1 ? "files are" : "files are") handled by a type outside this Kind.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
 
@@ -97,6 +114,38 @@ private struct KindInspectorForm: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func memberRow(_ member: KindMember, isOddOneOut: Bool = false, caption: String? = nil) -> some View {
+        MemberRow(
+            kind: kind,
+            member: member,
+            isOddOneOut: isOddOneOut,
+            caption: caption,
+            result: resultsByTarget[member.target],
+            choices: choices,
+            isEnabled: canEdit
+        ) { app in
+            editing?.setMemberDefault(app, member.target)
+        }
+    }
+
+    private var showsShadowed: Binding<Bool> {
+        Binding(get: { editing?.showsShadowedMembers ?? false }, set: { editing?.setShowsShadowedMembers($0) })
+    }
+
+    /// Names the extensions the effective members do govern, so it's clear why this type is inert.
+    private var shadowedCaption: String {
+        let governed = kind.effectiveMembers.flatMap { $0.governedExtensions ?? [] }
+        guard !governed.isEmpty else { return "No files use this type on this Mac." }
+        let handlers = kind.effectiveMembers.count == 1 ? "the type above" : "the types above"
+        return "No files use this type on this Mac. \(Self.formatted(governed)) files are handled by \(handlers)."
+    }
+
+    static func formatted(_ extensions: [String]) -> String {
+        let dotted = extensions.prefix(3).map { ".\($0)" }
+        let list = dotted.count > 1 ? dotted.dropLast().joined(separator: ", ") + " and " + dotted.last! : dotted.first ?? ""
+        return extensions.count > 3 ? list + " and others" : list
     }
 
     private var header: some View {
@@ -149,7 +198,7 @@ private struct OpensWithPicker: View {
     var body: some View {
         Picker("Default app", selection: selection) {
             if kind.defaultApp == nil {
-                Text(kind.isSplit ? "Mixed" : "None").tag(AppChoice.none)
+                Text(kind.hasMixedHandlers ? "Mixed" : "None").tag(AppChoice.none)
                 Divider()
             }
             Section("Current") {
@@ -286,16 +335,9 @@ private struct SplitNotice: View {
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let choice = kind.fixSplitChoice {
-                let name = kind.labelContext.label(for: choice.app)
-                Button(choice.unreachable.isEmpty ? "Fix Split — Use \(name) for All" : "Fix Split — Use \(name) Where Possible", action: onFix)
+            if let app = kind.fixSplitApp {
+                Button("Fix Split — Use \(kind.labelContext.label(for: app)) for All", action: onFix)
                     .disabled(!isEnabled)
-                if !choice.unreachable.isEmpty {
-                    Text("\(choice.unreachable.map(\.target.displayName).joined(separator: ", ")) will stay as \(choice.unreachable.count == 1 ? "it is" : "they are"), because \(name) can’t open \(choice.unreachable.count == 1 ? "that type" : "those types").")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
         }
     }
@@ -305,6 +347,8 @@ private struct MemberRow: View {
     let kind: Kind
     let member: KindMember
     let isOddOneOut: Bool
+    /// Set for members that don't decide what opens (shadowed or unsettable); they're dimmed.
+    let caption: String?
     let result: MemberResult?
     let choices: AppChoices
     let isEnabled: Bool
@@ -343,12 +387,17 @@ private struct MemberRow: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
-                if !member.isSettable {
-                    Text("macOS doesn’t use this type for files, so it can’t be changed.")
+                if caption == nil, let governed = member.governedExtensions, !governed.isEmpty {
+                    ChipList(items: governed.map { ".\($0)" }, size: .small)
+                }
+
+                if let caption {
+                    Text(caption)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
-                } else if let result {
+                }
+                if member.isSettable, let result {
                     MemberResultLabel(result: result)
                 }
             }
@@ -359,7 +408,7 @@ private struct MemberRow: View {
                 memberMenu
             }
         }
-        .opacity(member.isSettable ? 1 : 0.6)
+        .opacity(caption == nil ? 1 : 0.6)
     }
 
     private var isBrowserMember: Bool {
@@ -458,15 +507,20 @@ private struct MemberResultLabel: View {
 }
 
 private struct ChipList: View {
+    enum Size {
+        case regular, small
+    }
+
     let items: [String]
+    var size: Size = .regular
 
     var body: some View {
         FlowLayout(spacing: 4) {
             ForEach(items, id: \.self) { item in
                 Text(item)
-                    .font(.callout.monospaced())
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .font(size == .small ? .caption.monospaced() : .callout.monospaced())
+                    .padding(.horizontal, size == .small ? 5 : 6)
+                    .padding(.vertical, size == .small ? 1 : 2)
                     .background(.quaternary, in: Capsule())
                     .textSelection(.enabled)
             }

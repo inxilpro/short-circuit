@@ -50,6 +50,8 @@ struct ContentView: View {
             isEnabled: store.canWrite,
             isApplying: store.isApplying(kind),
             progress: store.isApplying(kind) ? store.progress : nil,
+            showsShadowedMembers: store.showsShadowedMembers,
+            setShowsShadowedMembers: { store.showsShadowedMembers = $0 },
             results: store.results(for: kind),
             setDefault: { app in Task { await store.setDefault(app, for: kind) } },
             setMemberDefault: { app, target in Task { await store.setDefault(app, for: target, in: kind) } },

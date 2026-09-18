@@ -79,6 +79,9 @@ struct DefaultAppLabel: View {
         } else if kind.isSplit {
             Label("Split", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
+        } else if kind.hasMixedHandlers {
+            Text("Mixed")
+                .foregroundStyle(.secondary)
         } else if let app = kind.defaultApp {
             Text(app.name)
                 .foregroundStyle(.secondary)

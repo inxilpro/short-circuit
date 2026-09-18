@@ -49,6 +49,9 @@ nonisolated struct LiveKindProvider: KindProviding {
                     defaultURL = handlers.defaultApplicationURL(forScheme: scheme)
                     candidateURLs = handlers.applicationURLs(forScheme: scheme)
                 }
+                if case .uti(let identifier) = kind.members[index].target {
+                    kind.members[index].governedExtensions = governedExtensions(of: identifier, in: kind)
+                }
                 kind.members[index].defaultApp = defaultURL.map(app)
                 if let defaultURL { defaults.insert(Self.canonical(defaultURL)) }
                 // Launch Services' own list for this member is the only set its setter accepts; the
@@ -56,12 +59,25 @@ nonisolated struct LiveKindProvider: KindProviding {
                 kind.members[index].candidateURLs = Set((candidateURLs + [defaultURL].compactMap { $0 }).map(Self.canonical))
                 liveCandidates.append(contentsOf: candidateURLs.map(app))
             }
+            let memberUTIs = Set(kind.utis)
+            kind.unclaimedExtensions = kind.extensions.filter { ext in
+                handlers.contentTypes(forFilenameExtension: ext).isDisjoint(with: memberUTIs)
+            }
             kind.candidates = Self.mergeCandidates(live: liveCandidates, explicit: kind.candidates, defaults: defaults)
             if kind.isAppPrivate {
                 kind.isAppPrivate = Set(kind.candidates.map { $0.bundleID?.lowercased() ?? $0.url.path }).count <= 1
             }
             return kind
         }
+    }
+
+    /// Extensions, from the type's own tags and the Kind's list, that macOS resolves to exactly this
+    /// type. Several types can declare `.docx`; only the winner's handler opens the file.
+    private func governedExtensions(of identifier: String, in kind: Kind) -> [String] {
+        var seen: Set<String> = []
+        return (handlers.declaredExtensions(forContentType: identifier) + kind.extensions)
+            .map { $0.lowercased() }
+            .filter { seen.insert($0).inserted && handlers.contentTypes(forFilenameExtension: $0).contains(identifier) }
     }
 
     /// One spelling per app bundle, so `KindMember.accepts` can compare URLs from the snapshot and from

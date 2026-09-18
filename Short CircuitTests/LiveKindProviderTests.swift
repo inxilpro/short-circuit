@@ -44,18 +44,22 @@ struct LiveKindProviderTests {
 
 struct MemberCandidateTests {
     /// Real apps, because enrichment drops candidates that don't exist on disk.
-    private static let word = URL(fileURLWithPath: "/System/Applications/TextEdit.app")
-    private static let chromium = URL(fileURLWithPath: "/System/Applications/Preview.app/")
-    private static let chrome = URL(fileURLWithPath: "/System/Applications/Notes.app")
+    static let word = URL(fileURLWithPath: "/System/Applications/TextEdit.app")
+    static let chromium = URL(fileURLWithPath: "/System/Applications/Preview.app/")
+    static let chrome = URL(fileURLWithPath: "/System/Applications/Notes.app")
 
-    private struct FakeLookup: HandlerLookup {
+    struct FakeLookup: HandlerLookup {
         var defaults: [String: URL]
         var lists: [String: [URL]]
+        var resolutions: [String: Set<String>] = [:]
+        var declared: [String: [String]] = [:]
 
         func defaultApplicationURL(forContentType identifier: String) -> URL? { defaults[identifier] }
         func applicationURLs(forContentType identifier: String) -> [URL] { lists[identifier] ?? [] }
         func defaultApplicationURL(forScheme scheme: String) -> URL? { defaults["\(scheme):"] }
         func applicationURLs(forScheme scheme: String) -> [URL] { lists["\(scheme):"] ?? [] }
+        func contentTypes(forFilenameExtension ext: String) -> Set<String> { resolutions[ext] ?? [] }
+        func declaredExtensions(forContentType identifier: String) -> [String] { declared[identifier] ?? [] }
     }
 
     private func enrich(_ lookup: FakeLookup) -> Kind {
@@ -101,5 +105,86 @@ struct MemberCandidateTests {
         let preview = try #require(kind.candidates.first)
         #expect(kind.members[0].accepts(preview))
         #expect(preview.url == LiveKindProvider.canonical(URL(fileURLWithPath: "/System/Applications/Preview.app")))
+    }
+}
+
+struct GovernedExtensionTests {
+    typealias Lookup = MemberCandidateTests.FakeLookup
+    private let music = MemberCandidateTests.word
+    private let fission = MemberCandidateTests.chromium
+
+    private func wav(_ lookup: Lookup) -> Kind {
+        let kind = Kind(
+            id: "wav", name: "WAV audio", category: .audio,
+            members: [KindMember(target: .uti("public.wav")), KindMember(target: .uti("com.microsoft.waveform-audio"))],
+            extensions: ["wav", "wave", "bwf"], mimeTypes: [], candidates: []
+        )
+        return LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup).enrich([kind])[0]
+    }
+
+    private func lookup(resolutions: [String: Set<String>]) -> Lookup {
+        Lookup(
+            defaults: ["public.wav": fission, "com.microsoft.waveform-audio": music],
+            lists: ["public.wav": [fission, music], "com.microsoft.waveform-audio": [fission, music]],
+            resolutions: resolutions,
+            declared: ["public.wav": ["wav", "wave"], "com.microsoft.waveform-audio": ["wav"]]
+        )
+    }
+
+    @Test func shadowedMembersDoNotMakeAKindSplit() {
+        let kind = wav(lookup(resolutions: ["wav": ["com.microsoft.waveform-audio"], "wave": ["com.microsoft.waveform-audio"]]))
+        #expect(kind.members[0].governedExtensions == [])
+        #expect(!kind.members[0].isEffective)
+        #expect(kind.members[1].governedExtensions == ["wav", "wave"])
+        #expect(!kind.hasMixedHandlers)
+        #expect(!kind.isSplit)
+        #expect(kind.defaultApp?.url == LiveKindProvider.canonical(music))
+    }
+
+    @Test func winningOneOddExtensionStillCounts() {
+        let kind = wav(lookup(resolutions: ["wav": ["com.microsoft.waveform-audio"], "wave": ["public.wav"]]))
+        #expect(kind.members[0].governedExtensions == ["wave"])
+        #expect(kind.members[0].isEffective)
+        #expect(kind.isSplit)
+    }
+
+    @Test func allShadowedFallsBackToSettableMembers() {
+        let kind = wav(lookup(resolutions: ["wav": ["com.example.other"], "wave": ["com.example.other"]]))
+        #expect(kind.members.allSatisfy { $0.governedExtensions == [] })
+        #expect(kind.effectiveMembers.count == 2)
+        #expect(kind.isSplit)
+    }
+
+    @Test func extensionsResolvingOutsideTheKindAreRecorded() {
+        let kind = wav(lookup(resolutions: ["wav": ["com.microsoft.waveform-audio"], "wave": ["com.example.elsewhere"], "bwf": []]))
+        #expect(kind.unclaimedExtensions == ["wave", "bwf"], "Another Kind's type, or only a dyn. type")
+    }
+
+    @Test func packageAndFlatWinnersBothGovern() {
+        let kind = Kind(
+            id: "pages", name: "Pages", category: .documents,
+            members: [KindMember(target: .uti("com.apple.iwork.pages.pages")), KindMember(target: .uti("com.apple.iwork.pages.sffpages"))],
+            extensions: ["pages"], mimeTypes: [], candidates: []
+        )
+        let lookup = Lookup(defaults: [:], lists: [:], resolutions: ["pages": ["com.apple.iwork.pages.pages", "com.apple.iwork.pages.sffpages"]])
+        let enriched = LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup).enrich([kind])[0]
+        #expect(enriched.members.allSatisfy { $0.governedExtensions == ["pages"] })
+        #expect(enriched.unclaimedExtensions.isEmpty)
+    }
+
+    @Test func schemesHaveNoGovernedExtensions() {
+        let kind = Kind(id: "s", name: "S", category: .other, members: [KindMember(target: .scheme("mhtml"))], extensions: [], mimeTypes: [], candidates: [])
+        let enriched = LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup(resolutions: [:])).enrich([kind])[0]
+        #expect(enriched.members[0].governedExtensions == nil)
+        #expect(enriched.members[0].isEffective)
+    }
+}
+
+struct LiveResolutionTests {
+    @Test func resolvesFlatFilesAndPackagesSeparately() {
+        let lookup = HandlerService()
+        #expect(lookup.contentTypes(forFilenameExtension: "rtfd") == ["com.apple.rtfd"], "Packages only resolve through com.apple.package")
+        #expect(lookup.contentTypes(forFilenameExtension: "txt") == ["public.plain-text"])
+        #expect(lookup.contentTypes(forFilenameExtension: "no-such-extension-anywhere").isEmpty, "dyn. results are dropped")
     }
 }

@@ -79,10 +79,10 @@ nonisolated extension SampleKindProvider {
         Kind(
             id: "markdown", name: "Markdown", category: .documents,
             members: [
-                KindMember(target: .uti("net.daringfireball.markdown"), defaultApp: .textEdit),
+                KindMember(target: .uti("net.daringfireball.markdown"), defaultApp: .textEdit, governedExtensions: ["md", "markdown", "mdown"]),
                 // Mirrors the dev Mac, where public.markdown is declared without conformance to
                 // public.item and macOS refuses to give it a handler.
-                KindMember(target: .uti("public.markdown"), defaultApp: .safari, isSettable: false),
+                KindMember(target: .uti("public.markdown"), defaultApp: .safari, isSettable: false, governedExtensions: []),
             ],
             extensions: ["md", "markdown", "mdown", "mkd"], mimeTypes: ["text/markdown", "text/x-markdown"],
             candidates: [.textEdit, .safari, .notes]
@@ -144,8 +144,10 @@ nonisolated extension SampleKindProvider {
         Kind(
             id: "mpeg4-audio", name: "MPEG-4 audio", category: .audio,
             members: [
-                KindMember(target: .uti("public.mpeg-4-audio"), defaultApp: .music),
-                KindMember(target: .uti("com.apple.m4a-audio"), defaultApp: .quickTime),
+                // Declared for .m4a too, but m4a files resolve to com.apple.m4a-audio, so this one
+                // decides nothing: a shadowed member, like Word's second .docx type on the dev Mac.
+                KindMember(target: .uti("public.mpeg-4-audio"), defaultApp: .music, governedExtensions: []),
+                KindMember(target: .uti("com.apple.m4a-audio"), defaultApp: .quickTime, governedExtensions: ["m4a", "m4b"]),
             ],
             extensions: ["m4a", "m4b"], mimeTypes: ["audio/mp4", "audio/x-m4a"],
             candidates: [.music, .quickTime, .books]
@@ -243,6 +245,17 @@ nonisolated extension SampleKindProvider {
             ],
             extensions: ["ics"], mimeTypes: ["text/calendar"],
             candidates: [.calendar, .mail]
+        ),
+        // Two schemes with no app in common: mixed, but not a split anyone could fix, like
+        // facetime: and facetime-audio: on the dev Mac.
+        Kind(
+            id: "audio-call", name: "Audio call", category: .communication,
+            members: [
+                KindMember(target: .scheme("facetime-audio"), defaultApp: .faceTime, candidateURLs: [AppRef.faceTime.url]),
+                KindMember(target: .scheme("callto"), defaultApp: .messages, candidateURLs: [AppRef.messages.url]),
+            ],
+            extensions: [], mimeTypes: [],
+            candidates: [.faceTime, .messages]
         ),
         Kind(
             id: "vcard", name: "Contact card", category: .communication,
