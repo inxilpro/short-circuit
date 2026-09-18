@@ -116,6 +116,24 @@ struct LivePipelineDebugTests {
         }
         lines.append("split Kinds that can't be unified onto their majority app: \(blockedSplits.count) of \(split.count)")
         for line in blockedSplits { lines.append("  \(line)") }
+        var explicitKindsByApp: [URL: (app: AppRef, count: Int)] = [:]
+        for kind in enriched {
+            for app in kind.candidates where kind.explicitCandidateURLs.contains(app.url) {
+                explicitKindsByApp[app.url, default: (app, 0)].count += 1
+            }
+        }
+        let allApps = Set(enriched.flatMap { $0.candidates.map(\.url) })
+        let pairs = enriched.reduce(0) { $0 + $1.candidates.count }
+        let explicitPairs = enriched.reduce(0) { $0 + $1.explicitCandidateURLs.count }
+        lines.append("(Kind, candidate) pairs: \(pairs), explicit: \(explicitPairs), conformance-only: \(pairs - explicitPairs)")
+        if let text = enriched.first(where: { $0.utis.contains("public.plain-text") }) {
+            let offered = text.candidates.filter { !text.explicitCandidateURLs.contains($0.url) }.map(\.name)
+            lines.append("  Text: \(text.candidates.count - offered.count) explicit, offered only: \(offered)")
+        }
+        lines.append("apps with ≥1 explicit Kind: \(explicitKindsByApp.count) of \(allApps.count) candidate apps")
+        for entry in explicitKindsByApp.values.sorted(by: { ($0.count, $1.app.name) > ($1.count, $0.app.name) }).prefix(10) {
+            lines.append("  \(entry.count) — \(entry.app.name)\(entry.app.version.map { " \($0)" } ?? "")\(entry.app.isSystemApp ? " [system]" : "")")
+        }
         lines.append("app-private schemes: \(enriched.filter(\.isAppPrivate).count)")
         for probe in [".css", ".ts", ".go", ".rs"] {
             let owners = enriched.filter { $0.extensions.contains(String(probe.dropFirst())) }.map { "\($0.name) \($0.utis)" }

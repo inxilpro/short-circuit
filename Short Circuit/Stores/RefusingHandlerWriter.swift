@@ -7,7 +7,7 @@ nonisolated struct RefusingHandlerWriter: HandlerWriting {
     func apply(
         app: AppRef,
         targets: [KindMember.Target],
-        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Void
+        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Bool
     ) async -> [MemberResult] {
         targets.map {
             MemberResult(target: $0, outcome: .failed(domain: "ShortCircuit", code: 0, message: "Changes are disabled in this run."))

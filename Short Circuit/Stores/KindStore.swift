@@ -27,6 +27,23 @@ final class KindStore {
     enum WriteActivity: Equatable {
         case idle
         case applying(Kind.ID)
+        case applyingBatch
+    }
+
+    /// A "Make default for…" run from the Applications view.
+    struct BatchRun {
+        var app: AppRef
+        var kindIDs: [Kind.ID]
+        /// From the plan shown before Apply; live planning can make or skip a few more calls.
+        var plannedChanges: Int
+        var changesStarted = 0
+        var currentKindID: Kind.ID?
+        var stopRequested = false
+        var isRunning = true
+        var finishedKindIDs: [Kind.ID] = []
+        var notStartedKindIDs: [Kind.ID] = []
+
+        var currentKindName: String?
     }
 
     private let provider: any KindProviding
@@ -34,7 +51,9 @@ final class KindStore {
     private var loadGeneration = 0
     private var messageTask: Task<Void, Never>?
 
-    private(set) var state: LoadState = .loading
+    private(set) var state: LoadState = .loading {
+        didSet { appIndexCache = nil }
+    }
     private(set) var isRefreshing = false
     var searchText = ""
     var sidebarSelection: SidebarItem? = .common
@@ -52,6 +71,14 @@ final class KindStore {
     private var verifiedHandlers: [KindMember.Target: AppRef?] = [:]
     /// The setter call currently waiting on a macOS consent prompt, if any.
     private(set) var progress: WriteProgress?
+
+    // Applications view
+    private(set) var selectedAppURL: URL?
+    var batchSelection: Set<Kind.ID> = []
+    private(set) var batchRun: BatchRun?
+    var showsOtherApps = false
+    var showsOfferedKinds = false
+    @ObservationIgnored private var appIndexCache: AppIndex?
 
     init(provider: any KindProviding, writer: any HandlerWriting) {
         self.provider = provider
@@ -173,6 +200,97 @@ final class KindStore {
         }
     }
 
+    var appIndex: AppIndex {
+        if let appIndexCache { return appIndexCache }
+        let index = AppIndex(kinds: kinds)
+        appIndexCache = index
+        return index
+    }
+
+    var selectedApp: AppRef? {
+        guard let selectedAppURL else { return nil }
+        return appIndex.summaries.first { $0.app.url == selectedAppURL }?.app
+    }
+
+    /// Selecting an app pre-checks only its "Partly default" Kinds: finishing a half-made choice
+    /// is the likely intent, while taking over formats is a decision to make row by row.
+    func selectApp(_ url: URL?) {
+        guard url != selectedAppURL else { return }
+        selectedAppURL = url
+        if batchRun?.isRunning != true { batchRun = nil }
+        batchSelection = url.map { Set(kindIDs(for: $0, relation: .partlyDefault)) } ?? []
+    }
+
+    func kindIDs(for app: URL, relation: AppKindRelation) -> [Kind.ID] {
+        appIndex.relations(for: app).filter { $0.relation == relation }.map(\.kindID)
+    }
+
+    func kinds(for app: URL, relation: AppKindRelation) -> [Kind] {
+        let ids = Set(kindIDs(for: app, relation: relation))
+        return kinds.filter { ids.contains($0.id) }.sorted(by: Self.catalogOrder)
+    }
+
+    var batchPlan: AppBatchPlan? {
+        guard let app = selectedApp else { return nil }
+        return AppBatchPlan(app: app, kinds: kinds.filter { batchSelection.contains($0.id) }.sorted(by: Self.catalogOrder))
+    }
+
+    /// Runs the checked Kinds one after another through the same one-at-a-time writer as the
+    /// inspector. Stop takes effect before the next consent prompt, never mid-prompt.
+    func applyBatch() async {
+        guard canWrite, let plan = batchPlan, !plan.items.isEmpty else { return }
+        let app = plan.app
+        activity = .applyingBatch
+        batchRun = BatchRun(app: app, kindIDs: plan.items.map(\.id), plannedChanges: plan.promptCount)
+        defer {
+            activity = .idle
+            progress = nil
+            batchRun?.isRunning = false
+            batchRun?.currentKindID = nil
+        }
+
+        for item in plan.items {
+            if batchRun?.stopRequested == true {
+                batchRun?.notStartedKindIDs.append(item.id)
+                continue
+            }
+            // Handlers may have moved since the checklist was drawn; plan from what's loaded now.
+            let kind = kinds.first { $0.id == item.id } ?? item.kind
+            batchRun?.currentKindID = kind.id
+            batchRun?.currentKindName = kind.name
+            results[kind.id] = nil
+
+            let effective = kind.effectiveMembers
+            let supported = effective.filter { kind.member($0, accepts: app) }
+            let unsupported = effective.filter { !kind.member($0, accepts: app) }
+            let base = batchRun?.changesStarted ?? 0
+            let applied = supported.isEmpty ? [] : await writer.apply(app: app, targets: supported.map(\.target)) { [weak self] step in
+                guard let self, self.batchRun?.stopRequested != true else { return false }
+                self.batchRun?.changesStarted = base + step.step
+                self.progress = step
+                return true
+            }
+            results[kind.id] = applied + unsupported.map {
+                MemberResult(target: $0.target, outcome: .skipped(.notSupported(app)), handlerAfter: $0.defaultApp)
+            }
+            await reloadHandlers(for: kind.members.map(\.target) + applied.map(\.target))
+            batchRun?.finishedKindIDs.append(kind.id)
+        }
+    }
+
+    func stopBatch() {
+        batchRun?.stopRequested = true
+    }
+
+    /// Leaves whatever view is showing and selects the Kind in the browser.
+    func showKind(_ id: Kind.ID) {
+        guard let kind = kinds.first(where: { $0.id == id }) else { return }
+        searchText = ""
+        sidebarSelection = commonKinds.contains(where: { $0.id == id }) ? .common : .all
+        selectedKindID = kind.id
+        isInspectorPresented = true
+    }
+
     func revealKind(forFileAt url: URL) {
         let type = (try? url.resourceValues(forKeys: [.contentTypeKey]))?.contentType
             ?? UTType(filenameExtension: url.pathExtension)
@@ -194,7 +312,7 @@ final class KindStore {
     }
 
     func isApplying(_ kind: Kind) -> Bool {
-        activity == .applying(kind.id)
+        activity == .applying(kind.id) || (activity == .applyingBatch && batchRun?.currentKindID == kind.id)
     }
 
     func results(for kind: Kind) -> [MemberResult] {
@@ -245,6 +363,7 @@ final class KindStore {
 
         let applied = targets.isEmpty ? [] : await writer.apply(app: app, targets: targets) { [weak self] step in
             self?.progress = step
+            return true
         }
         let skippedAsUnsupported = unsupported.map {
             MemberResult(target: $0.target, outcome: .skipped(.notSupported(app)), handlerAfter: $0.defaultApp)

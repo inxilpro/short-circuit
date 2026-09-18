@@ -14,6 +14,9 @@ nonisolated struct AppRef: Identifiable, Hashable, Codable, Sendable {
     var version: String?
 
     var id: URL { url }
+
+    /// Apple's own apps on the sealed system volume (`/System/Applications`, `/System/Library/CoreServices`).
+    var isSystemApp: Bool { url.path(percentEncoded: false).hasPrefix("/System/") }
 }
 
 nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
@@ -77,6 +80,10 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
     /// Extensions this Kind lists whose files macOS resolves to a type outside it (a `dyn.` type or
     /// another Kind's UTI), so this Kind's default doesn't decide what opens them.
     var unclaimedExtensions: [String] = []
+    /// Candidates that explicitly claim a member UTI, a member scheme, or one of the Kind's extensions,
+    /// as opposed to apps macOS only offers through broad conformance (Chrome for every text type).
+    /// Canonical URLs, comparable with `candidates`.
+    var explicitCandidateURLs: Set<URL> = []
 
     var isCommon: Bool { commonRank != nil }
 

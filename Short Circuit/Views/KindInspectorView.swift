@@ -288,7 +288,7 @@ private struct ApplyingNotice: View {
     }
 }
 
-private struct ResultSummary: View {
+struct ResultSummary: View {
     let results: [MemberResult]
 
     var body: some View {
@@ -534,7 +534,7 @@ private extension KindMember.Target {
     }
 }
 
-private extension MemberResult.Outcome {
+extension MemberResult.Outcome {
     var isNotChanged: Bool {
         self == .unchangedAfterSuccess || self == .declined
     }

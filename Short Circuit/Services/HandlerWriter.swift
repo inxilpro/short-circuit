@@ -101,11 +101,12 @@ nonisolated struct WriteProgress: Hashable, Sendable {
 
 nonisolated protocol HandlerWriting: Sendable {
     /// Plans from live reads and runs that plan straight away. Each setter call is gated by its own
-    /// macOS consent prompt, so the app asks nothing further.
+    /// macOS consent prompt, so the app asks nothing further. `onProgress` runs before each call;
+    /// returning false stops there, leaving that call and the rest unmade and unreported.
     func apply(
         app: AppRef,
         targets: [KindMember.Target],
-        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Void
+        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Bool
     ) async -> [MemberResult]
     func currentHandler(for target: KindMember.Target) async -> AppRef?
 }
@@ -138,7 +139,7 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
     func apply(
         app: AppRef,
         targets: [KindMember.Target],
-        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Void
+        onProgress: @escaping @MainActor @Sendable (WriteProgress) -> Bool
     ) async -> [MemberResult] {
         let plan = await plan(app: app, targets: targets)
 
@@ -147,7 +148,7 @@ nonisolated struct HandlerWriter<Backend: HandlerBackend>: HandlerWriting {
             results.append(MemberResult(target: target, outcome: .skipped(.alreadyDefault), handlerAfter: await currentHandler(for: target)))
         }
         for (index, step) in plan.steps.enumerated() {
-            await onProgress(WriteProgress(step: index + 1, total: plan.steps.count, call: step))
+            guard await onProgress(WriteProgress(step: index + 1, total: plan.steps.count, call: step)) else { break }
             results.append(contentsOf: await perform(step, app: plan.app))
         }
         return results

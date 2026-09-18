@@ -25,7 +25,7 @@ struct KindBrowserView: View {
             }
         case .loaded:
             if store.sidebarSelection == .applications {
-                ApplicationsPlaceholderView()
+                ApplicationsView()
             } else if store.visibleKinds.isEmpty {
                 EmptyKindsView()
             } else {

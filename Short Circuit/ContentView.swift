@@ -15,7 +15,7 @@ struct ContentView: View {
                 .navigationSubtitle(subtitle)
                 .searchable(text: $store.searchText, placement: .toolbar, prompt: "Name, .ext, MIME, UTI, or scheme:")
                 .toolbar { toolbar }
-                .inspector(isPresented: $store.isInspectorPresented) {
+                .inspector(isPresented: inspectorPresented) {
                     KindInspectorView(kind: store.selectedKind, editing: store.selectedKind.map(editing(for:)))
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
                 }
@@ -43,6 +43,14 @@ struct ContentView: View {
             #endif
             await store.refresh()
         }
+    }
+
+    /// The Applications view has its own detail pane, so the Kind inspector steps aside there.
+    private var inspectorPresented: Binding<Bool> {
+        Binding(
+            get: { store.isInspectorPresented && store.sidebarSelection != .applications },
+            set: { store.isInspectorPresented = $0 }
+        )
     }
 
     private func editing(for kind: Kind) -> KindEditing {
@@ -122,7 +130,11 @@ struct ContentView: View {
     }
 
     private var subtitle: String {
-        guard case .loaded = store.state, store.sidebarSelection != .applications else { return "" }
+        guard case .loaded = store.state else { return "" }
+        if store.sidebarSelection == .applications {
+            let count = store.appIndex.summaries.count
+            return count == 1 ? "1 app" : "\(count) apps"
+        }
         let count = store.visibleKinds.count
         return count == 1 ? "1 type" : "\(count) types"
     }

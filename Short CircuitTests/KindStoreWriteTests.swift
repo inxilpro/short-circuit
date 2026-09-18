@@ -18,7 +18,7 @@ private func makeWriter(
 }
 
 private func apply(_ writer: SimulatedHandlerWriter, _ app: AppRef, _ targets: [KindMember.Target]) async -> [MemberResult] {
-    await writer.apply(app: app, targets: targets) { _ in }
+    await writer.apply(app: app, targets: targets) { _ in true }
 }
 
 /// Serves the sample Kinds with handlers read from the simulated system, like LiveKindProvider
@@ -608,7 +608,7 @@ struct MemberCandidateWriteTests {
         let backend = SimulatedHandlerBackend(handlers: [.uti("x"): AppRef.textEdit.url], allowedApps: [.uti("x"): [AppRef.textEdit.url]])
         let writer = HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1)
 
-        let results = await writer.apply(app: .preview, targets: [.uti("x")]) { _ in }
+        let results = await writer.apply(app: .preview, targets: [.uti("x")]) { _ in true }
 
         guard case .failed(_, 256, let message) = results.first?.outcome else {
             Issue.record("Expected a 256 failure, got \(String(describing: results.first?.outcome))")

@@ -33,6 +33,13 @@ struct Short_CircuitApp: App {
                 .keyboardShortcut("r")
                 .disabled(store.isRefreshing || store.isWriting)
             }
+            #if DEBUG
+            CommandMenu("Debug") {
+                Button("Export Launch Services Snapshot…") {
+                    Task { await SnapshotExportCommand.run(kinds: store.kinds) }
+                }
+            }
+            #endif
         }
     }
 }

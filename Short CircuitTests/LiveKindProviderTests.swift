@@ -188,3 +188,43 @@ struct LiveResolutionTests {
         #expect(lookup.contentTypes(forFilenameExtension: "no-such-extension-anywhere").isEmpty, "dyn. results are dropped")
     }
 }
+
+struct ExplicitCandidateTests {
+    @Test func builderMarksUTIAndBareExtensionClaimantsExplicit() throws {
+        let markdown = try #require(Fixture.offlineBuilder.build(from: try Fixture.snapshot("markdown.lsdump")).first { $0.utis.contains("public.markdown") })
+        let explicitIDs = Set(markdown.candidates.filter { markdown.explicitCandidateURLs.contains($0.url) }.compactMap(\.bundleID))
+        #expect(explicitIDs.contains("org.josephpearson.Mud"), "Claims the Markdown UTIs")
+        #expect(explicitIDs.contains("com.todesktop.230313mzl4w4u92"), "Cursor only claims the bare .md extension")
+        #expect(markdown.explicitCandidateURLs.count == markdown.candidates.count)
+    }
+
+    @Test func conformanceOnlyAppsAreNotExplicit() throws {
+        let claimant = AppRef(url: MemberCandidateTests.word, bundleID: "com.apple.TextEdit", name: "TextEdit", version: nil)
+        let kind = Kind(
+            id: "k", name: "K", category: .documents, members: [KindMember(target: .uti("com.example.k"))],
+            extensions: [], mimeTypes: [], candidates: [claimant]
+        )
+        let lookup = MemberCandidateTests.FakeLookup(defaults: [:], lists: ["com.example.k": [MemberCandidateTests.chrome, MemberCandidateTests.word]])
+        let enriched = LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup).enrich([kind])[0]
+
+        #expect(enriched.candidates.count == 2)
+        #expect(enriched.explicitCandidateURLs == [LiveKindProvider.canonical(MemberCandidateTests.word)])
+        let offered = try #require(enriched.candidates.first { $0.url == LiveKindProvider.canonical(MemberCandidateTests.chrome) })
+        #expect(!enriched.explicitCandidateURLs.contains(offered.url))
+        #expect(enriched.candidates.allSatisfy { enriched.candidates.map(\.url).contains($0.url) })
+    }
+
+    @Test func explicitURLsMatchCandidateSpelling() throws {
+        let spelled = AppRef(url: URL(fileURLWithPath: "/System/Applications/../Applications/TextEdit.app"), bundleID: nil, name: "TextEdit", version: nil)
+        let kind = Kind(id: "k", name: "K", category: .documents, members: [KindMember(target: .uti("com.example.k"))], extensions: [], mimeTypes: [], candidates: [spelled])
+        let enriched = LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: MemberCandidateTests.FakeLookup(defaults: [:], lists: [:])).enrich([kind])[0]
+        let candidate = try #require(enriched.candidates.first)
+        #expect(enriched.explicitCandidateURLs == [candidate.url])
+    }
+
+    @Test func systemAppsAreRecognizedByLocation() {
+        #expect(AppRef(url: URL(fileURLWithPath: "/System/Applications/TextEdit.app"), bundleID: nil, name: "TextEdit", version: nil).isSystemApp)
+        #expect(AppRef(url: URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"), bundleID: nil, name: "Finder", version: nil).isSystemApp)
+        #expect(!AppRef(url: URL(fileURLWithPath: "/Applications/Safari.app"), bundleID: nil, name: "Safari", version: nil).isSystemApp)
+    }
+}

@@ -398,7 +398,8 @@ nonisolated struct KindBuilder: Sendable {
             isAppPrivate: draft.isAppPrivate,
             commonRank: draft.commonRank,
             keywords: draft.keywords,
-            catalogID: draft.catalogID
+            catalogID: draft.catalogID,
+            explicitCandidateURLs: Set(candidates.map { LiveKindProvider.canonical($0.url) })
         )
     }
 

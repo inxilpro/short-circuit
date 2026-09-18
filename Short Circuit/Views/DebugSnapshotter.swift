@@ -73,6 +73,7 @@ enum DebugSnapshotter {
             await snapshot("drop-unknown-\(suffix)", to: directory)
         }
         await runWriteStates(store: store, directory: directory)
+        await runApplicationsStates(store: store, directory: directory)
         NSApp.terminate(nil)
     }
 
@@ -173,6 +174,32 @@ enum DebugSnapshotter {
         }
     }
 
+    private static func runApplicationsStates(store: KindStore, directory: URL) async {
+        guard store.writer is SimulatedHandlerWriter else { return }
+        NSApp.appearance = NSAppearance(named: .aqua)
+        store.searchText = ""
+        store.sidebarSelection = .applications
+        try? await Task.sleep(for: .milliseconds(500))
+        store.selectApp(AppRef.photos.url)
+        store.batchSelection.formUnion(store.kindIDs(for: AppRef.photos.url, relation: .canOpen).prefix(3))
+        await snapshot("apps-photos-light", to: directory)
+
+        let run = Task { await store.applyBatch() }
+        for _ in 0..<100 where (store.batchRun?.changesStarted ?? 0) < 2 {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        await snapshot("apps-applying-light", to: directory, settle: .milliseconds(300))
+        store.stopBatch()
+        await run.value
+        await snapshot("apps-results-light", to: directory)
+
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        store.selectApp(AppRef.preview.url)
+        await snapshot("apps-preview-dark", to: directory)
+        NSApp.appearance = NSAppearance(named: .aqua)
+        NSApp.appearance = NSAppearance(named: .aqua)
+    }
+
     private static func waitForStep(_ step: Int, in store: KindStore) async {
         for _ in 0..<100 where (store.progress?.step ?? 0) < step {
             try? await Task.sleep(for: .milliseconds(50))
@@ -245,6 +272,26 @@ enum DebugSnapshotter {
         await snapshot("live-refreshing", to: directory, settle: .milliseconds(800))
         await refreshing.value
         let forcedRefreshTime = ContinuousClock.now - refreshStarted
+
+        // Applications view, read-only: selecting apps never writes; Apply is never pressed here.
+        try? await Task.sleep(for: .milliseconds(500))
+        store.searchText = ""
+        store.sidebarSelection = .applications
+        try? await Task.sleep(for: .milliseconds(500))
+        if let preview = store.appIndex.summaries.first(where: { $0.app.bundleID == "com.apple.Preview" }) {
+            store.selectApp(preview.app.url)
+            await snapshot("live-apps-preview", to: directory)
+        }
+        if let busiest = store.appIndex.summaries.max(by: { $0.explicitCount + $0.offeredCount < $1.explicitCount + $1.offeredCount }) {
+            store.selectApp(busiest.app.url)
+            await snapshot("live-apps-busiest", to: directory)
+            store.showsOfferedKinds = true
+            await snapshot("live-apps-busiest-offered", to: directory)
+            store.showsOfferedKinds = false
+        }
+        store.selectApp(nil)
+        try? await Task.sleep(for: .milliseconds(300))
+        store.sidebarSelection = .common
 
         writeLiveStats(store: store, loadTime: loadTime, forcedRefreshTime: forcedRefreshTime, to: directory.appending(path: "live-stats.md"))
     }

@@ -63,7 +63,9 @@ nonisolated struct LiveKindProvider: KindProviding {
             kind.unclaimedExtensions = kind.extensions.filter { ext in
                 handlers.contentTypes(forFilenameExtension: ext).isDisjoint(with: memberUTIs)
             }
+            let explicit = Set(kind.candidates.map { Self.canonical($0.url) })
             kind.candidates = Self.mergeCandidates(live: liveCandidates, explicit: kind.candidates, defaults: defaults)
+            kind.explicitCandidateURLs = explicit.intersection(kind.candidates.map(\.url))
             if kind.isAppPrivate {
                 kind.isAppPrivate = Set(kind.candidates.map { $0.bundleID?.lowercased() ?? $0.url.path }).count <= 1
             }
