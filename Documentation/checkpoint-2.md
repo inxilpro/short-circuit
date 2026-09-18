@@ -24,7 +24,7 @@ Everything here came from your hands-on session or from a review.
 
 ## Current numbers on this Mac
 
-932 types, 56 in Common, 4 fixable splits (Web browser via XHTML, SQL source, Tab-separated table, MIME HTML), 202 apps. 176 unit tests pass; no build warnings. First load from cache under a second; a full `lsregister -dump` takes about 6 seconds. A stale cache is detected through the Launch Services sequence number (about 30 ms to read).
+932 types, 56 in Common, 4 fixable splits (Web browser via XHTML, SQL source, Tab-separated table, MIME HTML), 202 apps. 201 unit tests pass; no build warnings. First load from cache under a second; a full `lsregister -dump` takes about 6 seconds. A stale cache is detected through the Launch Services sequence number (about 30 ms to read).
 
 ## New since checkpoint 1
 
@@ -33,10 +33,26 @@ Everything here came from your hands-on session or from a review.
 - **Release structure** mirrored from Chronicle: CI, tag-driven release with notarization, `Documentation/RELEASING.md`, `README.md`, `CLAUDE.md`. Nothing has been pushed; the repo has no remote. Secrets and first-release steps are in `RELEASING.md`. The `runs-on: xcode-27` runner label is unverified.
 - **Reviews**: `Documentation/reviews/codex-review-1.md` (with re-review), `codex-review-2.md`, `mac-assed-review-1.md`.
 
-## In progress
+## Mac-conventions pass (done, bb6d2fc)
 
-- The Mac-conventions pass: keyboard navigation in the grid, menus, context menus, copy and drag out, **Undo**, state restoration, accessibility, sheet-style "Other…", wording, Applications view polish, and handling the 16 types that have no whole-type target. Status will be recorded in `mac-assed-review-1.md`.
-- `Documentation/spikes/extension-spike.swift`: a script for you to run, to measure what `setDefaultApplication(at:toOpenFileAt:)` does for `.markdown`, which no settable type governs here (27 types have such extensions).
+Implemented from `Documentation/reviews/mac-assed-review-1.md`, which now has a Status column per finding:
+
+- Keyboard: the grid takes focus, arrow keys, Return, Space and type-to-select; selection scrolls into view, including after a file drop.
+- Menus: View ▸ as Icons ⌘1 / as List ⌘2, Show Inspector, Go To ▸ Split / Common / All Types / Applications (⌥⌘1–4); a Type menu with Open With ▸, Fix Split, Copy Identifiers, Copy Extensions, Show App in Finder; File ▸ Show Type of File… ⌘O; Help links. Context menus offer the same actions.
+- Copy and drag out for types and extension chips.
+- **Undo**: every change registers with the window's UndoManager and restores through the same writer, so macOS prompts again. Batches undo as one group and stop at the first declined prompt. Session only.
+- Remembered state: layout, sidebar section, inspector, table sort and columns, window frame.
+- Accessibility labels and announcements; failure messages stay until dismissed.
+- "Other…" is a sheet; an app dropped on Opens With sets it.
+- Applications view uses tables (Type / Opens With / Extensions / Status), which also ended AppKit's reentrancy warning in the agent's runs.
+- Strings moved to a String Catalog; "Kind" and "member" no longer appear in the UI.
+- No Settings window, on purpose: every candidate preference is already covered by remembered state.
+
+201 unit tests pass. **No screenshots of this pass were reviewed**: the screen was locked while the agent ran, so its captures came out blank. Its manual QA list is at the end of the review file.
+
+## Waiting on you
+
+- `swift Documentation/spikes/extension-spike.swift`: measures what `setDefaultApplication(at:toOpenFileAt:)` does for `.markdown`, which opens in Claude on this Mac and which no settable type governs (27 types have such extensions). Two macOS prompts; it restores the original.
 
 ## Hand tests still owed
 
