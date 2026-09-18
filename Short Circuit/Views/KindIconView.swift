@@ -23,7 +23,7 @@ struct KindIconView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
         } else {
-            Image(systemName: kind.category == .communication ? "phone.bubble" : "link")
+            Image(systemName: "link")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .fontWeight(.light)

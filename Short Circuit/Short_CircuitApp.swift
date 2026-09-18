@@ -8,6 +8,9 @@ struct Short_CircuitApp: App {
     /// and they pair the simulated writer with the sample data it was built from.
     private static func makeStore() -> KindStore {
         #if DEBUG
+        if DebugSnapshotter.directory != nil, DebugSnapshotter.isLive {
+            return KindStore(provider: LiveKindProvider(), writer: RefusingHandlerWriter())
+        }
         if DebugSnapshotter.directory != nil {
             return KindStore(provider: SampleKindProvider(delay: .milliseconds(400)), writer: SimulatedHandlerWriter.demo)
         }

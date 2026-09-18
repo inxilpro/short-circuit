@@ -51,10 +51,11 @@ struct ContentView: View {
         } isTargeted: { isDropTargeted = $0 }
         .animation(.default, value: store.transientMessage)
         .task {
-            await store.refresh()
             #if DEBUG
-            await DebugSnapshotter.run(store: store)
+            // Started alongside the load so the snapshot run can capture the loading state.
+            Task { await DebugSnapshotter.run(store: store) }
             #endif
+            await store.refresh()
         }
     }
 
@@ -84,6 +85,14 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             .help("Show as icons or list")
+        }
+
+        if store.isRefreshing, case .loaded = store.state {
+            ToolbarItem(placement: .primaryAction) {
+                ProgressView()
+                    .controlSize(.small)
+                    .help("Reading Launch Services…")
+            }
         }
 
         ToolbarItem(placement: .primaryAction) {

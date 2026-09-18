@@ -37,9 +37,8 @@ private struct KindInspectorForm: View {
     }
 
     /// A member's handler can be an app that no longer claims the type, so it must still appear.
-    private var choices: [AppRef] {
-        var seen = Set<URL>()
-        return (kind.candidates + kind.members.compactMap(\.defaultApp)).filter { seen.insert($0.url).inserted }
+    private var choices: AppChoices {
+        AppChoices(kind: kind)
     }
 
     var body: some View {
@@ -112,6 +111,21 @@ private struct KindInspectorForm: View {
     }
 }
 
+/// Long candidate lists are alphabetical, so the apps members already use are pulled to the top
+/// where they can be found without scanning twenty names.
+private struct AppChoices {
+    var current: [AppRef]
+    var others: [AppRef]
+
+    var all: [AppRef] { current + others }
+
+    init(kind: Kind) {
+        var seen = Set<URL>()
+        current = kind.members.compactMap(\.defaultApp).filter { seen.insert($0.url).inserted }
+        others = kind.candidates.filter { seen.insert($0.url).inserted }
+    }
+}
+
 private enum AppChoice: Hashable {
     case none
     case app(URL)
@@ -120,7 +134,7 @@ private enum AppChoice: Hashable {
 
 private struct OpensWithPicker: View {
     let kind: Kind
-    let choices: [AppRef]
+    let choices: AppChoices
     let isEnabled: Bool
     let onChoose: (AppRef) -> Void
 
@@ -130,18 +144,30 @@ private struct OpensWithPicker: View {
                 Text(kind.isSplit ? "Mixed" : "None").tag(AppChoice.none)
                 Divider()
             }
-            ForEach(choices) { app in
-                Label {
-                    Text(app.name)
-                } icon: {
-                    AppIconView(app: app, size: 16)
+            Section("Current") {
+                ForEach(choices.current) { app in
+                    appLabel(app).tag(AppChoice.app(app.url))
                 }
-                .tag(AppChoice.app(app.url))
+            }
+            if !choices.others.isEmpty {
+                Section("Other Apps") {
+                    ForEach(choices.others) { app in
+                        appLabel(app).tag(AppChoice.app(app.url))
+                    }
+                }
             }
             Divider()
             Text("Other…").tag(AppChoice.other)
         }
         .disabled(!isEnabled)
+    }
+
+    private func appLabel(_ app: AppRef) -> some View {
+        Label {
+            Text(app.name)
+        } icon: {
+            AppIconView(app: app, size: 16)
+        }
     }
 
     private var selection: Binding<AppChoice> {
@@ -152,7 +178,7 @@ private struct OpensWithPicker: View {
                 case .none:
                     break
                 case .app(let url):
-                    if let app = choices.first(where: { $0.url == url }) { onChoose(app) }
+                    if let app = choices.all.first(where: { $0.url == url }) { onChoose(app) }
                 case .other:
                     chooseOtherApp(forOpening: kind.name, then: onChoose)
                 }
@@ -238,7 +264,7 @@ private struct MemberRow: View {
     let member: KindMember
     let isOddOneOut: Bool
     let result: MemberResult?
-    let choices: [AppRef]
+    let choices: AppChoices
     let isEnabled: Bool
     let onChoose: (AppRef) -> Void
 
@@ -249,9 +275,11 @@ private struct MemberRow: View {
                 .frame(width: 16)
 
             VStack(alignment: .leading, spacing: 3) {
+                // Identifiers have no natural break points, so shrink rather than hyphenate them.
                 Text(member.target.displayName)
                     .font(.callout.monospaced())
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
                     .help(member.target.displayName)
@@ -287,7 +315,7 @@ private struct MemberRow: View {
     private var memberMenu: some View {
         Menu {
             Section("Open \(member.target.displayName) With") {
-                ForEach(choices) { app in
+                ForEach(choices.all) { app in
                     Button {
                         onChoose(app)
                     } label: {
@@ -324,45 +352,42 @@ private struct MemberResultLabel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             label
-            if result.viaBrowserRole, result.outcome == .changed {
-                note("Changed with the http scheme; macOS keeps web page types together.")
-            }
-            if result.usedFileFallback {
-                note(result.outcome == .changed
-                     ? "Applied through a sample file because the type setter was rejected."
-                     : "Setting it through a sample file didn’t work either.")
+                .fixedSize(horizontal: false, vertical: true)
+            if result.viaBrowserRole {
+                Text("Set through http:, since macOS keeps web page types together.")
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .font(.caption)
     }
 
+    /// The sample-file fallback is folded into each outcome's own wording so success and failure
+    /// can never be described side by side.
     @ViewBuilder
     private var label: some View {
+        let fallback = result.usedFileFallback
         switch result.outcome {
         case .changed:
-            Label("Changed", systemImage: "checkmark.circle.fill")
+            Label(fallback ? "Changed using a sample file after the type setter was rejected" : "Changed",
+                  systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .unchangedAfterSuccess:
-            Label("Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
+            Label(fallback ? "Not changed — a sample-file retry was accepted, but the handler didn’t change" : "Not changed — the prompt was probably declined",
+                  systemImage: "hand.raised.fill")
                 .foregroundStyle(.secondary)
         case .declined:
-            Label("Declined", systemImage: "hand.raised.fill")
+            Label(fallback ? "Declined (after retrying with a sample file)" : "Declined", systemImage: "hand.raised.fill")
                 .foregroundStyle(.secondary)
         case .failed(let domain, let code, let message):
-            Label("Failed: \(message) (\(Self.shortDomain(domain)) \(code))", systemImage: "xmark.octagon.fill")
+            Label("\(fallback ? "Failed, and retrying with a sample file didn’t help" : "Failed"): \(message) (\(Self.shortDomain(domain)) \(code))",
+                  systemImage: "xmark.octagon.fill")
                 .foregroundStyle(.red)
-                .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
         case .skipped(.alreadyDefault):
             Label("Already set", systemImage: "checkmark.circle")
                 .foregroundStyle(.tertiary)
         }
-    }
-
-    private func note(_ text: String) -> some View {
-        Text(text)
-            .foregroundStyle(.tertiary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private static func shortDomain(_ domain: String) -> String {

@@ -9,9 +9,20 @@ enum DebugSnapshotter {
         ProcessInfo.processInfo.environment["SC_SNAPSHOT_DIR"].map { URL(filePath: $0, directoryHint: .isDirectory) }
     }
 
+    /// SC_SNAPSHOT_LIVE=1 reads this Mac's real Launch Services data and captures read-only states.
+    static var isLive: Bool {
+        ProcessInfo.processInfo.environment["SC_SNAPSHOT_LIVE"] == "1"
+    }
+
     static func run(store: KindStore) async {
         guard let directory else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        if isLive {
+            await runLive(store: store, directory: directory)
+            NSApp.terminate(nil)
+            return
+        }
 
         while case .loading = store.state { try? await Task.sleep(for: .milliseconds(100)) }
 
@@ -115,13 +126,123 @@ enum DebugSnapshotter {
         }
     }
 
+    private static func runLive(store: KindStore, directory: URL) async {
+        // This mode must only ever look. Bail out before touching anything if the real writer
+        // somehow got wired in.
+        guard !(store.writer is LiveHandlerWriter), !(store.writer is SimulatedHandlerWriter) else {
+            print("DebugSnapshotter: refusing live run; the store's writer is \(type(of: store.writer)).")
+            return
+        }
+
+        let started = ContinuousClock.now
+        await snapshot("live-loading", to: directory, settle: .milliseconds(300))
+        while case .loading = store.state { try? await Task.sleep(for: .milliseconds(50)) }
+        let loadTime = ContinuousClock.now - started
+
+        NSApp.appearance = NSAppearance(named: .aqua)
+        store.isInspectorPresented = true
+        store.layout = .grid
+
+        store.sidebarSelection = .common
+        await snapshot("live-common-grid", to: directory)
+
+        store.sidebarSelection = .split
+        store.selectedKindID = store.splitKinds.first?.id
+        await snapshot("live-split", to: directory)
+
+        store.sidebarSelection = .all
+        store.layout = .list
+        store.selectedKindID = nil
+        await snapshot("live-all-list", to: directory)
+        store.layout = .grid
+
+        let markdown = store.kinds.first { $0.utis.contains("net.daringfireball.markdown") || $0.utis.contains("public.markdown") }
+        store.selectedKindID = markdown?.id
+        await snapshot("live-markdown-inspector", to: directory)
+
+        let web = store.kinds.first { $0.schemes.contains("http") }
+        store.selectedKindID = web?.id
+        await snapshot("live-webpage-inspector", to: directory)
+
+        store.selectedKindID = nil
+        store.searchText = ".md"
+        await snapshot("live-search-md", to: directory)
+
+        let scheme = store.kinds.flatMap(\.schemes).contains("slack") ? "slack" : store.kinds.flatMap(\.schemes).first { !["http", "https", "mailto"].contains($0) } ?? "mailto"
+        store.searchText = "\(scheme):"
+        store.selectedKindID = store.visibleKinds.first?.id
+        await snapshot("live-search-scheme", to: directory)
+        store.searchText = ""
+
+        for category in [KindCategory.documents, .other] {
+            store.sidebarSelection = .category(category)
+            store.selectedKindID = nil
+            await snapshot("live-category-\(category.rawValue)", to: directory)
+        }
+
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        store.sidebarSelection = .common
+        store.selectedKindID = markdown?.id
+        await snapshot("live-markdown-inspector-dark", to: directory)
+
+        // The first load usually hits the on-disk cache, so force a dump to see a real refresh.
+        NSApp.appearance = NSAppearance(named: .aqua)
+        let refreshStarted = ContinuousClock.now
+        let refreshing = Task { await store.refresh(force: true) }
+        await snapshot("live-refreshing", to: directory, settle: .milliseconds(800))
+        await refreshing.value
+        let forcedRefreshTime = ContinuousClock.now - refreshStarted
+
+        writeLiveStats(store: store, loadTime: loadTime, forcedRefreshTime: forcedRefreshTime, to: directory.appending(path: "live-stats.md"))
+    }
+
+    private static func writeLiveStats(store: KindStore, loadTime: Duration, forcedRefreshTime: Duration, to url: URL) {
+        let kinds = store.kinds
+        var lines = ["# Live data stats", "", "- First load: \(loadTime.formatted(.units(allowed: [.seconds, .milliseconds])))",
+                     "- Forced refresh: \(forcedRefreshTime.formatted(.units(allowed: [.seconds, .milliseconds])))",
+                     "- Kinds: \(kinds.count), common (≥2 candidates): \(store.commonKinds.count), split: \(store.splitKinds.count)", ""]
+
+        lines.append("## Categories (all / common)")
+        for category in KindCategory.allCases {
+            lines.append("- \(category.rawValue): \(kinds.filter { $0.category == category }.count) / \(store.commonKinds.filter { $0.category == category }.count)")
+        }
+
+        lines += ["", "## Split Kinds"]
+        for kind in store.splitKinds {
+            let members = kind.members.map { "\($0.target.displayName) → \($0.defaultApp?.name ?? "none")" }.joined(separator: ", ")
+            lines.append("- \(kind.name) [\(kind.id)]: \(members)")
+        }
+
+        let suspicious = kinds.filter { $0.name.isEmpty || $0.name.contains(".") && !$0.name.contains(" ") || $0.name == $0.name.lowercased() }
+        lines += ["", "## Suspicious names (\(suspicious.count))"]
+        lines += suspicious.prefix(60).map { "- \"\($0.name)\" [\($0.id)] utis: \($0.utis.prefix(3).joined(separator: ", "))" }
+
+        let schemeOnly = kinds.filter { $0.utis.isEmpty }
+        lines += ["", "## Scheme-only Kinds (\(schemeOnly.count), first 40)"]
+        lines += schemeOnly.prefix(40).map { "- \($0.name): \($0.schemes.joined(separator: ", ")) — \($0.category.rawValue), \($0.candidates.count) apps" }
+
+        let noDefault = kinds.filter { $0.members.allSatisfy { $0.defaultApp == nil } }
+        lines += ["", "## Kinds with no default app at all: \(noDefault.count)"]
+        lines += noDefault.prefix(20).map { "- \($0.name) [\($0.id)]" }
+
+        lines += ["", "## Most candidates"]
+        for kind in kinds.sorted(by: { $0.candidates.count > $1.candidates.count }).prefix(15) {
+            lines.append("- \(kind.name): \(kind.candidates.count) — \(kind.candidates.map(\.name).joined(separator: ", "))")
+        }
+
+        lines += ["", "## Common Kinds in Other (first 60)"]
+        lines += store.commonKinds.filter { $0.category == .other }.prefix(60).map { "- \($0.name) [\($0.id)] \($0.utis.first ?? $0.schemes.first ?? "")" }
+
+        try? lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+    }
+
     private static func waitUntilIdle(_ store: KindStore) async {
         try? await Task.sleep(for: .milliseconds(100))
         while !store.applyingKindIDs.isEmpty { try? await Task.sleep(for: .milliseconds(100)) }
     }
 
-    private static func snapshot(_ name: String, to directory: URL) async {
-        try? await Task.sleep(for: .milliseconds(700))
+    private static func snapshot(_ name: String, to directory: URL, settle: Duration = .milliseconds(700)) async {
+        try? await Task.sleep(for: settle)
         guard let window = NSApp.windows.first(where: { $0.isVisible && $0.contentView != nil && $0.sheetParent == nil }),
               let image = capture(window)
         else { return }
