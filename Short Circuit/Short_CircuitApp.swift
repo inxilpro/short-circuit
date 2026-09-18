@@ -2,17 +2,17 @@ import SwiftUI
 
 @main
 struct Short_CircuitApp: App {
-    // Swap in LiveKindProvider() here once the Launch Services pipeline lands.
-    @State private var store = KindStore(provider: SampleKindProvider(delay: .milliseconds(400)), writer: Self.writer)
+    @State private var store = Self.makeStore()
 
-    /// Snapshot runs drive the write UI automatically, so they must never reach the real setter.
-    private static var writer: any HandlerWriting {
+    /// Snapshot runs drive the write UI automatically, so they must never reach the real setter,
+    /// and they pair the simulated writer with the sample data it was built from.
+    private static func makeStore() -> KindStore {
         #if DEBUG
         if DebugSnapshotter.directory != nil {
-            return SimulatedHandlerWriter.demo
+            return KindStore(provider: SampleKindProvider(delay: .milliseconds(400)), writer: SimulatedHandlerWriter.demo)
         }
         #endif
-        return LiveHandlerWriter.live
+        return KindStore(provider: LiveKindProvider(), writer: LiveHandlerWriter.live)
     }
 
     var body: some Scene {
