@@ -65,7 +65,7 @@ nonisolated struct KindBuilder: Sendable {
         for claim in tagClaims.resolved where claim.utis.count == 1 || claim.areAliases {
             for uti in claim.utis { claimers[uti, default: []].formUnion(claim.claimers) }
         }
-        let nodes = claimers.keys.filter { context.hasExtension($0) }.sorted()
+        let nodes = claimers.keys.filter { context.hasExtension($0) && !Self.isContainer(lineage($0, context: context)) }.sorted()
 
         var unionFind = UnionFind(nodes)
         var traits: [String: GroupTraits] = [:]
@@ -178,6 +178,17 @@ nonisolated struct KindBuilder: Sendable {
         func merging(_ other: GroupTraits) -> GroupTraits {
             GroupTraits(categories: categories.union(other.categories), isFolder: isFolder.union(other.isFolder))
         }
+    }
+
+    /// Apps, loadable bundles (plug-ins, prefpanes, test bundles), volumes and plain folders are opened
+    /// by the system, not by an app a person picks. Document packages (`.rtfd`, `.pages`, photo
+    /// libraries) are directories too, but they're packages, and bundles that are content stay.
+    static func isContainer(_ lineage: Set<String>) -> Bool {
+        if lineage.contains("com.apple.application") || lineage.contains("public.volume") { return true }
+        let isContent = lineage.contains("public.content") || lineage.contains("public.composite-content")
+        if lineage.contains("com.apple.bundle"), !isContent { return true }
+        let isDirectory = lineage.contains("public.directory") || lineage.contains("public.folder")
+        return isDirectory && !lineage.contains("com.apple.package") && !isContent
     }
 
     private func lineage(_ uti: String, context: Context) -> Set<String> {
@@ -513,12 +524,26 @@ nonisolated private struct Context {
         displayTags(uti).contains { $0.hasPrefix(".") && $0 != ".*" }
     }
 
-    /// Each type's preferred extension must be one the other declares.
+    /// Each type's preferred extension must be one the other declares. Types from different vendor
+    /// namespaces that each name their own MIME types are distinct formats that happen to share a
+    /// generic extension (Leica and Panasonic `.raw`).
     func areAliases(_ lhs: String, _ rhs: String) -> Bool {
         let lhsTags = mergeTags(lhs)
         let rhsTags = mergeTags(rhs)
-        return preferredExtensionsByUTI[lhs, default: []].contains(where: rhsTags.contains)
-            && preferredExtensionsByUTI[rhs, default: []].contains(where: lhsTags.contains)
+        guard preferredExtensionsByUTI[lhs, default: []].contains(where: rhsTags.contains),
+              preferredExtensionsByUTI[rhs, default: []].contains(where: lhsTags.contains)
+        else { return false }
+        let lhsMIME = lhsTags.filter { !$0.hasPrefix(".") }
+        let rhsMIME = rhsTags.filter { !$0.hasPrefix(".") }
+        if !lhsMIME.isEmpty, !rhsMIME.isEmpty, lhsMIME.isDisjoint(with: rhsMIME), Self.vendor(lhs) != Self.vendor(rhs) {
+            return false
+        }
+        return true
+    }
+
+    /// `com.leica.raw-image` → `com.leica`.
+    static func vendor(_ uti: String) -> String {
+        uti.split(separator: ".").prefix(2).joined(separator: ".")
     }
 
     /// A tag a type repeats from its own base type (MacWhisper's Markdown export lists `text/plain`) is

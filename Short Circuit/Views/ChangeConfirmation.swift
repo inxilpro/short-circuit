@@ -26,7 +26,7 @@ enum ChangeConfirmation {
             }
         }
         if plan.changesBrowser {
-            lines.append("The default browser is one setting, so every item it covers changes together.")
+            lines.append("macOS treats these as your default browser. Each is checked again afterward, since XHTML may not follow.")
         }
         return lines.joined(separator: "\n")
     }

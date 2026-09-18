@@ -206,7 +206,7 @@ final class KindStore {
         let plan = await writer.plan(app: app, targets: targets)
         activity = .idle
 
-        let change = PendingChange(kindID: kind.id, kindName: kind.name, appName: app.name, plan: plan)
+        let change = PendingChange(kindID: kind.id, kindName: kind.name, appName: AppLabels(kind.candidates + kind.members.compactMap(\.defaultApp) + [app]).label(for: app), plan: plan)
         guard plan.promptCount > 0 else {
             await settleWithoutChanges(change)
             return

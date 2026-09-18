@@ -121,6 +121,7 @@ private struct KindInspectorForm: View {
 private struct AppChoices {
     var current: [AppRef]
     var others: [AppRef]
+    var labels: AppLabels
 
     var all: [AppRef] { current + others }
 
@@ -128,6 +129,7 @@ private struct AppChoices {
         var seen = Set<URL>()
         current = kind.members.compactMap(\.defaultApp).filter { seen.insert($0.url).inserted }
         others = kind.candidates.filter { seen.insert($0.url).inserted }
+        labels = kind.labelContext
     }
 }
 
@@ -169,7 +171,7 @@ private struct OpensWithPicker: View {
 
     private func appLabel(_ app: AppRef) -> some View {
         Label {
-            Text(app.name)
+            Text(choices.labels.label(for: app))
         } icon: {
             AppIconView(app: app, size: 16)
         }
@@ -257,7 +259,7 @@ private struct SplitNotice: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let majority = kind.majorityApp {
-                Button("Fix Split — Use \(majority.name) for All", action: onFix)
+                Button("Fix Split — Use \(kind.labelContext.label(for: majority)) for All", action: onFix)
                     .disabled(!isEnabled)
             }
         }
@@ -292,7 +294,7 @@ private struct MemberRow: View {
                 HStack(spacing: 4) {
                     if let app = member.defaultApp {
                         AppIconView(app: app, size: 14)
-                        Text(app.name)
+                        Text(choices.labels.label(for: app))
                     } else {
                         Text("No default")
                             .foregroundStyle(.tertiary)
@@ -331,7 +333,7 @@ private struct MemberRow: View {
                         onChoose(app)
                     } label: {
                         Label {
-                            Text(isBrowserMember ? "Make \(app.name) the Default Browser" : app.name)
+                            Text(isBrowserMember ? "Make \(choices.labels.label(for: app)) the Default Browser" : choices.labels.label(for: app))
                         } icon: {
                             AppIconView(app: app, size: 16)
                         }
@@ -352,14 +354,14 @@ private struct MemberRow: View {
         .fixedSize()
         .disabled(!isEnabled)
         .help(isBrowserMember
-              ? "Change the default browser, which sets http, https, HTML, and XHTML together"
+              ? "Change the default browser. Each of these types is checked again afterward."
               : "Set just this member")
     }
 }
 
 private struct BrowserRoleNotice: View {
     var body: some View {
-        Label("Changing this sets your default web browser, which covers http, https, HTML, and XHTML together.", systemImage: "globe")
+        Label("macOS treats these as your default browser, so this changes the default browser. Each type is checked again afterward; XHTML may not follow.", systemImage: "globe")
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

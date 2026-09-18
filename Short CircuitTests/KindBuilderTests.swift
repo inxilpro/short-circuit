@@ -152,7 +152,7 @@ struct KindBuilderTests {
         \(type("com.example.movie", "0x20", conforms: "public.movie", tags: ".mp9, video/mp9"))
         \(type("com.example.movie-alias", "0x21", conforms: "public.movie", tags: ".mp9"))
         \(type("com.example.audio", "0x22", conforms: "public.audio", tags: ".mp9, audio/mp9"))
-        \(type("com.example.bundle-folder", "0x23", conforms: "public.folder", tags: ".pkgx"))
+        \(type("com.example.bundle-folder", "0x23", conforms: "com.apple.package, public.directory", tags: ".pkgx"))
         \(type("com.example.bundle-file", "0x24", conforms: "public.data", tags: ".pkgx"))
         \(type("com.example.secondary", "0x25", conforms: "public.data", tags: ".mpx, .mp9"))
         \(separator)

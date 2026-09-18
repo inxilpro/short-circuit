@@ -378,3 +378,65 @@ struct KindStoreWriteTests {
         #expect(try kind("jpeg", in: store).defaultApp?.url == preview)
     }
 }
+
+struct AppLabelsTests {
+    private func app(_ path: String, _ name: String, _ version: String?) -> AppRef {
+        AppRef(url: URL(filePath: path), bundleID: "com.adobe.illustrator", name: name, version: version)
+    }
+
+    @Test func uniqueNamesStayPlain() {
+        let labels = AppLabels([.preview, .safari])
+
+        #expect(labels.label(for: .preview) == "Preview")
+    }
+
+    @Test func sameNameDifferentVersionsShowTheVersion() {
+        let old = app("/Applications/Adobe Illustrator 2025/Adobe Illustrator.app", "Adobe Illustrator", "29.8.3")
+        let new = app("/Applications/Adobe Illustrator 2026/Adobe Illustrator.app", "Adobe Illustrator", "30.0.0")
+        let labels = AppLabels([old, new, .preview])
+
+        #expect(labels.label(for: old) == "Adobe Illustrator (29.8.3)")
+        #expect(labels.label(for: new) == "Adobe Illustrator (30.0.0)")
+        #expect(labels.label(for: .preview) == "Preview")
+    }
+
+    @Test func sameNameAndVersionShowTheFolder() {
+        let system = app("/Applications/Mud.app", "Mud", "1.2")
+        let home = app(NSHomeDirectory() + "/Applications/Mud.app", "Mud", "1.2")
+        let labels = AppLabels([system, home])
+
+        #expect(labels.label(for: system) == "Mud (1.2, /Applications)")
+        #expect(labels.label(for: home) == "Mud (1.2, ~/Applications)")
+    }
+
+    @Test func missingVersionsFallBackToTheFolder() {
+        let first = app("/Applications/Tool.app", "Tool", nil)
+        let second = app("/Volumes/External/Tool.app", "Tool", nil)
+        let labels = AppLabels([first, second, first])
+
+        #expect(labels.label(for: first) == "Tool (/Applications)")
+        #expect(labels.label(for: second) == "Tool (/Volumes/External)")
+    }
+
+    @MainActor
+    @Test func confirmationNamesTheExactInstall() async throws {
+        let old = app("/Applications/Adobe Illustrator 2025/Adobe Illustrator.app", "Adobe Illustrator", "29.8.3")
+        let new = app("/Applications/Adobe Illustrator 2026/Adobe Illustrator.app", "Adobe Illustrator", "30.0.0")
+        var kind = try #require(SampleKindProvider.kinds.first { $0.id == "phone-call" })
+        kind.candidates += [old, new]
+        let backend = SimulatedHandlerBackend(kinds: [kind])
+        let store = KindStore(provider: StaticKindProvider(kinds: [kind]), writer: HandlerWriter(backend: backend, rereadDelay: .zero, rereadAttempts: 1))
+        await store.refresh()
+
+        await store.setDefault(new, for: kind)
+
+        #expect(store.pendingChange?.appName == "Adobe Illustrator (30.0.0)")
+        #expect(backend.calls.isEmpty)
+    }
+}
+
+private struct StaticKindProvider: KindProviding {
+    let kinds: [Kind]
+
+    func loadKinds(forceRefresh: Bool) async throws -> [Kind] { kinds }
+}
