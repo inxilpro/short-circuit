@@ -32,8 +32,9 @@ struct ContentView: View {
         }
         .frame(minWidth: 820, minHeight: 480)
         .fileImporter(isPresented: choosingApp, allowedContentTypes: [.application], allowsMultipleSelection: false) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                Task { await store.completeAppChoice(url) }
+            // Read the target now, synchronously: SwiftUI has already dismissed the sheet.
+            if case .success(let urls) = result, let url = urls.first, let target = store.pendingAppChoice {
+                Task { await store.completeAppChoice(url, for: target) }
             } else {
                 store.cancelAppChoice()
             }
@@ -75,8 +76,9 @@ struct ContentView: View {
         store.sidebarSelection == .applications ? Text("Search Apps") : Text("Search Types")
     }
 
+    /// Presentation only. Clearing it must not touch the pending target (see `cancelAppChoice`).
     private var choosingApp: Binding<Bool> {
-        Binding(get: { store.pendingAppChoice != nil }, set: { if !$0 { store.cancelAppChoice() } })
+        Binding(get: { store.isPresentingAppChoice }, set: { store.isPresentingAppChoice = $0 })
     }
 
     private var identifyingFile: Binding<Bool> {

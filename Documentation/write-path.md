@@ -92,7 +92,7 @@ macOS only accepts an app it lists for that exact type. Setting any other app fa
 - **Planning:** members that don't accept the chosen app make no setter call. They are reported as a neutral "X can't open this type" row, and counted separately in the summary ("1 changed · 1 not supported"). If their app differs, the Kind honestly stays split.
 - **Fix Split:** picks the current app that the most settable members can take. Ties go to the app more members already use. If some members can't take it, the button reads "Use X Where Possible" and names the members that will stay.
 - **Menus:** the per-member ⋯ menu lists only that member's candidates, plus "Other…". The Kind-level picker marks partially supported apps with a quiet note such as "1 of 2 types".
-- **"Other…":** a sheet on the window (`.fileImporter`) that starts in the last folder used. Dropping an app from Finder on Opens With or on one identifier row takes the same path. An app picked there can still reach the setter on a member whose candidates are unknown. A 256 then reads "macOS rejected this app for this type without asking. It only allows apps that declare support for the type."
+- **"Other…":** a sheet on the window (`.fileImporter`) that starts in the last folder used. SwiftUI clears the sheet's presentation binding before it calls the completion, so presentation (`isPresentingAppChoice`) is kept apart from the pending target (`pendingAppChoice`). The completion reads the target synchronously and passes it on (`OtherAppOrderTests`). Dropping an app from Finder on Opens With or on one identifier row takes the same path. An app picked there can still reach the setter on a member whose candidates are unknown. A 256 then reads "macOS rejected this app for this type without asking. It only allows apps that declare support for the type."
 
 
 
@@ -102,21 +102,29 @@ There is **no automatic fallback**. An earlier version retried through `setDefau
 
 ## Undo
 
-Every change registers one undo group with the window's `UndoManager`: a whole type, one identifier, Fix Split, an app chosen with Other… or dropped on the inspector, and an Applications batch. Edit reads “Undo Set Default App for “Markdown”” or “Undo Make Photos the Default for 3 Types”.
+Every change registers one undo group with the window's `UndoManager`. That covers a whole type, one identifier, Fix Split, an app chosen with Other… or dropped on the inspector, and an Applications batch. Edit reads “Undo Set Default App for “Markdown”” or “Undo Make Photos the Default for 3 Types”.
 
-- **What it restores:**
-  - Before a change, the store reads the live handler of every target it will touch, and the whole browser role if any browser target is involved.
-  - Undo puts back the previous app of each target whose result was `changed`.
-  - Targets that had no default are left out, because there is no "no default" to set.
-- **How:** through the same writer, one target per call.
-  - macOS asks again for every restore, and the status line says so when the undo starts.
-  - The browser role goes back as a single `http` call with `http`'s previous app. https and HTML follow it.
-- **Stopping:** a declined or failed restore stops the rest. The persistent banner says how many weren't attempted, and per-type results show in the inspector.
-- **No Redo:** whether a restore worked is only known after its prompt, so a Redo registered in advance could claim a change macOS refused.
-- **Busy:** undo runs under the same app-wide gate. If another change is in progress it does nothing and says so.
+- **What a record holds:** for each type that changed, the app it had before and the app the change left it on. Both come from live reads.
+  - Types that had no default are left out, since "no default" can't be set back.
+  - The store also keeps the records in `undoHistory`, because the UndoManager only holds closures.
+- **Checks before each restore:**
+  - It re-reads the type. If the type no longer has the app this change left it on (something changed it since, in this app or elsewhere), it is skipped: “PNG image was changed again since; left as is.”
+  - The same eligibility as a normal change applies (R3): the type is still listed and can be set, the app is still installed, and macOS still lists it for that type. For the browser role, that means for `http`.
+  - A type that fails is skipped with the reason, and no setter call is made.
+- **Calls:** each restore goes through the same writer, one target per call, so macOS asks again for each. A declined or failed restore stops the rest. The persistent banner lists what wasn't attempted and what was skipped.
+- **Browser role:** it goes back as one `http` call with `http`'s previous app, since that's the only call that moves it.
+  - If http, https and HTML weren't all on that app before the change, one call can't rebuild the mix. The undo item is named “… (Partly)”, and after the undo the banner says which of https and HTML now differ from before.
+  - If `http` itself didn't move, there's nothing an `http` call could undo, so no restore is recorded for the role.
+- **Busy:** Edit ▸ Undo and Redo are this app's own commands (SwiftUI's can't be disabled). They are off while a change, refresh or undo runs.
+  - If `undo()` is invoked anyway, the gate is checked and taken synchronously inside the UndoManager's closure.
+  - A refused undo puts its entry back once `undo()` returns (re-registering inside it would file it as a Redo), so nothing is lost.
+  - Because the gate is taken synchronously, two quick ⌘Zs run one after the other.
+- **Refresh:** after a refresh, restores whose types now show a different app are dropped. The stack is rebuilt from what's left, and the banner says how many were dropped.
+- **Text editing:** the window's UndoManager also holds typing in the search field, so the custom commands undo that too.
+- **No Redo:** whether a restore worked is known only after its prompt.
 - **Scope:** undo lasts for the session only.
 
-Tests: `UndoTests` (simulated backend).
+Tests: `UndoTests` (simulated backend, real `UndoManager`).
 
 ## Concurrency and refresh
 

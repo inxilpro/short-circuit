@@ -70,6 +70,37 @@ I implemented this review on top of `ac90b10`, which already had the Application
 - **Undo is Undo only.** A restore's result is known only after its prompts, so a Redo registered in advance could claim something macOS refused.
 - **`Models/`:** not touched. The one helper that was needed, `Kind.hasWholeTypeTargets`, lives in `Views/KindCategory+Display.swift`.
 
+**Codex review 3 fixes (`Documentation/reviews/codex-review-3.md`)**
+- **R2 (P1), Other… did nothing:**
+  - The cause: the presentation binding's setter cleared the pending target, and SwiftUI calls it before the completion.
+  - Presentation (`isPresentingAppChoice`) is now separate from the target (`pendingAppChoice`). Only a completion or an explicit cancellation clears the target.
+  - The completion reads the target synchronously and passes it to `completeAppChoice(_:for:)`.
+  - Tests: `OtherAppOrderTests` replays the real order (binding cleared, then completion).
+- **Audit of the other completions I added:** none of them read state that dismissal clears.
+  - The ⌘O importer uses only the picked URL.
+  - The window and app drops receive the dropped URL.
+  - Picker, context-menu and Type-menu actions capture the type by value, and the store plans from live reads.
+  - The Undo closure looks up the record by id in `undoHistory`, which nothing but a run or a refresh removes.
+  - Apply reads `batchPlan` at tap time, and Stop only sets a flag.
+- **R1 (P1), Undo overwrote a newer change:**
+  - Each restore now records the handler the change left on every type it moves, and is skipped unless the type still has it.
+  - A refresh drops restores for types that have moved and rebuilds the stack.
+  - Tests: `aTypeChangedAgainOutsideTheAppIsLeftAlone`, `refreshDropsHistoryForTypesThatMoved`.
+- **R3, undo skipped eligibility:** a restore now passes the same checks as a normal change (listed, settable, installed, `canSet`, with `http` deciding for the browser role). It is skipped with a reason instead of hitting a 256. Tests: `anAppMacOSNoLongerListsIsNotRestored`, `anUninstalledAppIsNotRestored`.
+- **R4, busy Undo lost its entry:**
+  - Edit ▸ Undo/Redo are now this app's commands, disabled while busy.
+  - The UndoManager closure checks and takes the write gate synchronously. When refused, it re-registers the entry after `undo()` returns.
+  - Tests drive a real `UndoManager` during a change, during a refresh, and with two quick ⌘Zs.
+- **R5, mixed browser role:**
+  - The restore keeps the full browser before/after state. If the role was mixed, the item reads “… (Partly)” and the banner names which of https and HTML now differ.
+  - If `http` itself didn't move, no browser restore is recorded.
+  - Test: `mixedBrowserRoleUndoSaysWhatItCouldNotRestore`.
+- **R6, over-strong wording:**
+  - The disclosure now reads “Not the preferred type for any extension (N)”.
+  - Other claims were also narrowed to what was measured: the no-whole-type note, “On this Mac, .mkd resolves to a different type”, and the unsettable caption “Not declared as a file type (public.item), so macOS won’t accept a default app for it.”
+  - The String Catalog is still empty (Xcode fills it on an IDE build), so I checked the Swift sources instead.
+- **Other checks:** 211 tests pass, and the build has 0 warnings. The store's UndoManager is the window's (checked in the running app), so Edit ▸ Undo still undoes typing in search.
+
 **Manual QA for Chris** (things a person has to do)
 1. **⌘C:** select a tile, press ⌘C, and paste into TextEdit. Expect `Markdown (…)`. Do the same in list view.
 2. **Drag out:** drag a tile to TextEdit, and an extension chip to Terminal.
@@ -146,7 +177,7 @@ The only custom command is **View ▸ Refresh ⌘R** (`Short_CircuitApp.swift:27
 | # | Sev | Finding | Where | Fix | Status |
 |---|---|---|---|---|---|
 | W1 | must | **Nothing the user arranges is remembered.** On every launch the app forgets the icon/list layout, sidebar section, inspector visibility, "Other declared types" disclosure and table sort. They are plain `@Observable` properties initialised to constants. | `KindStore.swift:39-44`, `KindTableView.swift:9` | Persist `layout`, `sidebarSelection`, `isInspectorPresented` and `showsShadowedMembers` with `@SceneStorage` (`@AppStorage` for layout if it should be global). This needs `SidebarItem` to be `RawRepresentable`/`Codable`. Persist table columns with `@SceneStorage` + `TableColumnCustomization` (`.customizationID` on each column), which also gives users column hide/reorder. Leave `selectedKindID` alone, or restore it only if the Kind still exists. | **done**: layout, section, inspector and disclosure are kept in `UserDefaults` through the store (not `@SceneStorage`, which macOS drops under the default “Close windows when quitting”). Table sort and column customization use `@AppStorage`. SwiftUI already autosaves the window frame and sidebar width (checked in the defaults domain). Snapshot runs use a throwaway defaults suite. |
-| W2 | should | **The ⋯ "Other…" app chooser is app-modal, not a sheet.** `NSOpenPanel.runModal()` blocks the whole app, and it always starts in `/Applications`. | `ApplicationChooser.swift:6-13` | Use `panel.beginSheetModal(for: NSApp.keyWindow!)`, or SwiftUI `.fileImporter(allowedContentTypes: [.application])`. Remember the last folder the user chose, since apps in `~/Applications`, Setapp or DerivedData are exactly the ones "Other…" exists for. | **done**: Other… is a `.fileImporter` sheet on the window that starts in the last folder used. `ApplicationChooser` is deleted. |
+| W2 | should | **The ⋯ "Other…" app chooser is app-modal, not a sheet.** `NSOpenPanel.runModal()` blocks the whole app, and it always starts in `/Applications`. | `ApplicationChooser.swift:6-13` | Use `panel.beginSheetModal(for: NSApp.keyWindow!)`, or SwiftUI `.fileImporter(allowedContentTypes: [.application])`. Remember the last folder the user chose, since apps in `~/Applications`, Setapp or DerivedData are exactly the ones "Other…" exists for. | **done** (R2 fix: a pick after dismissal now applies): Other… is a `.fileImporter` sheet on the window that starts in the last folder used. `ApplicationChooser` is deleted. |
 | W3 | nice | `Window` (single-instance) is the right scene for this utility. **Verify** that closing the last window quits the app (SwiftUI's behaviour for a lone `Window` scene) and that the frame is restored on relaunch. If the app stays running, Window ▸ Short Circuit must reopen it. | `Short_CircuitApp.swift:22` | — | **not verified**. |
 | W4 | nice | The window title follows the sidebar ("Common", "Split"), as in Finder. The Window menu will therefore list "Common", not "Short Circuit". This is acceptable and matches Finder. | `ContentView.swift:114-122` | — | n/a. |
 
@@ -171,7 +202,7 @@ The only custom command is **View ▸ Refresh ⌘R** (`Short_CircuitApp.swift:27
 
 | # | Sev | Finding | Where | Fix | Status |
 |---|---|---|---|---|---|
-| U1 | should | **No Undo for "set default app".** Edit ▸ Undo is dimmed after a change, and the plan and checkpoint both list undo as missing. Restoring the previous handler per member is well defined: the store already records the before state in its results. | `KindStore.swift:208-264` | Register with the window's `UndoManager` (`@Environment(\.undoManager)` passed into `KindEditing`) after a successful apply. Name it "Undo Set Default App for Markdown". The undo re-applies each member's previous app through the same writer; macOS will prompt again, which is correct and honest. Register nothing when every member was skipped or declined. | **done**: every whole-type, identifier, Fix Split, Other… and batch change registers one undo group with the window's `UndoManager` (for example “Undo Set Default App for “PNG image””, “Undo Make Photos the Default for 2 Types”). Undo restores each changed target to its live-read previous app through the same writer, one prompt per change, with the browser role as a single `http` call. A declined prompt stops the rest and leaves a persistent message. There is no Redo, since a restore's outcome is only known after its prompts. Session only. Tests: `UndoTests`. |
+| U1 | should | **No Undo for "set default app".** Edit ▸ Undo is dimmed after a change, and the plan and checkpoint both list undo as missing. Restoring the previous handler per member is well defined: the store already records the before state in its results. | `KindStore.swift:208-264` | Register with the window's `UndoManager` (`@Environment(\.undoManager)` passed into `KindEditing`) after a successful apply. Name it "Undo Set Default App for Markdown". The undo re-applies each member's previous app through the same writer; macOS will prompt again, which is correct and honest. Register nothing when every member was skipped or declined. | **done** (hardened after Codex review 3, see Status): every whole-type, identifier, Fix Split, Other… and batch change registers one undo group with the window's `UndoManager` (for example “Undo Set Default App for “PNG image””, “Undo Make Photos the Default for 2 Types”). Undo restores each changed target to its live-read previous app through the same writer, one prompt per change, with the browser role as a single `http` call. A declined prompt stops the rest and leaves a persistent message. There is no Redo, since a restore's outcome is only known after its prompts. Session only. Tests: `UndoTests`. |
 
 ## 11. Accessibility
 

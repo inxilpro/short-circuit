@@ -138,9 +138,20 @@ final class KindStore {
     /// Where views keep their own remembered state (table columns), matching the store's.
     var preferences: UserDefaults? { defaults }
     /// The window's undo manager, set by the window. Changes register their reversal here.
-    @ObservationIgnored weak var undoManager: UndoManager?
+    @ObservationIgnored weak var undoManager: UndoManager? {
+        didSet { observeUndoManager() }
+    }
     /// The restore an Undo started, so tests (and nothing else) can wait for it.
     @ObservationIgnored private(set) var undoTask: Task<Void, Never>?
+    /// Every change still on the undo stack, oldest first. The UndoManager only holds closures,
+    /// so this is what Refresh checks and what a busy Undo puts back.
+    @ObservationIgnored private(set) var undoHistory: [UndoRecord] = []
+    /// Bumped whenever the undo stack changes, so Edit ▸ Undo re-reads its title and state.
+    private(set) var undoRevision = 0
+    @ObservationIgnored private var undoObservers: [NSObjectProtocol] = []
+    /// Set while the "Other…" sheet is on screen. Kept apart from `pendingAppChoice`, because
+    /// SwiftUI clears the presentation binding before it calls the completion.
+    var isPresentingAppChoice = false
     /// One app-wide gate: consent prompts from two batches must never interleave, and a batch's
     /// live reads are only valid while nothing else is writing.
     private(set) var activity: WriteActivity = .idle
@@ -296,6 +307,7 @@ final class KindStore {
             if case .category(let category) = sidebarSelection, !categoriesWithKinds.contains(category) {
                 sidebarSelection = .common
             }
+            reconcileUndoHistory()
         } catch {
             guard generation == loadGeneration else { return }
             // Keep showing stale data on a failed refresh rather than blanking the window.
@@ -360,10 +372,11 @@ final class KindStore {
         var touchedKindIDs: [Kind.ID] = []
         defer {
             let count = touchedKindIDs.count
+            let exact = restores.allSatisfy(\.isExact)
             registerUndo(UndoRecord(
-                actionName: count == 1
+                actionName: (count == 1
                     ? "Make \(app.name) the Default for 1 Type"
-                    : "Make \(app.name) the Default for \(count) Types",
+                    : "Make \(app.name) the Default for \(count) Types") + (exact ? "" : " (Partly)"),
                 restores: restores,
                 kindIDs: touchedKindIDs
             ))
@@ -390,7 +403,7 @@ final class KindStore {
                 return true
             }
             results[kind.id] = Self.finalResults(applied: applied, unsupported: unsupported, app: app)
-            let kindRestores = Self.restores(for: applied, before: before, app: app)
+            let kindRestores = Self.restores(for: applied, before: before, label: kind.name)
             if !kindRestores.isEmpty {
                 restores += kindRestores
                 touchedKindIDs.append(kind.id)
@@ -502,7 +515,7 @@ final class KindStore {
             return
         }
         guard !members.isEmpty else {
-            showMessage("Files with \(kind.name)’s extensions open according to other types, so there’s nothing to set for it as a whole. Set its identifiers one by one in the inspector.")
+            showMessage("None of \(kind.name)’s types is the preferred type for any extension on this Mac, so there’s no whole-type default to set. Set its identifiers one by one in the inspector.")
             return
         }
         activity = .applying(kind.id)
@@ -531,24 +544,41 @@ final class KindStore {
             results[kind.id] = outcome
         }
         await reloadHandlers(for: members.map(\.target) + applied.map(\.target))
+        let single = members.count == 1 && kind.members.count > 1
+        let restores = Self.restores(for: applied, before: before, label: single ? "\(members[0].target.displayName) (\(kind.name))" : kind.name)
+        let name = single ? "Set Default App for \(members[0].target.displayName)" : "Set Default App for “\(kind.name)”"
         registerUndo(UndoRecord(
-            actionName: members.count == 1 && kind.members.count > 1
-                ? "Set Default App for \(members[0].target.displayName)"
-                : "Set Default App for “\(kind.name)”",
-            restores: Self.restores(for: applied, before: before, app: app),
+            actionName: name + (restores.allSatisfy(\.isExact) ? "" : " (Partly)"),
+            restores: restores,
             kindIDs: [kind.id]
         ))
     }
 
     // MARK: Undo
 
-    /// How to put back what a change moved: each changed target and the app it had before.
-    struct UndoRecord {
+    /// How to put back what a change moved.
+    struct UndoRecord: Identifiable {
+        /// One setter call that reverses part of a change.
         struct Restore: Equatable {
+            /// The call to make; `http` for the browser role.
             var target: KindMember.Target
+            /// The app to restore.
             var app: AppRef
+            /// The handler this change left on every target the call moves. Undo runs only while
+            /// each target still has it: anything else means someone changed it again since.
+            var after: [KindMember.Target: URL]
+            /// What each moved target had before the change. For the browser role these can
+            /// differ from `app`, and one `http` call can't bring back a mixed role.
+            var before: [KindMember.Target: URL?]
+            /// "PNG image", or "public.heic (HEIC image)" for one identifier.
+            var label: String
+
+            var isExact: Bool {
+                before.values.allSatisfy { AppIdentity.same($0, app.url) }
+            }
         }
 
+        var id = UUID()
         var actionName: String
         var restores: [Restore]
         var kindIDs: [Kind.ID]
@@ -556,76 +586,131 @@ final class KindStore {
 
     /// Live reads, not the displayed Kind: the undo has to restore what macOS actually had. The
     /// browser role is read whole, since one `http` call moves all of it.
-    private func currentHandlers(for targets: [KindMember.Target]) async -> [KindMember.Target: AppRef] {
-        var read: [KindMember.Target: AppRef] = [:]
+    private func currentHandlers(for targets: [KindMember.Target]) async -> [KindMember.Target: AppRef?] {
+        var read: [KindMember.Target: AppRef?] = [:]
         let all = targets.contains(where: WritePlan.browserRole.contains) ? targets + WritePlan.browserTargets : targets
         for target in all where read[target] == nil {
-            if let app = await writer.currentHandler(for: target) { read[target] = app }
+            read[target] = .some(await writer.currentHandler(for: target))
         }
         return read
     }
 
-    /// Targets that changed and had a different app before. A type that had no default can't be
-    /// given "no default" back, so it's left out. The browser role goes back through one `http`
-    /// restore, since https and HTML follow it; restoring them one by one would re-run the
-    /// browser change with whichever app happened to be listed for them.
-    static func restores(for applied: [MemberResult], before: [KindMember.Target: AppRef], app: AppRef) -> [UndoRecord.Restore] {
+    /// Only targets that changed and had an app before: a type that had no default can't be
+    /// given "no default" back. The browser role goes back through one `http` call, since
+    /// that's the only call that moves it; when http, https and HTML weren't on one app
+    /// before, the restore is marked inexact and the undo reports what it couldn't put back.
+    static func restores(
+        for applied: [MemberResult],
+        before: [KindMember.Target: AppRef?],
+        label: String
+    ) -> [UndoRecord.Restore] {
+        let changed = applied.filter { $0.outcome == .changed }
         var restores: [UndoRecord.Restore] = []
-        var browserRestored = false
-        for result in applied where result.outcome == .changed {
-            if WritePlan.browserRole.contains(result.target) {
-                guard !browserRestored else { continue }
-                browserRestored = true
-                let previous = before[WritePlan.browserCall] ?? before[result.target]
-                if let previous, !AppIdentity.same(previous.url, app.url) {
-                    restores.append(.init(target: WritePlan.browserCall, app: previous))
-                }
-            } else if let previous = before[result.target], !AppIdentity.same(previous.url, app.url) {
-                restores.append(.init(target: result.target, app: previous))
-            }
+        for result in changed where !WritePlan.browserRole.contains(result.target) {
+            guard let previous = before[result.target] ?? nil, let after = result.handlerAfter,
+                  !AppIdentity.same(previous.url, after.url)
+            else { continue }
+            restores.append(.init(target: result.target, app: previous, after: [result.target: after.url], before: [result.target: previous.url], label: label))
         }
+
+        let browser = applied.filter { WritePlan.browserRole.contains($0.target) }
+        guard browser.contains(where: { $0.outcome == .changed }),
+              let previous = before[WritePlan.browserCall] ?? nil
+        else { return restores }
+        var after: [KindMember.Target: URL] = [:]
+        for result in browser {
+            if let handler = result.handlerAfter { after[result.target] = handler.url }
+        }
+        // http didn't move (it was already on the chosen app), so an http call can't undo anything.
+        guard let httpAfter = after[WritePlan.browserCall], !AppIdentity.same(previous.url, httpAfter) else { return restores }
+        var browserBefore: [KindMember.Target: URL?] = [:]
+        for target in WritePlan.browserTargets where after[target] != nil {
+            browserBefore[target] = (before[target] ?? nil)?.url
+        }
+        restores.append(.init(target: WritePlan.browserCall, app: previous, after: after, before: browserBefore, label: String(localized: "the default browser")))
         return restores
     }
 
     private func registerUndo(_ record: UndoRecord) {
         guard let undoManager, !record.restores.isEmpty else { return }
+        if !undoHistory.contains(where: { $0.id == record.id }) {
+            undoHistory.append(record)
+        }
         undoManager.beginUndoGrouping()
         undoManager.registerUndo(withTarget: self) { store in
-            store.undoTask = Task { await store.performUndo(record) }
+            store.undoInvoked(record.id)
         }
         undoManager.setActionName(record.actionName)
         undoManager.endUndoGrouping()
+        undoRevision += 1
     }
 
-    /// Restores each changed target through the same writer, so macOS asks again for every
-    /// change, exactly as it did the first time. A declined prompt stops the rest: the user just
-    /// said no, and carrying on would ask again for the same intent.
+    /// Runs synchronously inside `UndoManager.undo()`, which has already popped the entry. So
+    /// the busy check and taking the write gate both happen here, before any await: a check
+    /// inside the task would come too late to keep the entry, and a second ⌘Z could slip in.
+    private func undoInvoked(_ id: UUID) {
+        guard let record = undoHistory.first(where: { $0.id == id }) else { return }
+        guard canWrite else {
+            showMessage("Undo can’t run while another change or a refresh is in progress. It’s still in the Edit menu.")
+            // Registering from inside an undo files it as a Redo; wait until undo() returns.
+            Task { @MainActor [weak self] in self?.registerUndo(record) }
+            return
+        }
+        undoHistory.removeAll { $0.id == id }
+        activity = .undoing(record.kindIDs)
+        undoTask = Task { await runUndo(record) }
+    }
+
+    /// Direct entry for callers that aren't the UndoManager.
     func performUndo(_ record: UndoRecord) async {
         guard canWrite else {
-            showMessage("Undo didn’t run because another change was still in progress. Change the types back from the inspector.", isFailure: true)
+            showMessage("Undo can’t run while another change or a refresh is in progress.", isFailure: true)
             return
         }
         activity = .undoing(record.kindIDs)
+        await runUndo(record)
+    }
+
+    /// Restores each target through the same writer, so macOS asks again for every change,
+    /// exactly as it did the first time. Before each call it re-reads the types involved and
+    /// applies the same eligibility as a normal change. A declined prompt stops the rest: the
+    /// user just said no, and carrying on would ask again for the same intent.
+    private func runUndo(_ record: UndoRecord) async {
         defer {
             activity = .idle
             progress = nil
+            undoRevision += 1
         }
         let prompts = record.restores.count
         showMessage(prompts == 1
             ? "Restoring the previous app. macOS will ask you to confirm the change."
             : "Restoring the previous apps. macOS will ask you to confirm each of \(prompts) changes.")
 
-        // One call per restore, so a decline stops before the very next prompt.
         var outcomes: [MemberResult] = []
+        var notes: [String] = []
         var notAttempted = 0
+        var restored = 0
         for restore in record.restores {
             if outcomes.contains(where: \.outcome.stopsUndo) {
                 notAttempted += 1
                 continue
             }
-            outcomes += await writer.apply(app: restore.app, targets: [restore.target]) { [weak self] step in
+            if await movedSinceChange(restore) {
+                notes.append(String(localized: "\(restore.label.capitalizedFirst) was changed again since; left as is."))
+                continue
+            }
+            if let reason = undoBlocker(for: restore) {
+                notes.append(reason)
+                continue
+            }
+            let results = await writer.apply(app: restore.app, targets: [restore.target]) { [weak self] step in
                 self?.progress = step
                 return true
+            }
+            outcomes += results
+            if !results.contains(where: \.outcome.stopsUndo) { restored += 1 }
+            if !restore.isExact {
+                notes += await inexactNotes(for: restore)
             }
         }
 
@@ -634,14 +719,131 @@ final class KindStore {
             let own = Set(kind.members.map(\.target))
             results[id] = outcomes.filter { own.contains($0.target) }
         }
-        await reloadHandlers(for: record.restores.map(\.target) + outcomes.map(\.target))
+        await reloadHandlers(for: record.restores.flatMap { Array($0.after.keys) } + outcomes.map(\.target))
 
         if outcomes.contains(where: \.outcome.stopsUndo) {
             let rest = notAttempted == 0 ? "" : notAttempted == 1 ? " One change wasn’t attempted." : " \(notAttempted) changes weren’t attempted."
-            showMessage("Undo stopped: macOS didn’t make a change.\(rest)", isFailure: true)
+            showMessage((["Undo stopped: macOS didn’t make a change.\(rest)"] + notes).joined(separator: " "), isFailure: true)
+        } else if !notes.isEmpty {
+            let lead = restored == 0 ? "Nothing was restored." : restored == 1 ? "Restored 1 change." : "Restored \(restored) changes."
+            showMessage(([lead] + notes).joined(separator: " "), isFailure: true)
         } else {
             showMessage(prompts == 1 ? "Restored the previous app." : "Restored the previous apps.")
         }
+    }
+
+    private func movedSinceChange(_ restore: UndoRecord.Restore) async -> Bool {
+        for (target, expected) in restore.after {
+            let now = await writer.currentHandler(for: target)
+            if !AppIdentity.same(now?.url, expected) { return true }
+        }
+        return false
+    }
+
+    /// The checks a normal change passes, applied to the restore: the type still exists and
+    /// can be set, the app is still installed, and macOS lists it for that type (for the
+    /// browser role, for `http`). Returns why not, or nil.
+    private func undoBlocker(for restore: UndoRecord.Restore) -> String? {
+        let app = restore.app
+        guard let kind = kinds.first(where: { $0.members.contains { $0.target == restore.target } }),
+              let member = kind.members.first(where: { $0.target == restore.target })
+        else {
+            return String(localized: "\(restore.label.capitalizedFirst) is no longer listed, so it was left as is.")
+        }
+        guard member.isSettable else {
+            return String(localized: "macOS no longer accepts a default app for \(restore.label), so it was left as is.")
+        }
+        guard FileManager.default.fileExists(atPath: app.url.path(percentEncoded: false)) else {
+            return String(localized: "\(app.name) is no longer installed, so \(restore.label) was left as is.")
+        }
+        guard kind.canSet(member, to: app) else {
+            return String(localized: "macOS no longer lists \(app.name) for \(restore.label), so it was left as is.")
+        }
+        return nil
+    }
+
+    /// After a browser restore from a mixed role, says which targets didn't get their old app back.
+    private func inexactNotes(for restore: UndoRecord.Restore) async -> [String] {
+        var notes: [String] = []
+        for target in WritePlan.browserTargets where target != restore.target {
+            guard let before = restore.before[target] else { continue }
+            let now = await writer.currentHandler(for: target)
+            guard !AppIdentity.same(now?.url, before) else { continue }
+            let was = before.map { HandlerService.appRef(for: $0).name } ?? String(localized: "no app")
+            let isNow = now?.name ?? String(localized: "no app")
+            notes.append(String(localized: "\(target.friendlyName) now opens with \(isNow); before the change it opened with \(was). macOS changes it together with http, so it can’t be restored on its own."))
+        }
+        return notes
+    }
+
+    /// After a refresh, history for types that have moved since can no longer be undone as
+    /// recorded. Those restores are dropped, and the stack is rebuilt from what's left.
+    private func reconcileUndoHistory() {
+        guard !undoHistory.isEmpty else { return }
+        var handlers: [KindMember.Target: URL?] = [:]
+        for member in kinds.flatMap(\.members) where handlers[member.target] == nil {
+            handlers[member.target] = member.defaultApp?.url
+        }
+        var dropped = 0
+        let kept = undoHistory.compactMap { record -> UndoRecord? in
+            var record = record
+            record.restores.removeAll { restore in
+                let moved = restore.after.contains { target, expected in
+                    guard let known = handlers[target] else { return false }
+                    return !AppIdentity.same(known, expected)
+                }
+                if moved { dropped += 1 }
+                return moved
+            }
+            return record.restores.isEmpty ? nil : record
+        }
+        guard dropped > 0 else { return }
+        undoHistory = kept
+        if let undoManager {
+            undoManager.removeAllActions(withTarget: self)
+            for record in kept { registerUndo(record) }
+        }
+        undoRevision += 1
+        showMessage(dropped == 1
+            ? "One change can no longer be undone: that type was changed again since."
+            : "\(dropped) changes can no longer be undone: those types were changed again since.")
+    }
+
+    // Edit ▸ Undo reads these; `undoRevision` makes the menu re-read them when the stack changes.
+
+    var undoMenuTitle: String {
+        _ = undoRevision
+        return undoManager?.undoMenuItemTitle ?? String(localized: "Undo")
+    }
+
+    var redoMenuTitle: String {
+        _ = undoRevision
+        return undoManager?.redoMenuItemTitle ?? String(localized: "Redo")
+    }
+
+    /// Off while a change, a refresh or another Undo is running, so ⌘Z can't pop an entry that
+    /// has nowhere to run.
+    var canUndoNow: Bool {
+        _ = undoRevision
+        return canWrite && undoManager?.canUndo == true
+    }
+
+    var canRedoNow: Bool {
+        _ = undoRevision
+        return canWrite && undoManager?.canRedo == true
+    }
+
+    private func observeUndoManager() {
+        undoObservers.forEach(NotificationCenter.default.removeObserver)
+        undoObservers = []
+        guard let undoManager else { return }
+        let names: [Notification.Name] = [.NSUndoManagerDidCloseUndoGroup, .NSUndoManagerDidUndoChange, .NSUndoManagerDidRedoChange, .NSUndoManagerCheckpoint]
+        undoObservers = names.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: undoManager, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.undoRevision += 1 }
+            }
+        }
+        undoRevision += 1
     }
 
     /// One result per target: what a performed step reports wins, so a browser member covered
@@ -726,10 +928,14 @@ final class KindStore {
             return
         }
         pendingAppChoice = target
+        isPresentingAppChoice = true
     }
 
+    /// Explicit cancellation or a failed pick. Dismissal alone never clears the target: SwiftUI
+    /// dismisses before it delivers a successful pick.
     func cancelAppChoice() {
         pendingAppChoice = nil
+        isPresentingAppChoice = false
     }
 
     /// "Choose an app to open Markdown files." or, for one type, names it.
@@ -746,9 +952,11 @@ final class KindStore {
         }
     }
 
-    func completeAppChoice(_ url: URL) async {
-        guard let target = pendingAppChoice else { return }
-        pendingAppChoice = nil
+    /// `target` is captured by the caller when the pick arrives, so nothing here depends on
+    /// state the sheet's dismissal may already have changed.
+    func completeAppChoice(_ url: URL, for target: AppChoiceTarget) async {
+        if pendingAppChoice == target { pendingAppChoice = nil }
+        isPresentingAppChoice = false
         lastAppFolder = url.deletingLastPathComponent()
         guard let kind = kinds.first(where: { $0.id == target.kindID }) else { return }
         let app = HandlerService.appRef(for: url)
@@ -846,5 +1054,13 @@ private extension MemberResult.Outcome {
         case .changed, .skipped: false
         case .unchangedAfterSuccess, .declined, .failed: true
         }
+    }
+}
+
+private extension String {
+    /// "The default browser" at the start of a sentence; identifiers and names stay as they are.
+    var capitalizedFirst: String {
+        guard let first, first.isLowercase, !contains(".") else { return self }
+        return first.uppercased() + dropFirst()
     }
 }

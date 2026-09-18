@@ -196,6 +196,8 @@ enum DebugSnapshotter {
         log.append("after ⌘F first responder: \(responder.map { String(describing: type(of: $0)) } ?? "nil"), in search field: \(inSearch)")
         window.makeFirstResponder(nil)
 
+        log.append("store's undo manager is the window's: \(store.undoManager != nil && store.undoManager === window.undoManager)")
+
         store.selectedKindID = "markdown"
         window.makeFirstResponder(nil)
         await snapshot("keyboard-unfocused-light", to: directory)

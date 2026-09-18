@@ -18,6 +18,18 @@ struct AppCommands: Commands {
             .disabled(store.kinds.isEmpty)
         }
 
+        // SwiftUI's own Undo can't be disabled while a change runs, and popping an entry then
+        // would lose it. The window's UndoManager also holds text edits, so these still undo
+        // typing in the search field.
+        CommandGroup(replacing: .undoRedo) {
+            Button(store.undoMenuTitle) { store.undoManager?.undo() }
+                .keyboardShortcut("z")
+                .disabled(!store.canUndoNow)
+            Button(store.redoMenuTitle) { store.undoManager?.redo() }
+                .keyboardShortcut("z", modifiers: [.shift, .command])
+                .disabled(!store.canRedoNow)
+        }
+
         CommandGroup(after: .pasteboard) {
             Divider()
             Button("Find…") { store.focusSearch() }

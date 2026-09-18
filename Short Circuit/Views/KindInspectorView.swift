@@ -67,7 +67,7 @@ private struct KindInspectorForm: View {
                 } else {
                     // Every declared type here loses its extensions to another type, so changing
                     // "the whole type" would change nothing a file ever uses.
-                    Label("Files with these extensions open according to other types on this Mac, so there’s nothing to set for this type as a whole. You can still set each identifier below.", systemImage: "info.circle")
+                    Label("None of these types is the preferred type for any extension on this Mac, so there’s no whole-type default to set. You can still set each identifier below.", systemImage: "info.circle")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -103,7 +103,7 @@ private struct KindInspectorForm: View {
                         }
                     } label: {
                         HStack(spacing: 6) {
-                            Text("Not used for files (\(kind.shadowedMembers.count))")
+                            Text("Not the preferred type for any extension (\(kind.shadowedMembers.count))")
                                 .foregroundStyle(.secondary)
                             if kind.shadowedMembersDiffer {
                                 Text("· differs")
@@ -114,7 +114,7 @@ private struct KindInspectorForm: View {
                     }
                 }
                 ForEach(kind.members.filter { !$0.isSettable }) { member in
-                    memberRow(member, caption: "macOS doesn’t use this type for files, so it can’t be changed.")
+                    memberRow(member, caption: "Not declared as a file type (public.item), so macOS won’t accept a default app for it.")
                 }
             }
 
@@ -176,8 +176,8 @@ private struct KindInspectorForm: View {
 
     static func handledElsewhereText(_ extensions: [String]) -> String {
         extensions.count == 1
-            ? String(localized: "\(formatted(extensions)) files open according to a different type.")
-            : String(localized: "\(formatted(extensions)) files open according to different types.")
+            ? String(localized: "On this Mac, \(formatted(extensions)) resolves to a different type.")
+            : String(localized: "On this Mac, \(formatted(extensions)) resolve to different types.")
     }
 
     private var header: some View {
