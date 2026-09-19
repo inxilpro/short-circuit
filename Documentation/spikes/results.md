@@ -66,6 +66,6 @@ Run by Chris: `swift Documentation/spikes/extension-spike.swift`.
 - `setDefaultApplication(at: Cursor, toOpenFileAt: spike.markdown)` returned OK in **0.0 s**. Only `.markdown` changed (Claude → Cursor). `.md`, `.mdown`, `.mkd`, `.txt`, `net.daringfireball.markdown`, `public.plain-text`, `public.text` and `public.data` did not move.
 - Restoring to Claude the same way also returned OK in 0.0 s, and every tracked handler matched the starting state.
 - No new handler-pref record showed up in `lsregister -dump` for it (the script's filter looked for markdown/mdown/mkd and the `dyn.` identifiers). Where macOS stores the choice is unknown.
-- The 0.0 s return suggests **no consent prompt appeared**; type-based changes took 3–4 s because they waited for one. Chris's typed notes were not captured, so this needs his confirmation.
+- **No consent prompt appeared**, for the change or the restore (confirmed by Chris). That matches the 0.0 s return; type-based changes took 3–4 s because they waited for a prompt. On 26.6, setting a default through a file is therefore the one handler change macOS makes silently.
 
 Conclusion: setting a default through a file is isolated and reversible when the extension resolves to a `dyn.` type. It must not be used for an extension that resolves to a declared type, because that changes the declared type's handler (the reason the earlier fallback was removed).
