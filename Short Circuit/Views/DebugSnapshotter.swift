@@ -42,6 +42,7 @@ enum DebugSnapshotter {
                 if let first = store.appIndex.summaries.max(by: { $0.explicitCount < $1.explicitCount }) {
                     store.selectApp(first.app.url)
                     try? await Task.sleep(for: .milliseconds(1500))
+                    await snapshot("apps-only", to: directory)
                 }
             }
             NSApp.terminate(nil)

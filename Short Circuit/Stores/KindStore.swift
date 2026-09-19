@@ -377,6 +377,11 @@ final class KindStore {
     }
 
     var appIndex: AppIndex {
+        // The cache is invisible to observation, so read its observed inputs on every access. On
+        // a cache hit nothing else would be read, and the Applications view would stop updating
+        // after the first change ("default for 3" staying put).
+        _ = state
+        _ = showsAppPrivateKinds
         if let appIndexCache { return appIndexCache }
         let index = AppIndex(kinds: listedKinds)
         appIndexCache = index

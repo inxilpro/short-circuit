@@ -195,7 +195,7 @@ private struct AppDetailView: View {
 
                 TableColumn("Type") { item in
                     HStack(spacing: 8) {
-                        KindIconView(kind: item.kind, size: 24, showsBadge: false)
+                        KindIconView(kind: item.kind, size: 32)
                         Text(item.kind.name)
                             .lineLimit(1)
                     }
