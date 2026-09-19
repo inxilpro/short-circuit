@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 @testable import Short_Circuit
 
 // Drives SimulatedHandlerBackend only; nothing here may construct WorkspaceHandlerBackend or call
@@ -117,7 +118,8 @@ struct ExtensionTargetTests {
         #expect(try handler(.fileExtension("mkd"), in: store) == AppRef.textEdit.url)
     }
 
-    @Test func undoOfAnExtensionAloneDoesNotPromiseAPrompt() async throws {
+    /// Extensions are set through their generated type now, so they prompt like anything else.
+    @Test func undoOfAnExtensionAloneReadsLikeAnyOtherUndo() async throws {
         let (store, _, undoManager) = await makeStore()
         await store.setDefault(.textEdit, for: .fileExtension("markdown"), in: try markdown(store))
 
@@ -125,52 +127,48 @@ struct ExtensionTargetTests {
         undoManager.undo()
         await store.undoTask?.value
 
-        #expect(store.message?.text == "Restored the previous app. macOS didn’t ask about this.")
+        #expect(store.message?.text == "Restored the previous app.")
 
         #expect(try handler(.fileExtension("markdown"), in: store) == AppRef.notes.url)
     }
 
-    @Test func batchCountsChangesAndPromptsSeparately() async throws {
+    @Test func batchCountsEveryChangeAsAPrompt() async throws {
         let (store, _, _) = await makeStore()
         let plan = AppBatchPlan(app: .preview, kinds: [try markdown(store)])
 
         #expect(plan.changeCount == 4)
-        #expect(plan.promptCount == 1)
+        #expect(plan.promptCount == 4, "Extensions are set through their generated type, which prompts")
         #expect(plan.items.first?.changingExtensions == [".md", ".markdown", ".mdown", ".mkd"])
     }
 }
 
 @MainActor
 struct ChangeWordingTests {
-    @Test func promptsAreCountedOnlyForCallsMacOSConfirms() {
+    @Test func everyCallIsCountedAsAPrompt() {
         #expect(ChangeWording.summary(changes: 0, prompts: 0) == "nothing needs changing")
         #expect(ChangeWording.summary(changes: 1, prompts: 1) == "macOS will ask you to confirm 1 change")
         #expect(ChangeWording.summary(changes: 2, prompts: 2) == "macOS will ask you to confirm 2 changes")
         #expect(ChangeWording.summary(changes: 3, prompts: 2) == "3 changes; macOS will ask about 2")
-        #expect(ChangeWording.summary(changes: 1, prompts: 0) == "1 change, made without a macOS prompt")
-        #expect(ChangeWording.summary(changes: 2, prompts: 0) == "2 changes, made without a macOS prompt")
     }
 
     @Test func undoSaysHowManyChangesMacOSWillAskAbout() {
         #expect(ChangeWording.undoStart(changes: 4, prompts: 1) == "Restoring the previous apps. 4 changes; macOS will ask about 1.")
-        #expect(ChangeWording.undoStart(changes: 1, prompts: 0) == "Restoring the previous app. macOS doesn’t ask about these, so nothing will prompt you.")
+        #expect(ChangeWording.undoStart(changes: 1, prompts: 1) == "Restoring the previous app. macOS will ask you to confirm the change.")
         #expect(ChangeWording.undoStart(changes: 2, prompts: 2) == "Restoring the previous apps. macOS will ask you to confirm each of 2 changes.")
     }
 
-    @Test func writePlanCountsExtensionsAsChangesNotPrompts() {
+    @Test func writePlanCountsExtensionsAsPrompts() {
         let textEdit = AppRef.textEdit.url
         let plan = WritePlan(app: textEdit, targets: [.uti("public.rtf"), .fileExtension("markdown"), .fileExtension("mkd")]) { _ in AppRef.preview.url }
 
         #expect(plan.changeCount == 3)
-        #expect(plan.promptCount == 1)
+        #expect(plan.promptCount == 3)
     }
 
-    @Test func progressForAnExtensionDoesNotSayItWaitsForMacOS() {
+    @Test func progressForAnExtensionWaitsForMacOSLikeAnyOtherCall() {
         let step = WritePlan.Step(call: .fileExtension("markdown"), covers: [.fileExtension("markdown")])
-        #expect(ChangeWording.progressTitle(WriteProgress(step: 1, total: 1, call: step)) == "Setting .markdown files…")
-        #expect(ChangeWording.progressTitle(WriteProgress(step: 2, total: 3, call: step)) == "Setting .markdown files… change 2 of 3")
-        let prompted = WritePlan.Step(call: .uti("public.rtf"), covers: [.uti("public.rtf")])
-        #expect(ChangeWording.progressTitle(WriteProgress(step: 1, total: 3, call: prompted)) == "Waiting for macOS… change 1 of 3")
+        #expect(ChangeWording.progressTitle(WriteProgress(step: 1, total: 1, call: step)) == "Waiting for macOS to confirm the change…")
+        #expect(ChangeWording.progressTitle(WriteProgress(step: 2, total: 3, call: step)) == "Waiting for macOS… change 2 of 3")
     }
 }
 
@@ -195,5 +193,29 @@ struct ExtensionGuardTests {
             #expect(throws: (any Error).self) { try ExtensionTargetGuard.check(bad) { _ in nil } }
         }
         #expect(ExtensionTargetGuard.isPlainExtension("markdown"))
+    }
+}
+
+/// What the live backend would call, checked without calling any setter (extension spike 2).
+struct ExtensionSetterTargetTests {
+    @Test func anExtensionIsSetThroughItsGeneratedType() throws {
+        let call = try WorkspaceHandlerBackend.resolvedCall(for: .fileExtension("markdown"))
+        guard case .contentType(let identifier) = call else {
+            Issue.record("Expected a content type, got \(call)")
+            return
+        }
+        #expect(identifier.hasPrefix("dyn."))
+        #expect(identifier == UTType(filenameExtension: "markdown")?.identifier)
+    }
+
+    @Test func anExtensionADeclaredTypeClaimsIsRefused() {
+        #expect(throws: (any Error).self) { try WorkspaceHandlerBackend.resolvedCall(for: .fileExtension("txt")) }
+        #expect(throws: (any Error).self) { try WorkspaceHandlerBackend.resolvedCall(for: .fileExtension("rtfd")) }
+    }
+
+    @Test func typesAndSchemesAreUnchanged() throws {
+        #expect(try WorkspaceHandlerBackend.resolvedCall(for: .uti("public.plain-text")) == .contentType("public.plain-text"))
+        #expect(try WorkspaceHandlerBackend.resolvedCall(for: .scheme("mailto")) == .urlScheme("mailto"))
+        #expect(throws: (any Error).self) { try WorkspaceHandlerBackend.resolvedCall(for: .uti("com.example.not-a-type")) }
     }
 }

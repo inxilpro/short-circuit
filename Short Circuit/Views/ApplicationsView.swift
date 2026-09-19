@@ -38,6 +38,12 @@ private struct AppListView: View {
         return query.isEmpty ? all : all.filter { $0.label.localizedStandardContains(query) }
     }
 
+    /// Right-click acts on the row it points at, so it selects that app first.
+    private func selectForContextMenu(_ url: URL) {
+        guard store.selectedAppURL != url else { return }
+        Task { @MainActor in store.selectApp(url) }
+    }
+
     private var selection: Binding<URL?> {
         Binding(get: { store.selectedAppURL }, set: { store.selectApp($0) })
     }
@@ -55,7 +61,10 @@ private struct AppListView: View {
         } rows: {
             ForEach(declaring) { summary in
                 TableRow(summary)
-                    .contextMenu { AppActions(app: summary.app) }
+                    .contextMenu {
+                        let _ = selectForContextMenu(summary.app.url)
+                        AppActions(app: summary.app)
+                    }
             }
             if !others.isEmpty {
                 // Apps macOS only offers through broad conformance would bury the real choices.
@@ -63,7 +72,10 @@ private struct AppListView: View {
                     if store.showsOtherApps {
                         ForEach(others) { summary in
                             TableRow(summary)
-                                .contextMenu { AppActions(app: summary.app) }
+                                .contextMenu {
+                                    let _ = selectForContextMenu(summary.app.url)
+                                    AppActions(app: summary.app)
+                                }
                         }
                     }
                 } header: {
@@ -252,6 +264,7 @@ private struct AppDetailView: View {
             }
             .contextMenu(forSelectionType: Kind.ID.self) { ids in
                 if ids.count == 1, let id = ids.first, let kind = store.kinds.first(where: { $0.id == id }) {
+                    let _ = selectRowForContextMenu(id)
                     KindActions(kind: kind, store: store, showsInBrowser: true)
                 } else if !ids.isEmpty {
                     includeButtons(ids)
@@ -269,6 +282,11 @@ private struct AppDetailView: View {
                 .padding(12)
                 .background(.bar)
         }
+    }
+
+    private func selectRowForContextMenu(_ id: Kind.ID) {
+        guard rowSelection != [id] else { return }
+        Task { @MainActor in rowSelection = [id] }
     }
 
     @TableRowBuilder<AppKindItem>
@@ -332,10 +350,7 @@ private struct AppKindStatus: View {
     var body: some View {
         Group {
             if store.isApplying(item.kind), let progress = store.progress {
-                Label(progress.call.call.isFileExtension
-                      ? String(localized: "Setting \(progress.call.call.friendlyName)…")
-                      : String(localized: "Waiting for macOS… \(progress.call.changesBrowser ? String(localized: "default browser") : progress.call.call.friendlyName)"),
-                      systemImage: "hourglass")
+                Label("Waiting for macOS… \(progress.call.changesBrowser ? String(localized: "default browser") : progress.call.call.friendlyName)", systemImage: "hourglass")
                     .foregroundStyle(.secondary)
             } else if store.batchRun?.notStartedKindIDs.contains(item.kind.id) == true {
                 Label("Not started — the batch was stopped", systemImage: "stop.circle")
@@ -435,9 +450,6 @@ private struct BatchFooter: View {
         let total = max(run.plannedChanges, run.changesStarted)
         let name = run.currentKindName.map { " — \($0)" } ?? ""
         guard run.changesStarted > 0 else { return "Checking current apps…\(name)" }
-        if let call = store.progress?.call.call, call.isFileExtension {
-            return "Setting \(call.friendlyName)… change \(run.changesStarted) of \(total)\(name)"
-        }
         return "Waiting for macOS… change \(run.changesStarted) of \(total)\(name)"
     }
 

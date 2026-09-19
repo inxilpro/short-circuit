@@ -2,6 +2,17 @@
 import AppKit
 import SwiftUI
 
+/// What the grid measured and how many columns it derived, so a snapshot run can check the
+/// arrow keys against the layout's own arithmetic.
+@MainActor
+enum DebugGridMetrics {
+    static var contentWidth: CGFloat = 0
+    static var columns = 0
+    /// What SwiftUI thinks is focused, to compare with AppKit's first responder.
+    static var searchFocused = false
+    static var gridFocused = false
+}
+
 /// Walks the window through its main states and writes PNGs, because agents running without
 /// Screen Recording permission can't use `screencapture`. Enabled by setting SC_SNAPSHOT_DIR.
 enum DebugSnapshotter {
@@ -33,6 +44,7 @@ enum DebugSnapshotter {
                 try? await Task.sleep(for: .milliseconds(500))
                 await dumpMenus(store: store, to: directory, name: "menus-selected")
             }
+            if only.contains("focus") { await runFocusProbe(store: store, directory: directory) }
             if only.contains("keyboard") { await runKeyboardStates(store: store, directory: directory) }
             if only.contains("batch") { await runApplicationsStates(store: store, directory: directory) }
             if only.contains("undo") { await runUndoStates(store: store, directory: directory) }
@@ -128,8 +140,13 @@ enum DebugSnapshotter {
     /// key handling can't be seen in a still image. Restores the pasteboard it borrows for ⌘C.
     private static func runKeyboardStates(store: KindStore, directory: URL) async {
         guard let window = mainWindow, let content = window.contentView else { return }
-        NSApp.activate()
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        window.makeKey()
+        // A fixed size, so a click lands on the same tile in every run whatever frame was saved.
+        window.setContentSize(NSSize(width: 1400, height: 900))
+        try? await Task.sleep(for: .milliseconds(400))
         NSApp.appearance = NSAppearance(named: .aqua)
         store.searchText = ""
         store.layout = .grid
@@ -144,12 +161,7 @@ enum DebugSnapshotter {
         }
 
         // The first tile sits just right of the sidebar, below the toolbar.
-        let point = NSPoint(x: 290, y: content.frame.height - 130)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) {
-                window.sendEvent(event)
-            }
-        }
+        click(at: NSPoint(x: 290, y: content.frame.height - 130), in: window)
         try? await Task.sleep(for: .milliseconds(300))
         record("click first tile")
 
@@ -203,7 +215,7 @@ enum DebugSnapshotter {
         try? await Task.sleep(for: .milliseconds(400))
         let responder = window.firstResponder
         let inSearch = (responder as? NSTextView)?.delegate is NSSearchField || responder is NSSearchField
-        log.append("after ⌘F first responder: \(responder.map { String(describing: type(of: $0)) } ?? "nil"), in search field: \(inSearch)")
+        log.append("after ⌘F first responder: \(responder.map { String(describing: type(of: $0)) } ?? "nil"), in search field: \(inSearch), SwiftUI search focus: \(DebugGridMetrics.searchFocused), grid focus: \(DebugGridMetrics.gridFocused)")
         window.makeFirstResponder(nil)
 
         log.append("store's undo manager is the window's: \(store.undoManager != nil && store.undoManager === window.undoManager)")
@@ -212,7 +224,116 @@ enum DebugSnapshotter {
         window.makeFirstResponder(nil)
         await snapshot("keyboard-unfocused-light", to: directory)
 
+        await checkArrowColumns(store: store, window: window, log: &log)
+        await checkSearchFocusHandoff(store: store, window: window, log: &log)
+
         try? log.joined(separator: "\n").write(to: directory.appending(path: "keyboard.txt"), atomically: true, encoding: .utf8)
+    }
+
+    /// Does ⌘F reach the search field when the grid holds focus?
+    private static func runFocusProbe(store: KindStore, directory: URL) async {
+        guard let window = mainWindow, let content = window.contentView else { return }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.makeKey()
+        store.sidebarSelection = .all
+        store.layout = .grid
+        try? await Task.sleep(for: .milliseconds(700))
+        var log: [String] = []
+        func record(_ step: String) {
+            log.append("\(step): SwiftUI search=\(DebugGridMetrics.searchFocused) grid=\(DebugGridMetrics.gridFocused) responder=\(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nil")")
+        }
+        record("start (window key: \(window.isKeyWindow), app active: \(NSApp.isActive))")
+        click(at: NSPoint(x: 290, y: content.frame.height - 130), in: window)
+        try? await Task.sleep(for: .milliseconds(400))
+        record("after clicking a tile")
+        store.focusSearch()
+        try? await Task.sleep(for: .milliseconds(600))
+        record("after focusSearch")
+        store.focusResults()
+        try? await Task.sleep(for: .milliseconds(600))
+        record("after focusResults")
+        store.focusSearch()
+        try? await Task.sleep(for: .milliseconds(600))
+        record("after focusSearch again")
+        try? log.joined(separator: "\n").write(to: directory.appending(path: "focus.txt"), atomically: true, encoding: .utf8)
+    }
+
+    /// Down must move by exactly the number of columns on screen, at every width.
+    private static func checkArrowColumns(store: KindStore, window: NSWindow, log: inout [String]) async {
+        store.searchText = ""
+        store.sidebarSelection = .all
+        store.layout = .grid
+        let originalSize = window.frame.size
+        defer { window.setContentSize(originalSize) }
+        // The keys have to reach the grid, so click a tile before measuring anything.
+        store.selectedKindID = nil
+        try? await Task.sleep(for: .milliseconds(300))
+        click(at: NSPoint(x: 290, y: (window.contentView?.frame.height ?? 600) - 130), in: window)
+        try? await Task.sleep(for: .milliseconds(300))
+
+        for width in [820.0, 900.0, 1040.0, 1180.0, 1320.0, 1460.0, 1600.0, 1728.0] {
+            window.setContentSize(NSSize(width: width, height: 900))
+            try? await Task.sleep(for: .milliseconds(600))
+            let ids = store.visibleKinds.map(\.id)
+            store.selectedKindID = ids.first
+            store.focusResults()
+            try? await Task.sleep(for: .milliseconds(300))
+            send(key: 125, characters: String(UnicodeScalar(NSDownArrowFunctionKey)!), flags: [.function, .numericPad], to: window)
+            try? await Task.sleep(for: .milliseconds(300))
+            let landed = store.selectedKindID.flatMap { ids.firstIndex(of: $0) } ?? -1
+            let measured = DebugGridMetrics.contentWidth
+            let columns = GridNavigator<Kind.ID>.columnCount(fitting: measured, minimum: 120, spacing: 8)
+            log.append("window \(Int(width)): grid width \(Int(measured)), columns \(columns), Down from row 1 landed on index \(landed) (expected \(columns))")
+        }
+    }
+
+    /// Tab out of the search field must land on a visible selection, and Escape must leave the
+    /// keys working where they are.
+    private static func checkSearchFocusHandoff(store: KindStore, window: NSWindow, log: inout [String]) async {
+        store.searchText = ""
+        store.selectedKindID = nil
+        try? await Task.sleep(for: .milliseconds(300))
+
+        window.setContentSize(NSSize(width: 1400, height: 900))
+        try? await Task.sleep(for: .milliseconds(300))
+        store.focusSearch()
+        try? await Task.sleep(for: .milliseconds(500))
+        log.append("focusSearch: SwiftUI search focus=\(DebugGridMetrics.searchFocused) responder=\(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nil")")
+        for character in "pd" {
+            send(key: 35, characters: String(character), flags: [], to: window)
+            try? await Task.sleep(for: .milliseconds(120))
+        }
+        log.append("typed in search: text=\(store.searchText) results=\(store.visibleKinds.count) selection=\(store.selectedKindID ?? "nil")")
+
+        send(key: 48, characters: "\t", flags: [], to: window)
+        try? await Task.sleep(for: .milliseconds(400))
+        log.append("tab from search: selection=\(store.selectedKindID ?? "nil") responder=\(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nil")")
+
+        send(key: 53, characters: "\u{1b}", flags: [], to: window)
+        try? await Task.sleep(for: .milliseconds(300))
+        log.append("escape in results: selection=\(store.selectedKindID ?? "nil") text=\(store.searchText)")
+        send(key: 125, characters: String(UnicodeScalar(NSDownArrowFunctionKey)!), flags: [.function, .numericPad], to: window)
+        try? await Task.sleep(for: .milliseconds(250))
+        log.append("arrow after escape: selection=\(store.selectedKindID ?? "nil")")
+
+        store.focusSearch()
+        try? await Task.sleep(for: .milliseconds(400))
+        send(key: 53, characters: "\u{1b}", flags: [], to: window)
+        try? await Task.sleep(for: .milliseconds(400))
+        log.append("escape in search: text=\(store.searchText) responder=\(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nil")")
+        send(key: 125, characters: String(UnicodeScalar(NSDownArrowFunctionKey)!), flags: [.function, .numericPad], to: window)
+        try? await Task.sleep(for: .milliseconds(250))
+        log.append("arrow after escape in search: selection=\(store.selectedKindID ?? "nil")")
+    }
+
+    private static func click(at point: NSPoint, in window: NSWindow) {
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) {
+                window.sendEvent(event)
+            }
+        }
     }
 
     private static func send(key code: UInt16, characters: String, flags: NSEvent.ModifierFlags, to window: NSWindow) {
@@ -294,7 +415,7 @@ enum DebugSnapshotter {
         }
 
         // public.markdown is unsettable in the sample data, so it's left out: the calls are the
-        // declared type plus the three extension rows, and only the declared type prompts.
+        // declared type plus the three extension rows, each with its own macOS prompt.
         if let markdown = kind("markdown") {
             store.selectedKindID = markdown.id
             await snapshot("inert-member-light", to: directory)

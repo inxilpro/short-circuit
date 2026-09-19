@@ -68,6 +68,10 @@ nonisolated struct HandlerService: HandlerLookup {
         applicationURLs(forContentType: identifier).map(Self.appRef(for:))
     }
 
+    func defaultApplication(forFilenameExtension ext: String) -> AppRef? {
+        defaultApplicationURL(forFilenameExtension: ext).map(Self.appRef(for:))
+    }
+
     func defaultApplication(forScheme scheme: String) -> AppRef? {
         defaultApplicationURL(forScheme: scheme).map(Self.appRef(for:))
     }

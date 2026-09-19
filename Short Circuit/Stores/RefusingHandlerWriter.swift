@@ -18,9 +18,8 @@ nonisolated struct RefusingHandlerWriter: HandlerWriting {
         switch target {
         case .uti(let identifier): reader.defaultApplication(forContentType: identifier)
         case .scheme(let scheme): reader.defaultApplication(forScheme: scheme)
-        case .fileExtension:
-            // Reads go through a temp file in the live backend; this read-only writer stays off disk.
-            nil
+        case .fileExtension(let ext):
+            reader.defaultApplication(forFilenameExtension: ext)
         }
     }
 }

@@ -4,7 +4,7 @@ import Synchronization
 /// An in-memory stand-in for Launch Services. It never touches system defaults, so previews,
 /// snapshot runs, and tests can drive the real `HandlerWriter` logic safely.
 nonisolated final class SimulatedHandlerBackend: HandlerBackend {
-    enum Behavior: Sendable {
+    enum Behavior: Sendable, Equatable {
         /// Behaves like a user who clicks "Use" on the consent prompt.
         case accept
         /// The setter returns normally but nothing changes, like a declined prompt.
@@ -13,6 +13,9 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         case declineWithError
         /// Throws Cocoa error 256 before any prompt, as macOS 26.6 does for types it won't assign.
         case rejectBeforeConsent
+        /// Throws Cocoa error 256 too, but only after the call's latency, as macOS 26.6 does when the
+        /// person clicks Cancel on the prompt. Only the elapsed time tells the two apart.
+        case declineAfterPrompt
     }
 
     struct Call: Hashable, Sendable {
@@ -96,18 +99,24 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
             state.maxInFlight = max(state.maxInFlight, state.inFlight)
         }
         defer { state.withLock { $0.inFlight -= 1 } }
-        if latency > .zero {
-            try? await Task.sleep(for: latency)
-        }
 
+        // Refusals come back before any prompt, so they skip the wait a prompt would cost.
+        let behavior = behaviors[target] ?? .accept
         if case .fileExtension(let ext) = target {
             try ExtensionTargetGuard.check(ext) { declaredExtensions[$0] }
         }
         if let allowed = allowedApps[target], !allowed.contains(app) {
             throw CocoaError(.fileReadUnknown)
         }
+        if behavior == .rejectBeforeConsent {
+            throw CocoaError(.fileReadUnknown)
+        }
 
-        switch behaviors[target] ?? .accept {
+        if latency > .zero {
+            try? await Task.sleep(for: latency)
+        }
+
+        switch behavior {
         case .accept:
             state.withLock { state in
                 state.handlers[target] = app
@@ -121,7 +130,7 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
             break
         case .declineWithError:
             throw CocoaError(.userCancelled)
-        case .rejectBeforeConsent:
+        case .rejectBeforeConsent, .declineAfterPrompt:
             throw CocoaError(.fileReadUnknown)
         }
     }

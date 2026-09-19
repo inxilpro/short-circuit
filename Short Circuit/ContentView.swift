@@ -60,7 +60,26 @@ struct ContentView: View {
             return true
         } isTargeted: { isDropTargeted = $0 }
         .animation(reduceMotion ? nil : .default, value: store.message)
-        .onChange(of: store.searchFocusRequests) { isSearchFocused = true }
+        .onChange(of: store.searchFocusRequests) {
+            // The results have to let go first, then the field is claimed on the next pass.
+            store.releaseResultsFocus()
+            Task { @MainActor in
+                if !SearchFieldFocus.claim() { isSearchFocused = true }
+            }
+        }
+        .onChange(of: isSearchFocused, initial: true) {
+            #if DEBUG
+            DebugGridMetrics.searchFocused = isSearchFocused
+            #endif
+        }
+        .onChange(of: store.searchText) { old, new in
+            guard new.isEmpty, !old.isEmpty else { return }
+            // Escape in the search field clears it and drops focus on the window, where no key
+            // does anything. Check a tick later: someone still typing keeps the keyboard.
+            Task { @MainActor in
+                if !SearchFieldFocus.isEditingText { store.focusResults() }
+            }
+        }
         .onChange(of: undoManager, initial: true) { store.undoManager = undoManager }
         .defaultAppStorage(store.preferences ?? .standard)
         .task {

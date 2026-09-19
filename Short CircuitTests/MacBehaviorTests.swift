@@ -34,6 +34,31 @@ struct GridNavigatorTests {
         #expect(navigator.target(from: "w", .down) == "w")
     }
 
+    /// The count must match what `GridItem(.adaptive(minimum:))` lays out at every width, or Down
+    /// moves by a different number of tiles than the eye sees (it drifted a column before).
+    @Test func columnCountMatchesTheLayoutAtEveryWidth() {
+        let minimum = 120.0
+        let spacing = 8.0
+        for width in stride(from: 40.0, through: 2400.0, by: 1.0) {
+            let count = GridNavigator<String>.columnCount(fitting: width, minimum: minimum, spacing: spacing)
+            #expect(count >= 1)
+            let used = Double(count) * minimum + Double(count - 1) * spacing
+            if count > 1 {
+                #expect(used <= width, "\(count) columns don't fit in \(width)")
+            }
+            let oneMore = Double(count + 1) * minimum + Double(count) * spacing
+            #expect(oneMore > width, "another column would have fitted in \(width)")
+        }
+    }
+
+    @Test func aWidthOfZeroOrLessIsOneColumn() {
+        #expect(GridNavigator<String>.columnCount(fitting: 0, minimum: 120, spacing: 8) == 1)
+        #expect(GridNavigator<String>.columnCount(fitting: -10, minimum: 120, spacing: 8) == 1)
+        #expect(GridNavigator<String>.columnCount(fitting: 119, minimum: 120, spacing: 8) == 1)
+        #expect(GridNavigator<String>.columnCount(fitting: 128, minimum: 120, spacing: 8) == 1)
+        #expect(GridNavigator<String>.columnCount(fitting: 248, minimum: 120, spacing: 8) == 2)
+    }
+
     @Test func homeEndAndNoSelection() {
         #expect(navigator.target(from: "y", .first) == "a")
         #expect(navigator.target(from: "a", .last) == "w")

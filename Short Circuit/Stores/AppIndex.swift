@@ -110,9 +110,8 @@ struct AppBatchPlan {
 
     var app: AppRef
     var items: [Item]
-    /// Setter calls macOS will ask about.
+    /// Setter calls macOS will ask about; today that is every call.
     var promptCount: Int
-    /// Every setter call, including extensions set through a file without a prompt.
     var changeCount: Int
 
     init(app: AppRef, kinds: [Kind]) {

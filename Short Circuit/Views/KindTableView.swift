@@ -2,6 +2,7 @@ import SwiftUI
 
 struct KindTableView: View {
     @Environment(KindStore.self) private var store
+    @FocusState private var isFocused: Bool
     let kinds: [Kind]
     @Binding var selection: Kind.ID?
     var resolvedIDs: Set<Kind.ID> = []
@@ -13,6 +14,14 @@ struct KindTableView: View {
     @AppStorage("kindTableSort") private var storedSort = ""
     @AppStorage("kindTableColumns") private var storedColumns = Data()
     @State private var columnCustomization = TableColumnCustomization<Kind>()
+
+    private func selectForContextMenu(_ id: Kind.ID) {
+        guard selection != id else { return }
+        Task { @MainActor in
+            selection = id
+            isFocused = true
+        }
+    }
 
     private var sortedKinds: [Kind] {
         sortOrder.isEmpty ? kinds : kinds.sorted(using: sortOrder)
@@ -57,12 +66,23 @@ struct KindTableView: View {
             }
             .contextMenu(forSelectionType: Kind.ID.self) { ids in
                 if let id = ids.first, let kind = kinds.first(where: { $0.id == id }) {
+                    let _ = selectForContextMenu(id)
                     KindActions(kind: kind, store: store)
                 }
             } primaryAction: { _ in
                 onActivate()
             }
             .copyable(kinds.filter { $0.id == selection })
+            .focused($isFocused)
+            .onChange(of: store.resultsFocusRequests) { isFocused = true }
+            .onChange(of: store.resultsBlurRequests) { isFocused = false }
+            .onChange(of: isFocused) { _, focused in
+                // Tab into the list should show where the keys will go.
+                guard focused else { return }
+                if selection == nil || !kinds.contains(where: { $0.id == selection }) {
+                    selection = sortedKinds.first?.id
+                }
+            }
             .task {
                 sortOrder = Self.decode(storedSort)
                 if let saved = try? JSONDecoder().decode(TableColumnCustomization<Kind>.self, from: storedColumns) {

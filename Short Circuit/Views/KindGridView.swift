@@ -21,8 +21,15 @@ struct KindGridView: View {
 
     @FocusState private var isFocused: Bool
     @Environment(\.appearsActive) private var appearsActive
-    @State private var width: CGFloat = 0
+    /// The grid's own width, measured on the grid rather than the scroll view: the scroll view is
+    /// wider by the padding, and by the scroller when the Mac shows one.
+    @State private var contentWidth: CGFloat = 0
     @State private var typeSelect = TypeSelectBuffer()
+    /// When the background was last clicked, so focus arriving that way doesn't select anything.
+    @State private var clearedByClick: Date = .distantPast
+    /// The tile under the pointer. SwiftUI builds context-menu content for tiles that were never
+    /// clicked, so this is what tells a real right-click from a stray build.
+    @State private var hovered: Kind.ID?
 
     private static let padding: CGFloat = 20
     private static let spacing: CGFloat = 8
@@ -31,7 +38,7 @@ struct KindGridView: View {
     /// Where `.adaptive` breaks rows, so up and down land where they look like they should. The
     /// layout itself never reads this: feeding a measured width back into the columns loops.
     private var columnCount: Int {
-        max(1, Int((width - Self.padding * 2 + Self.spacing) / (Self.minimumTile + Self.spacing)))
+        GridNavigator<Kind.ID>.columnCount(fitting: contentWidth, minimum: Self.minimumTile, spacing: Self.spacing)
     }
 
     private let columns = [GridItem(.adaptive(minimum: minimumTile, maximum: 150), spacing: spacing, alignment: .top)]
@@ -63,18 +70,20 @@ struct KindGridView: View {
                             }
                         }
                     }
+                    .measuringGridWidth($contentWidth)
                     .padding(Self.padding)
                 } else {
                     LazyVGrid(columns: columns, spacing: 16) {
                         tiles(kinds)
                     }
+                    .measuringGridWidth($contentWidth)
                     .padding(Self.padding)
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
             .contentShape(Rectangle())
             .onTapGesture {
                 selection = nil
+                clearedByClick = .now
                 isFocused = true
             }
             .onCopyCommand { kinds.filter { $0.id == selection }.map(\.itemProvider) }
@@ -103,7 +112,27 @@ struct KindGridView: View {
                 }
                 return .handled
             }
-            .onExitCommand { selection = nil }
+            .onExitCommand {
+                // Keep the focus: Escape clears the selection, it doesn't leave the grid.
+                selection = nil
+                isFocused = true
+            }
+            .onChange(of: store.resultsFocusRequests) { isFocused = true }
+            .onChange(of: store.resultsBlurRequests) { isFocused = false }
+            .onChange(of: isFocused, initial: true) {
+                #if DEBUG
+                DebugGridMetrics.gridFocused = isFocused
+                #endif
+            }
+            .onChange(of: isFocused) { _, focused in
+                // Tab into the results should show where the keys will go. A click that cleared
+                // the selection is the one case where nothing should be selected.
+                guard focused, Date.now.timeIntervalSince(clearedByClick) > 0.3 else { return }
+                let visible = sections.primary + sections.others
+                if selection == nil || !visible.contains(where: { $0.id == selection }) {
+                    selection = visible.first?.id
+                }
+            }
             .onChange(of: selection) { _, id in
                 guard let id else { return }
                 withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) }
@@ -117,6 +146,14 @@ struct KindGridView: View {
                     proxy.scrollTo(selection, anchor: .center)
                 }
             }
+        }
+    }
+
+    private func selectForContextMenu(_ id: Kind.ID) {
+        guard hovered == id, selection != id else { return }
+        Task { @MainActor in
+            selection = id
+            isFocused = true
         }
     }
 
@@ -136,6 +173,9 @@ struct KindGridView: View {
                 isResolved: resolvedIDs.contains(kind.id)
             )
             .id(kind.id)
+            .onHover { inside in
+                if inside { hovered = kind.id } else if hovered == kind.id { hovered = nil }
+            }
             .accessibilityAction(named: "Show Details") {
                 selection = kind.id
                 onActivate()
@@ -144,6 +184,9 @@ struct KindGridView: View {
                 KindIconView(kind: kind, size: 48, showsBadge: false)
             }
             .contextMenu {
+                // Right-click acts on what it points at, as in Finder, so it selects first. The
+                // selection is set after this build pass rather than during it.
+                let _ = selectForContextMenu(kind.id)
                 KindActions(kind: kind, store: store)
             }
             .onTapGesture {
@@ -154,6 +197,19 @@ struct KindGridView: View {
                 selection = kind.id
                 onActivate()
             })
+        }
+    }
+}
+
+private extension View {
+    /// Reports the width `.adaptive` columns are fitted into.
+    func measuringGridWidth(_ width: Binding<CGFloat>) -> some View {
+        onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured in
+            width.wrappedValue = measured
+            #if DEBUG
+            DebugGridMetrics.contentWidth = measured
+            DebugGridMetrics.columns = GridNavigator<Kind.ID>.columnCount(fitting: measured, minimum: 120, spacing: 8)
+            #endif
         }
     }
 }

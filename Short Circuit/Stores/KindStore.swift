@@ -147,6 +147,9 @@ final class KindStore {
     var isChoosingFileToIdentify = false
     /// Bumped to ask the window to move focus to the search field.
     private(set) var searchFocusRequests = 0
+    /// Bumped to ask the window to move focus to the results, after Escape leaves the search
+    /// field with nowhere sensible to put it.
+    private(set) var resultsFocusRequests = 0
     @ObservationIgnored private let defaults: UserDefaults?
     /// Where views keep their own remembered state (table columns), matching the store's.
     var preferences: UserDefaults? { defaults }
@@ -744,7 +747,8 @@ final class KindStore {
             undoRevision += 1
         }
         let changes = record.restores.count
-        let prompts = record.restores.count { !$0.target.isFileExtension }
+        // Every call prompts now, extensions included.
+        let prompts = changes
         showMessage(ChangeWording.undoStart(changes: changes, prompts: prompts))
 
         var outcomes: [MemberResult] = []
@@ -790,7 +794,7 @@ final class KindStore {
             showMessage(([lead] + notes).joined(separator: " "), isFailure: true)
         } else {
             let restored = changes == 1 ? String(localized: "Restored the previous app.") : String(localized: "Restored the previous apps.")
-            showMessage(prompts == 0 ? restored + " " + String(localized: "macOS didn’t ask about this.") : restored)
+            showMessage(restored)
         }
     }
 
@@ -981,6 +985,19 @@ final class KindStore {
     func focusSearch() {
         searchFocusRequests += 1
     }
+
+    func focusResults() {
+        resultsFocusRequests += 1
+    }
+
+    /// Asks the results to drop focus. While their focus state is true SwiftUI keeps claiming it
+    /// back, so the search field can only take over once they've let go.
+    private(set) var resultsBlurRequests = 0
+
+    func releaseResultsFocus() {
+        resultsBlurRequests += 1
+    }
+
 
     // MARK: Choosing an app with a panel
 

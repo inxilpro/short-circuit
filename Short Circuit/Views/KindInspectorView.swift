@@ -529,8 +529,7 @@ private struct MemberResultLabel: View {
             Label("Changed", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .unchangedAfterSuccess:
-            // No prompt is shown for an extension, so there's nothing the user could have declined.
-            Label(result.target.isFileExtension ? "Not changed" : "Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
+            Label("Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
                 .foregroundStyle(.secondary)
         case .declined:
             Label("Declined", systemImage: "hand.raised.fill")

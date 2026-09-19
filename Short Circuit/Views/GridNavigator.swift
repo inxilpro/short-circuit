@@ -16,6 +16,14 @@ struct GridNavigator<ID: Hashable> {
         self.columns = max(1, columns)
     }
 
+    /// How many columns `GridItem(.adaptive(minimum:))` fits into `width`: n tiles and n-1 gaps
+    /// must fit, so n ≤ (width + spacing) / (minimum + spacing). `width` is the grid's own width,
+    /// inside any padding, or arrow keys move by a different number of tiles than the eye sees.
+    static func columnCount(fitting width: CGFloat, minimum: CGFloat, spacing: CGFloat) -> Int {
+        guard width > 0, minimum > 0 else { return 1 }
+        return max(1, Int((width + spacing) / (minimum + spacing)))
+    }
+
     private var flat: [ID] { sections.flatMap { $0 } }
 
     /// With nothing selected, any move starts at the first item, as in Finder.
