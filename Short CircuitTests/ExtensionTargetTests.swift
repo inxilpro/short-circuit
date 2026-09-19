@@ -198,14 +198,18 @@ struct ExtensionGuardTests {
 
 /// What the live backend would call, checked without calling any setter (extension spike 2).
 struct ExtensionSetterTargetTests {
+    /// Whether `.markdown` is generated depends on the apps installed, so this uses an extension no
+    /// app declares anywhere.
+    private let undeclared = "scxq7undeclared"
+
     @Test func anExtensionIsSetThroughItsGeneratedType() throws {
-        let call = try WorkspaceHandlerBackend.resolvedCall(for: .fileExtension("markdown"))
+        let call = try WorkspaceHandlerBackend.resolvedCall(for: .fileExtension(undeclared))
         guard case .contentType(let identifier) = call else {
             Issue.record("Expected a content type, got \(call)")
             return
         }
         #expect(identifier.hasPrefix("dyn."))
-        #expect(identifier == UTType(filenameExtension: "markdown")?.identifier)
+        #expect(identifier == UTType(filenameExtension: undeclared)?.identifier)
     }
 
     @Test func anExtensionADeclaredTypeClaimsIsRefused() {

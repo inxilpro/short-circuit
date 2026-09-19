@@ -36,7 +36,7 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
     /// Apps macOS lists per target. Like the real setter, any other app fails with 256 and no prompt.
     private let allowedApps: [KindMember.Target: Set<URL>]
     private let latency: Duration
-    /// Extensions that resolve to a declared type here, so setting them through a file is
+    /// Extensions that resolve to a declared type here, so setting them by extension is
     /// refused, as the live backend refuses them.
     private let declaredExtensions: [String: String]
 

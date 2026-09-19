@@ -84,7 +84,7 @@ nonisolated extension SampleKindProvider {
                 // public.item and macOS refuses to give it a handler.
                 KindMember(target: .uti("public.markdown"), defaultApp: .safari, isSettable: false, governedExtensions: []),
                 // Also as on the dev Mac: these resolve to generated dyn. types, so each extension
-                // has its own default, set through a file. .markdown drifting to another app makes
+                // has its own default, set through its generated type. .markdown drifting to another app makes
                 // Markdown split.
                 KindMember(target: .fileExtension("markdown"), defaultApp: .notes),
                 KindMember(target: .fileExtension("mdown"), defaultApp: .textEdit),

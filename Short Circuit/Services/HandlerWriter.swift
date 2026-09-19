@@ -120,7 +120,7 @@ nonisolated enum ExtensionTargetGuard {
         }
         if let identifier = declaredType(ext) {
             throw NSError(domain: errorDomain, code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "macOS now resolves .\(ext) files to \(identifier), a declared type. Setting it through a file would change that type too, so nothing was changed.",
+                NSLocalizedDescriptionKey: "macOS now resolves .\(ext) files to \(identifier), a declared type. Setting the extension would change that type too, so nothing was changed.",
             ])
         }
     }

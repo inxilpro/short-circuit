@@ -88,7 +88,7 @@ nonisolated struct LiveKindProvider: KindProviding {
     /// Picks, for every extension that resolves only to a `dyn.` type, the one Kind that gets it as a
     /// `.fileExtension` member, so two Kinds never set the same extension. Catalog Kinds go first (by
     /// Common rank, then catalog order), then heuristic Kinds in their given order. An extension that
-    /// resolves to any declared type never becomes a member: setting it through a file would change
+    /// resolves to any declared type never becomes a member: setting it by extension would change
     /// that type's handler. Nor does one no app is listed for, since there'd be nothing to choose.
     private func extensionMemberOwners(_ kinds: [Kind]) -> [String: Int] {
         let priority = kinds.indices.sorted { lhs, rhs in

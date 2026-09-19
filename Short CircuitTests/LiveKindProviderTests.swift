@@ -293,7 +293,7 @@ struct ExtensionMemberTests {
 
     @Test func extensionsOfDeclaredTypesNeverBecomeMembers() {
         let kind = enrich([markdown(lookup(markdownDefault: sublime))], lookup(markdownDefault: sublime))[0]
-        #expect(!kind.members.contains { $0.target == .fileExtension("rmd") }, "Setting .rmd through a file would move org.rstudio.rmarkdown")
+        #expect(!kind.members.contains { $0.target == .fileExtension("rmd") }, "Setting .rmd by extension would move org.rstudio.rmarkdown")
         #expect(!kind.members.contains { $0.target == .fileExtension("md") })
         #expect(kind.unclaimedExtensions == ["rmd"])
     }
