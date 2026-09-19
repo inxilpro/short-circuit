@@ -34,8 +34,14 @@ nonisolated struct LiveKindProvider: KindProviding {
             return app
         }
 
-        return kinds.map { kind in
-            var kind = kind
+        let extensionOwners = extensionMemberOwners(kinds)
+
+        return kinds.indices.map { kindIndex in
+            var kind = kinds[kindIndex]
+            let ownedExtensions = extensionOwners.compactMap { $0.value == kindIndex ? $0.key : nil }.sorted()
+            for ext in ownedExtensions where !kind.members.contains(where: { $0.target == .fileExtension(ext) }) {
+                kind.members.append(KindMember(target: .fileExtension(ext), governedExtensions: [ext]))
+            }
             var liveCandidates: [AppRef] = []
             var defaults: Set<URL> = []
             for index in kind.members.indices {
@@ -48,6 +54,9 @@ nonisolated struct LiveKindProvider: KindProviding {
                 case .scheme(let scheme):
                     defaultURL = handlers.defaultApplicationURL(forScheme: scheme)
                     candidateURLs = handlers.applicationURLs(forScheme: scheme)
+                case .fileExtension(let ext):
+                    defaultURL = handlers.defaultApplicationURL(forFilenameExtension: ext)
+                    candidateURLs = handlers.applicationURLs(forFilenameExtension: ext)
                 }
                 if case .uti(let identifier) = kind.members[index].target {
                     kind.members[index].governedExtensions = governedExtensions(of: identifier, in: kind)
@@ -60,8 +69,11 @@ nonisolated struct LiveKindProvider: KindProviding {
                 liveCandidates.append(contentsOf: candidateURLs.map(app))
             }
             let memberUTIs = Set(kind.utis)
+            let memberExtensions = Set(kind.members.compactMap { member -> String? in
+                if case .fileExtension(let ext) = member.target { ext } else { nil }
+            })
             kind.unclaimedExtensions = kind.extensions.filter { ext in
-                handlers.contentTypes(forFilenameExtension: ext).isDisjoint(with: memberUTIs)
+                !memberExtensions.contains(ext) && handlers.contentTypes(forFilenameExtension: ext).isDisjoint(with: memberUTIs)
             }
             let explicit = Set(kind.candidates.map { Self.canonical($0.url) })
             kind.candidates = Self.mergeCandidates(live: liveCandidates, explicit: kind.candidates, defaults: defaults)
@@ -71,6 +83,30 @@ nonisolated struct LiveKindProvider: KindProviding {
             }
             return kind
         }
+    }
+
+    /// Picks, for every extension that resolves only to a `dyn.` type, the one Kind that gets it as a
+    /// `.fileExtension` member, so two Kinds never set the same extension. Catalog Kinds go first (by
+    /// Common rank, then catalog order), then heuristic Kinds in their given order. An extension that
+    /// resolves to any declared type never becomes a member: setting it through a file would change
+    /// that type's handler. Nor does one no app is listed for, since there'd be nothing to choose.
+    private func extensionMemberOwners(_ kinds: [Kind]) -> [String: Int] {
+        let priority = kinds.indices.sorted { lhs, rhs in
+            let lhsKey = (kinds[lhs].catalogID == nil ? 1 : 0, kinds[lhs].commonRank ?? Int.max, lhs)
+            let rhsKey = (kinds[rhs].catalogID == nil ? 1 : 0, kinds[rhs].commonRank ?? Int.max, rhs)
+            return lhsKey < rhsKey
+        }
+        var owners: [String: Int] = [:]
+        var resolution: [String: Bool] = [:]
+        for index in priority where !kinds[index].utis.isEmpty {
+            for ext in kinds[index].extensions where owners[ext] == nil {
+                let eligible = resolution[ext]
+                    ?? (handlers.contentTypes(forFilenameExtension: ext).isEmpty && !handlers.applicationURLs(forFilenameExtension: ext).isEmpty)
+                resolution[ext] = eligible
+                if eligible { owners[ext] = index }
+            }
+        }
+        return owners
     }
 
     /// Extensions, from the type's own tags and the Kind's list, that macOS resolves to exactly this

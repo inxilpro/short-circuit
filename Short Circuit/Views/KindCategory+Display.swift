@@ -38,6 +38,7 @@ extension KindMember.Target {
         switch self {
         case .uti(let identifier): identifier
         case .scheme(let scheme): "\(scheme):"
+        case .fileExtension(let ext): ".\(ext)"
         }
     }
 
@@ -47,6 +48,8 @@ extension KindMember.Target {
         switch self {
         case .scheme(let scheme):
             return "\(scheme): links"
+        case .fileExtension(let ext):
+            return ".\(ext) files"
         case .uti(let identifier):
             guard let description = UTType(identifier)?.localizedDescription, !description.isEmpty else { return identifier }
             return "\(description) (\(identifier))"
@@ -87,7 +90,11 @@ extension Kind {
     var extensionsHandledElsewhere: [String] {
         let utiMembers = members.filter { if case .uti = $0.target { true } else { false } }
         guard !utiMembers.isEmpty, utiMembers.allSatisfy({ $0.governedExtensions != nil }) else { return [] }
-        let governed = Set(utiMembers.flatMap { $0.governedExtensions ?? [] }.map { $0.lowercased() })
+        var governed = Set(utiMembers.flatMap { $0.governedExtensions ?? [] }.map { $0.lowercased() })
+        // An extension with its own row is shown and set there, so it isn't "elsewhere".
+        for member in members {
+            if case .fileExtension(let ext) = member.target { governed.insert(ext.lowercased()) }
+        }
         return extensions.filter { !governed.contains($0.lowercased()) }
     }
 

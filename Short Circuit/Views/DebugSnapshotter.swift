@@ -283,7 +283,8 @@ enum DebugSnapshotter {
             NSApp.appearance = NSAppearance(named: .aqua)
         }
 
-        // public.markdown is unsettable in the sample data, so this is one call and a clean result.
+        // public.markdown is unsettable in the sample data, so it's left out: the calls are the
+        // declared type plus the three extension rows, and only the declared type prompts.
         if let markdown = kind("markdown") {
             store.selectedKindID = markdown.id
             await snapshot("inert-member-light", to: directory)

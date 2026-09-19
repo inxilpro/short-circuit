@@ -79,10 +79,16 @@ nonisolated extension SampleKindProvider {
         Kind(
             id: "markdown", name: "Markdown", category: .documents,
             members: [
-                KindMember(target: .uti("net.daringfireball.markdown"), defaultApp: .textEdit, governedExtensions: ["md", "markdown", "mdown"]),
+                KindMember(target: .uti("net.daringfireball.markdown"), defaultApp: .textEdit, governedExtensions: ["md"]),
                 // Mirrors the dev Mac, where public.markdown is declared without conformance to
                 // public.item and macOS refuses to give it a handler.
                 KindMember(target: .uti("public.markdown"), defaultApp: .safari, isSettable: false, governedExtensions: []),
+                // Also as on the dev Mac: these resolve to generated dyn. types, so each extension
+                // has its own default, set through a file. .markdown drifting to another app makes
+                // Markdown split.
+                KindMember(target: .fileExtension("markdown"), defaultApp: .notes),
+                KindMember(target: .fileExtension("mdown"), defaultApp: .textEdit),
+                KindMember(target: .fileExtension("mkd"), defaultApp: .textEdit),
             ],
             extensions: ["md", "markdown", "mdown", "mkd"], mimeTypes: ["text/markdown", "text/x-markdown"],
             candidates: [.textEdit, .safari, .notes]

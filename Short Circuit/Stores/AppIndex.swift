@@ -99,15 +99,21 @@ struct AppBatchPlan {
 
         var changingExtensions: [String] {
             changing.flatMap { member -> [String] in
-                if case .scheme(let scheme) = member.target { return ["\(scheme):"] }
-                return (member.governedExtensions ?? kind.extensions).map { ".\($0)" }
+                switch member.target {
+                case .scheme(let scheme): return ["\(scheme):"]
+                case .fileExtension(let ext): return [".\(ext)"]
+                case .uti: return (member.governedExtensions ?? kind.extensions).map { ".\($0)" }
+                }
             }
         }
     }
 
     var app: AppRef
     var items: [Item]
+    /// Setter calls macOS will ask about.
     var promptCount: Int
+    /// Every setter call, including extensions set through a file without a prompt.
+    var changeCount: Int
 
     init(app: AppRef, kinds: [Kind]) {
         self.app = app
@@ -122,6 +128,8 @@ struct AppBatchPlan {
         // One plan over every target, so shared targets and the browser role are counted once.
         let current = Dictionary(kinds.flatMap(\.members).map { ($0.target, $0.defaultApp?.url) }, uniquingKeysWith: { first, _ in first })
         let targets = items.flatMap { $0.changing.map(\.target) }
-        promptCount = WritePlan(app: app.url, targets: targets) { current[$0] ?? nil }.promptCount
+        let plan = WritePlan(app: app.url, targets: targets) { current[$0] ?? nil }
+        promptCount = plan.promptCount
+        changeCount = plan.changeCount
     }
 }

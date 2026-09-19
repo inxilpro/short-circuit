@@ -33,6 +33,7 @@ nonisolated extension Kind {
             switch member.target {
             case .uti(let identifier): identifier
             case .scheme(let scheme): "\(scheme):"
+            case .fileExtension(let ext): ".\(ext)"
             }
         }
     }

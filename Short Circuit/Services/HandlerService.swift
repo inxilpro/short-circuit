@@ -12,6 +12,9 @@ nonisolated protocol HandlerLookup: Sendable {
     /// directory (`.pages` is both). `dyn.` results mean no declared type wins and are left out.
     func contentTypes(forFilenameExtension ext: String) -> Set<String>
     func declaredExtensions(forContentType identifier: String) -> [String]
+    /// Handlers for files with an extension no declared type governs.
+    func defaultApplicationURL(forFilenameExtension ext: String) -> URL?
+    func applicationURLs(forFilenameExtension ext: String) -> [URL]
 }
 
 /// Live default-handler lookups through NSWorkspace. Launch Services answers these from its own
@@ -41,6 +44,16 @@ nonisolated struct HandlerService: HandlerLookup {
 
     func contentTypes(forFilenameExtension ext: String) -> Set<String> {
         Set([UTType.data, .package].compactMap { UTType(filenameExtension: ext, conformingTo: $0) }.filter { !$0.isDynamic }.map(\.identifier))
+    }
+
+    /// Asks about the generated `dyn.` type rather than a temporary file. On macOS 26.6 both give the same
+    /// default and candidates for every extension that resolves only to a `dyn.` type.
+    func defaultApplicationURL(forFilenameExtension ext: String) -> URL? {
+        UTType(filenameExtension: ext).flatMap { NSWorkspace.shared.urlForApplication(toOpen: $0) }
+    }
+
+    func applicationURLs(forFilenameExtension ext: String) -> [URL] {
+        UTType(filenameExtension: ext).map { NSWorkspace.shared.urlsForApplications(toOpen: $0) } ?? []
     }
 
     func declaredExtensions(forContentType identifier: String) -> [String] {

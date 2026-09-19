@@ -60,6 +60,8 @@ struct MemberCandidateTests {
         func applicationURLs(forScheme scheme: String) -> [URL] { lists["\(scheme):"] ?? [] }
         func contentTypes(forFilenameExtension ext: String) -> Set<String> { resolutions[ext] ?? [] }
         func declaredExtensions(forContentType identifier: String) -> [String] { declared[identifier] ?? [] }
+        func defaultApplicationURL(forFilenameExtension ext: String) -> URL? { defaults[".\(ext)"] }
+        func applicationURLs(forFilenameExtension ext: String) -> [URL] { lists[".\(ext)"] ?? [] }
     }
 
     private func enrich(_ lookup: FakeLookup) -> Kind {
@@ -122,8 +124,10 @@ struct GovernedExtensionTests {
         return LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup).enrich([kind])[0]
     }
 
+    /// `.bwf` resolves to a declared type outside the Kind unless a test says otherwise.
     private func lookup(resolutions: [String: Set<String>]) -> Lookup {
-        Lookup(
+        let resolutions = resolutions.merging(["bwf": ["com.example.broadcast-wave"]]) { given, _ in given }
+        return Lookup(
             defaults: ["public.wav": fission, "com.microsoft.waveform-audio": music],
             lists: ["public.wav": [fission, music], "com.microsoft.waveform-audio": [fission, music]],
             resolutions: resolutions,
@@ -175,7 +179,8 @@ struct GovernedExtensionTests {
 
     @Test func extensionsResolvingOutsideTheKindAreRecorded() {
         let kind = wav(lookup(resolutions: ["wav": ["com.microsoft.waveform-audio"], "wave": ["com.example.elsewhere"], "bwf": []]))
-        #expect(kind.unclaimedExtensions == ["wave", "bwf"], "Another Kind's type, or only a dyn. type")
+        #expect(kind.unclaimedExtensions == ["wave", "bwf"], "Another Kind's type, or a dyn. type no app is listed for")
+        #expect(!kind.members.contains { $0.target == .fileExtension("bwf") })
     }
 
     @Test func packageAndFlatWinnersBothGovern() {
@@ -244,5 +249,82 @@ struct ExplicitCandidateTests {
         #expect(AppRef(url: URL(fileURLWithPath: "/System/Applications/TextEdit.app"), bundleID: nil, name: "TextEdit", version: nil).isSystemApp)
         #expect(AppRef(url: URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"), bundleID: nil, name: "Finder", version: nil).isSystemApp)
         #expect(!AppRef(url: URL(fileURLWithPath: "/Applications/Safari.app"), bundleID: nil, name: "Safari", version: nil).isSystemApp)
+    }
+}
+
+struct ExtensionMemberTests {
+    typealias Lookup = MemberCandidateTests.FakeLookup
+    private let sublime = MemberCandidateTests.word
+    private let claude = MemberCandidateTests.chromium
+    private let cursor = MemberCandidateTests.chrome
+
+    private func markdown(_ lookup: Lookup, catalogID: String? = nil) -> Kind {
+        Kind(
+            id: "markdown", name: "Markdown", category: .documents,
+            members: [KindMember(target: .uti("net.daringfireball.markdown"))],
+            extensions: ["md", "markdown", "rmd"], mimeTypes: [], candidates: [AppRef(url: sublime, bundleID: nil, name: "Sublime Text", version: nil)],
+            catalogID: catalogID
+        )
+    }
+
+    /// `.md` resolves to the declared type, `.markdown` only to a dyn. type, `.rmd` to another declared type.
+    private func lookup(markdownDefault: URL) -> Lookup {
+        Lookup(
+            defaults: ["net.daringfireball.markdown": sublime, ".markdown": markdownDefault],
+            lists: ["net.daringfireball.markdown": [sublime, claude, cursor], ".markdown": [claude, cursor, sublime], ".rmd": [cursor]],
+            resolutions: ["md": ["net.daringfireball.markdown"], "markdown": [], "rmd": ["org.rstudio.rmarkdown"]],
+            declared: ["net.daringfireball.markdown": ["md", "markdown"]]
+        )
+    }
+
+    private func enrich(_ kinds: [Kind], _ lookup: Lookup) -> [Kind] {
+        LiveKindProvider(index: LaunchServicesIndex(cacheURL: nil), handlers: lookup).enrich(kinds)
+    }
+
+    @Test func dynOnlyExtensionsBecomeMembers() throws {
+        let kind = enrich([markdown(lookup(markdownDefault: sublime))], lookup(markdownDefault: sublime))[0]
+        let member = try #require(kind.members.first { $0.target == .fileExtension("markdown") })
+        #expect(member.isSettable)
+        #expect(member.governedExtensions == ["markdown"])
+        #expect(member.defaultApp?.url == LiveKindProvider.canonical(sublime))
+        #expect(member.accepts(AppRef(url: claude, bundleID: nil, name: "Claude", version: nil)))
+        #expect(!kind.unclaimedExtensions.contains("markdown"))
+    }
+
+    @Test func extensionsOfDeclaredTypesNeverBecomeMembers() {
+        let kind = enrich([markdown(lookup(markdownDefault: sublime))], lookup(markdownDefault: sublime))[0]
+        #expect(!kind.members.contains { $0.target == .fileExtension("rmd") }, "Setting .rmd through a file would move org.rstudio.rmarkdown")
+        #expect(!kind.members.contains { $0.target == .fileExtension("md") })
+        #expect(kind.unclaimedExtensions == ["rmd"])
+    }
+
+    @Test func aDifferentMarkdownHandlerMakesTheKindSplit() {
+        let agreeing = enrich([markdown(lookup(markdownDefault: sublime))], lookup(markdownDefault: sublime))[0]
+        #expect(!agreeing.isSplit)
+
+        let differing = enrich([markdown(lookup(markdownDefault: claude))], lookup(markdownDefault: claude))[0]
+        #expect(differing.hasMixedHandlers)
+        #expect(differing.isSplit)
+        #expect(differing.unifyingCandidates.contains { $0.url == LiveKindProvider.canonical(sublime) })
+        #expect(differing.candidates.first.map { [LiveKindProvider.canonical(sublime), LiveKindProvider.canonical(claude)].contains($0.url) } == true,
+                "Current defaults, including the extension member's, lead the candidates")
+    }
+
+    @Test func eachExtensionJoinsOneKindAndCatalogKindsWin() {
+        let lookup = lookup(markdownDefault: claude)
+        let heuristic = Kind(
+            id: "uti:com.example.notes", name: "Notes", category: .documents, members: [KindMember(target: .uti("com.example.notes"))],
+            extensions: ["markdown"], mimeTypes: [], candidates: []
+        )
+        let kinds = enrich([heuristic, markdown(lookup, catalogID: "markdown")], lookup)
+        #expect(kinds[1].members.contains { $0.target == .fileExtension("markdown") })
+        #expect(!kinds[0].members.contains { $0.target == .fileExtension("markdown") })
+        #expect(kinds[0].unclaimedExtensions == ["markdown"])
+    }
+
+    @Test func explicitClaimantsOfTheBareExtensionStayExplicit() throws {
+        let kind = enrich([markdown(lookup(markdownDefault: claude))], lookup(markdownDefault: claude))[0]
+        #expect(kind.explicitCandidateURLs.contains(LiveKindProvider.canonical(sublime)))
+        #expect(!kind.explicitCandidateURLs.contains(LiveKindProvider.canonical(cursor)), "Offered by Launch Services only")
     }
 }

@@ -33,6 +33,9 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
     /// Apps macOS lists per target. Like the real setter, any other app fails with 256 and no prompt.
     private let allowedApps: [KindMember.Target: Set<URL>]
     private let latency: Duration
+    /// Extensions that resolve to a declared type here, so setting them through a file is
+    /// refused, as the live backend refuses them.
+    private let declaredExtensions: [String: String]
 
     /// `browserFollowers` are the targets an accepted `http` call also changes. The default is the
     /// measured browser role (http, https, public.html); tests can narrow it to check that results
@@ -42,12 +45,14 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         behaviors: [KindMember.Target: Behavior] = [:],
         browserFollowers: Set<KindMember.Target> = WritePlan.browserRole,
         allowedApps: [KindMember.Target: Set<URL>] = [:],
+        declaredExtensions: [String: String] = [:],
         latency: Duration = .zero
     ) {
         state = Mutex(State(handlers: handlers))
         self.behaviors = behaviors
         self.browserFollowers = browserFollowers
         self.allowedApps = allowedApps
+        self.declaredExtensions = declaredExtensions
         self.latency = latency
     }
 
@@ -55,6 +60,7 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
         kinds: [Kind],
         behaviors: [KindMember.Target: Behavior] = [:],
         browserFollowers: Set<KindMember.Target> = WritePlan.browserRole,
+        declaredExtensions: [String: String] = [:],
         latency: Duration = .zero
     ) {
         var handlers: [KindMember.Target: URL] = [:]
@@ -63,7 +69,7 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
             handlers[member.target] = member.defaultApp?.url
             allowedApps[member.target] = member.candidateURLs
         }
-        self.init(handlers: handlers, behaviors: behaviors, browserFollowers: browserFollowers, allowedApps: allowedApps, latency: latency)
+        self.init(handlers: handlers, behaviors: behaviors, browserFollowers: browserFollowers, allowedApps: allowedApps, declaredExtensions: declaredExtensions, latency: latency)
     }
 
     var calls: [Call] {
@@ -94,6 +100,9 @@ nonisolated final class SimulatedHandlerBackend: HandlerBackend {
             try? await Task.sleep(for: latency)
         }
 
+        if case .fileExtension(let ext) = target {
+            try ExtensionTargetGuard.check(ext) { declaredExtensions[$0] }
+        }
         if let allowed = allowedApps[target], !allowed.contains(app) {
             throw CocoaError(.fileReadUnknown)
         }

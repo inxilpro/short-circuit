@@ -101,6 +101,18 @@ struct LivePipelineDebugTests {
         }
         let inert = enriched.filter { $0.effectiveMembers.isEmpty }
         lines.append("Kinds with no effective member (no whole-Kind targets): \(inert.count) \(inert.map(\.name).prefix(20))")
+        let withExtensionMembers = enriched.filter { kind in kind.members.contains { if case .fileExtension = $0.target { true } else { false } } }
+        let withoutExtensionMembers = Dictionary(uniqueKeysWithValues: enriched.map { kind in
+            var kind = kind
+            kind.members.removeAll { if case .fileExtension = $0.target { true } else { false } }
+            return (kind.id, kind)
+        })
+        let newlySplit = enriched.filter { $0.isSplit && withoutExtensionMembers[$0.id]?.isSplit == false }
+        lines.append("Kinds with extension members: \(withExtensionMembers.count); newly split because of them: \(newlySplit.count)")
+        for kind in withExtensionMembers {
+            let members = kind.members.filter { if case .fileExtension = $0.target { true } else { false } }
+            lines.append("  ext: \(kind.name): \(members.map { "\($0.target) → \($0.defaultApp?.name ?? "none")" }.joined(separator: ", "))\(newlySplit.contains { $0.id == kind.id } ? "  [NEW SPLIT]" : "")")
+        }
         lines.append("(Kind, member) pairs rejecting ≥1 Kind candidate: \(restrictedPairs) across \(restrictedKinds.count) Kinds")
         var blockedSplits: [String] = []
         for kind in split {

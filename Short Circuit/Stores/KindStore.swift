@@ -360,7 +360,7 @@ final class KindStore {
         guard canWrite, let plan = batchPlan, !plan.items.isEmpty else { return }
         let app = plan.app
         activity = .applyingBatch
-        batchRun = BatchRun(app: app, kindIDs: plan.items.map(\.id), plannedChanges: plan.promptCount)
+        batchRun = BatchRun(app: app, kindIDs: plan.items.map(\.id), plannedChanges: plan.changeCount)
         defer {
             activity = .idle
             progress = nil
@@ -681,10 +681,9 @@ final class KindStore {
             progress = nil
             undoRevision += 1
         }
-        let prompts = record.restores.count
-        showMessage(prompts == 1
-            ? "Restoring the previous app. macOS will ask you to confirm the change."
-            : "Restoring the previous apps. macOS will ask you to confirm each of \(prompts) changes.")
+        let changes = record.restores.count
+        let prompts = record.restores.count { !$0.target.isFileExtension }
+        showMessage(ChangeWording.undoStart(changes: changes, prompts: prompts))
 
         var outcomes: [MemberResult] = []
         var notes: [String] = []
@@ -728,7 +727,8 @@ final class KindStore {
             let lead = restored == 0 ? "Nothing was restored." : restored == 1 ? "Restored 1 change." : "Restored \(restored) changes."
             showMessage(([lead] + notes).joined(separator: " "), isFailure: true)
         } else {
-            showMessage(prompts == 1 ? "Restored the previous app." : "Restored the previous apps.")
+            let restored = changes == 1 ? String(localized: "Restored the previous app.") : String(localized: "Restored the previous apps.")
+            showMessage(prompts == 0 ? restored + " " + String(localized: "macOS didn’t ask about this.") : restored)
         }
     }
 

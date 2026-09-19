@@ -79,7 +79,12 @@ nonisolated struct WritePlan: Hashable, Sendable {
         self.skipped = skipped
     }
 
-    var promptCount: Int { steps.count }
+    /// Calls macOS asks the user to confirm. A `.fileExtension` call changes one extension through
+    /// a file and shows no prompt (measured by hand on macOS 26.6.2), so it isn't one.
+    var promptCount: Int { steps.count { !$0.call.isFileExtension } }
+
+    /// Every call, prompted or not.
+    var changeCount: Int { steps.count }
 
     var changesBrowser: Bool { steps.contains(where: \.changesBrowser) }
 
@@ -89,6 +94,48 @@ nonisolated struct WritePlan: Hashable, Sendable {
     /// a re-read can return any of them.
     static func sameApp(_ lhs: URL?, _ rhs: URL?) -> Bool {
         AppIdentity.same(lhs, rhs)
+    }
+}
+
+extension KindMember.Target {
+    nonisolated var isFileExtension: Bool {
+        if case .fileExtension = self { true } else { false }
+    }
+}
+
+/// Setting a default through a file is only safe while the extension resolves to a generated
+/// `dyn.` type: for a declared type the same call changes that type's handler for every
+/// extension it covers, which is how the removed error-256 fallback could touch a type nobody
+/// approved. Both the live and the simulated backend run this immediately before setting.
+nonisolated enum ExtensionTargetGuard {
+    static let errorDomain = "ShortCircuit.ExtensionTarget"
+
+    /// `declaredType` returns the declared (non-`dyn.`) type the extension resolves to as a flat
+    /// file or a package, or nil when only a `dyn.` type claims it.
+    static func check(_ ext: String, declaredType: (String) -> String?) throws {
+        guard isPlainExtension(ext) else {
+            throw NSError(domain: errorDomain, code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "“\(ext)” isn’t a plain file extension. Nothing was changed.",
+            ])
+        }
+        if let identifier = declaredType(ext) {
+            throw NSError(domain: errorDomain, code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "macOS now resolves .\(ext) files to \(identifier), a declared type. Setting it through a file would change that type too, so nothing was changed.",
+            ])
+        }
+    }
+
+    /// The name becomes a file name in a temp folder, so nothing that could leave it is allowed.
+    static func isPlainExtension(_ ext: String) -> Bool {
+        !ext.isEmpty && !ext.hasPrefix(".") && !ext.contains("/") && !ext.contains(":") && ext != ".."
+    }
+
+    /// The live lookup: the declared type for a flat file or a package with this extension.
+    static func liveDeclaredType(_ ext: String) -> String? {
+        [UTType.data, .package]
+            .compactMap { UTType(filenameExtension: ext, conformingTo: $0) }
+            .first { !$0.isDynamic }?
+            .identifier
     }
 }
 
@@ -223,6 +270,8 @@ nonisolated struct WorkspaceHandlerBackend: HandlerBackend {
         switch target {
         case .uti(let identifier): reader.defaultApplicationURL(forContentType: identifier)
         case .scheme(let scheme): reader.defaultApplicationURL(forScheme: scheme)
+        case .fileExtension(let ext):
+            try? Self.withProbeFile(ext) { NSWorkspace.shared.urlForApplication(toOpen: $0) }
         }
     }
 
@@ -235,7 +284,32 @@ nonisolated struct WorkspaceHandlerBackend: HandlerBackend {
             try await NSWorkspace.shared.setDefaultApplication(at: app, toOpen: type)
         case .scheme(let scheme):
             try await NSWorkspace.shared.setDefaultApplication(at: app, toOpenURLsWithScheme: scheme)
+        case .fileExtension(let ext):
+            try ExtensionTargetGuard.check(ext, declaredType: ExtensionTargetGuard.liveDeclaredType)
+            let file = try Self.makeProbeFile(ext)
+            defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+            // Checked again on the real file, since that's what the setter will look at.
+            if let type = try? file.resourceValues(forKeys: [.contentTypeKey]).contentType, !type.isDynamic {
+                try ExtensionTargetGuard.check(ext) { _ in type.identifier }
+            }
+            try await NSWorkspace.shared.setDefaultApplication(at: app, toOpenFileAt: file)
         }
+    }
+
+    /// An empty file with the extension, alone in a fresh folder inside this user's temp directory.
+    private static func makeProbeFile(_ ext: String) throws -> URL {
+        guard ExtensionTargetGuard.isPlainExtension(ext) else { throw CocoaError(.fileWriteInvalidFileName) }
+        let folder = FileManager.default.temporaryDirectory.appending(path: "short-circuit-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        let file = folder.appending(path: "probe.\(ext)")
+        try Data().write(to: file)
+        return file
+    }
+
+    private static func withProbeFile<T>(_ ext: String, _ body: (URL) -> T) throws -> T {
+        let file = try makeProbeFile(ext)
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        return body(file)
     }
 }
 

@@ -23,6 +23,9 @@ nonisolated struct KindMember: Identifiable, Hashable, Codable, Sendable {
     enum Target: Hashable, Codable, Sendable {
         case uti(String)
         case scheme(String)
+        /// An extension that resolves only to a generated `dyn.` type, so no declared type governs
+        /// it. Its default is read and set through a file with that extension.
+        case fileExtension(String)
     }
 
     var target: Target

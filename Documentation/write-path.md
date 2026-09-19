@@ -100,6 +100,27 @@ Some types, such as `public.markdown` on macOS 26.6, make the content-type sette
 
 There is **no automatic fallback**. An earlier version retried through `setDefaultApplication(at:toOpenFileAt:)` with a `sample.<ext>` file. It was removed because a sample `.md` file resolves to `net.daringfireball.markdown`, not `public.markdown`, so the retry could have changed a type the user never approved. Any future experiment with that API needs a hands-on test and must account for the file's resolved type in the plan.
 
+## Extension targets (`.fileExtension`)
+
+Some extensions resolve to a generated `dyn.` type rather than a declared one. On the dev Mac these are `.markdown`, `.mdown` and `.mkd`. No settable type governs them, so each keeps its own default: `.markdown` opens in Claude while `.md` opens in Sublime Text. They appear as extension rows (“.markdown files”) after the declared types.
+
+- **Read and set through a file:**
+  - The live backend creates an empty `probe.<ext>` in a fresh folder in the user's temp directory. It reads with `urlForApplication(toOpen:)` and sets with `setDefaultApplication(at:toOpenFileAt:)`, then deletes the folder.
+  - Chris's spike: only that extension moves, it reverses cleanly, and **no macOS prompt appears** for either the change or the restore.
+- **Safety:** immediately before setting, `ExtensionTargetGuard` checks that the extension resolves to no declared type, as a flat file or as a package, and checks again on the probe file itself.
+  - If it does resolve to a declared type, the change is refused with a plain failure. Setting through a file would change that declared type for every extension it covers, which is why the error-256 fallback was removed.
+  - Names that aren't a plain extension are refused before any file is made.
+  - The simulated backend runs the same guard (`declaredExtensions`).
+- **No prompt, so only on purpose.** Extension targets change only through:
+  - their own row's ⋯ menu;
+  - a whole-type choice or Fix Split, where they are effective members;
+  - a checked Applications row, whose Extensions column names them;
+  - Undo.
+  They never move as a side effect of another row; the browser role doesn't include them.
+- **Counting:** `WritePlan.promptCount` counts only calls macOS confirms; `changeCount` counts every call. For example, “3 changes; macOS will ask about 2”, or “1 change, made without a macOS prompt”. Progress for them reads “Setting .markdown files…”, never “Waiting for macOS”. An Undo of them says macOS didn't ask.
+- **Results:** results use the same live re-read as other targets. “Not changed” carries no “prompt was probably declined”.
+- **Read-only note:** extensions that resolve to some *other* declared type (for example `.ts`) have no row. They stay a read-only note under Extensions.
+
 ## Undo
 
 Every change registers one undo group with the window's `UndoManager`. That covers a whole type, one identifier, Fix Split, an app chosen with Other… or dropped on the inspector, and an Applications batch. Edit reads “Undo Set Default App for “Markdown”” or “Undo Make Photos the Default for 3 Types”.

@@ -332,7 +332,10 @@ private struct AppKindStatus: View {
     var body: some View {
         Group {
             if store.isApplying(item.kind), let progress = store.progress {
-                Label("Waiting for macOS… \(progress.call.changesBrowser ? String(localized: "default browser") : progress.call.call.friendlyName)", systemImage: "hourglass")
+                Label(progress.call.call.isFileExtension
+                      ? String(localized: "Setting \(progress.call.call.friendlyName)…")
+                      : String(localized: "Waiting for macOS… \(progress.call.changesBrowser ? String(localized: "default browser") : progress.call.call.friendlyName)"),
+                      systemImage: "hourglass")
                     .foregroundStyle(.secondary)
             } else if store.batchRun?.notStartedKindIDs.contains(item.kind.id) == true {
                 Label("Not started — the batch was stopped", systemImage: "stop.circle")
@@ -423,7 +426,7 @@ private struct BatchFooter: View {
                     Task { await store.applyBatch() }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!store.canWrite || (store.batchPlan?.promptCount ?? 0) == 0)
+                .disabled(!store.canWrite || (store.batchPlan?.changeCount ?? 0) == 0)
             }
         }
     }
@@ -431,9 +434,11 @@ private struct BatchFooter: View {
     private func runningText(_ run: KindStore.BatchRun) -> String {
         let total = max(run.plannedChanges, run.changesStarted)
         let name = run.currentKindName.map { " — \($0)" } ?? ""
-        return run.changesStarted == 0
-            ? "Checking current apps…\(name)"
-            : "Waiting for macOS… change \(run.changesStarted) of \(total)\(name)"
+        guard run.changesStarted > 0 else { return "Checking current apps…\(name)" }
+        if let call = store.progress?.call.call, call.isFileExtension {
+            return "Setting \(call.friendlyName)… change \(run.changesStarted) of \(total)\(name)"
+        }
+        return "Waiting for macOS… change \(run.changesStarted) of \(total)\(name)"
     }
 
     private var summaryText: String {
@@ -445,10 +450,6 @@ private struct BatchFooter: View {
             return "Check the types to make \(store.selectedApp?.name ?? "this app") their default."
         }
         let types = plan.items.count == 1 ? "1 type selected" : "\(plan.items.count) types selected"
-        switch plan.promptCount {
-        case 0: return "\(types) · nothing needs changing"
-        case 1: return "\(types) · macOS will ask you to confirm 1 change"
-        default: return "\(types) · macOS will ask you to confirm \(plan.promptCount) changes"
-        }
+        return "\(types) · \(ChangeWording.summary(changes: plan.changeCount, prompts: plan.promptCount))"
     }
 }

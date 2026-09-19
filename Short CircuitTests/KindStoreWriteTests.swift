@@ -285,17 +285,19 @@ struct KindStoreWriteTests {
     }
 
     /// An unsettable member (public.markdown on the dev Mac) doesn't make the Kind split, isn't
-    /// planned, and produces no result row.
+    /// planned, and produces no result row. The sample Markdown is split, but only because its
+    /// .markdown extension row is on another app, as on the dev Mac.
     @Test func unsettableMembersAreNeitherSplitNorPlanned() async throws {
         let (store, backend) = await makeStore(behaviors: [.uti("public.markdown"): .rejectBeforeConsent])
         let markdown = try kind("markdown", in: store)
-        #expect(markdown.isSplit == false)
-        #expect(markdown.defaultApp?.url == textEdit)
+        #expect(markdown.isSplit)
+        #expect(!markdown.effectiveMembers.contains { $0.target == .uti("public.markdown") })
 
         await store.setDefault(.preview, for: markdown)
-        #expect(backend.calls.map(\.target) == [.uti("net.daringfireball.markdown")])
-        #expect(store.results(for: try kind("markdown", in: store)).map(\.target) == [.uti("net.daringfireball.markdown")])
-        #expect(store.results(for: try kind("markdown", in: store)).map(\.outcome) == [.changed])
+        let expected: [KindMember.Target] = [.uti("net.daringfireball.markdown"), .fileExtension("markdown"), .fileExtension("mdown"), .fileExtension("mkd")]
+        #expect(backend.calls.map(\.target) == expected)
+        #expect(store.results(for: try kind("markdown", in: store)).map(\.target) == expected)
+        #expect(store.results(for: try kind("markdown", in: store)).allSatisfy { $0.outcome == .changed })
         #expect(try kind("markdown", in: store).isSplit == false)
         #expect(try member(.uti("public.markdown"), of: "markdown", in: store) == safari)
     }
@@ -688,8 +690,21 @@ struct EffectiveMemberTests {
     @Test func extensionsNoMemberWinsAreReportedAsHandledElsewhere() async throws {
         let (store, _) = await makeStore()
 
-        #expect(try kind("markdown", in: store).extensionsHandledElsewhere == ["mkd"])
+        // Every Markdown extension is governed or has its own row now.
+        #expect(try kind("markdown", in: store).extensionsHandledElsewhere.isEmpty)
         #expect(try kind("rtf", in: store).extensionsHandledElsewhere.isEmpty)
+
+        // .ts resolves to another declared type (MPEG-2 transport stream) and has no row, so it
+        // stays a read-only note; .mts has a row.
+        let typeScript = Kind(
+            id: "ts", name: "TypeScript", category: .code,
+            members: [
+                KindMember(target: .uti("com.microsoft.typescript"), defaultApp: .textEdit, governedExtensions: ["tsx"]),
+                KindMember(target: .fileExtension("mts"), defaultApp: .textEdit),
+            ],
+            extensions: ["ts", "tsx", "mts"], mimeTypes: [], candidates: [.textEdit]
+        )
+        #expect(typeScript.extensionsHandledElsewhere == ["ts"])
     }
 }
 

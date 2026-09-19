@@ -93,7 +93,8 @@ private struct KindInspectorForm: View {
             }
 
             Section("Identifiers") {
-                ForEach(kind.effectiveMembers) { member in
+                // Declared types and schemes first; extension rows follow them.
+                ForEach(kind.effectiveMembers.filter { !$0.target.isFileExtension } + kind.effectiveMembers.filter(\.target.isFileExtension)) { member in
                     memberRow(member, isOddOneOut: kind.isSplit && member.defaultApp?.url != kind.majorityApp?.url)
                 }
                 if !kind.shadowedMembers.isEmpty {
@@ -289,9 +290,7 @@ private struct ApplyingNotice: View {
 
     private var title: String {
         guard let progress else { return "Checking current apps…" }
-        return progress.total == 1
-            ? "Waiting for macOS to confirm the change…"
-            : "Waiting for macOS… change \(progress.step) of \(progress.total)"
+        return ChangeWording.progressTitle(progress)
     }
 }
 
@@ -378,8 +377,7 @@ private struct MemberRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 // Identifiers have no natural break points, so truncate in the middle, where two
                 // similar ones are least likely to differ, and show the whole thing on hover.
-                Text(member.target.displayName)
-                    .font(.callout.monospaced())
+                identifierTitle
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .textSelection(.enabled)
@@ -447,11 +445,23 @@ private struct MemberRow: View {
         WritePlan.browserRole.contains(member.target)
     }
 
+    /// ".markdown files" for an extension row, so it reads as files rather than as a type.
+    private var identifierTitle: Text {
+        if case .fileExtension(let ext) = member.target {
+            return Text("\(Text(verbatim: ".\(ext)").font(.callout.monospaced())) files").font(.callout)
+        }
+        return Text(verbatim: member.target.displayName).font(.callout.monospaced())
+    }
+
+    private var menuName: String {
+        member.target.isFileExtension ? member.target.friendlyName : member.target.displayName
+    }
+
     /// Browser members can't be changed alone, so their menu offers the browser-wide action
     /// under its real name instead of pretending to set one member.
     @ViewBuilder
     private var memberMenuItems: some View {
-        Section(isBrowserMember ? "Default Browser (http, https, HTML files)" : "Open \(member.target.displayName) With") {
+        Section(isBrowserMember ? "Default Browser (http, https, HTML files)" : "Open \(menuName) With") {
             ForEach(kind.candidates(for: member)) { app in
                 Button {
                     onChoose(app)
@@ -480,10 +490,10 @@ private struct MemberRow: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(!isEnabled)
-        .accessibilityLabel(isBrowserMember ? "Change Default Browser" : "Choose App for \(member.target.displayName)")
+        .accessibilityLabel(isBrowserMember ? "Change Default Browser" : "Choose App for \(menuName)")
         .help(isBrowserMember
               ? "Change the default browser, which macOS uses for http, https, and HTML files"
-              : "Choose an app for just this identifier")
+              : member.target.isFileExtension ? "Choose an app for \(menuName)" : "Choose an app for just this identifier")
     }
 }
 
@@ -519,7 +529,8 @@ private struct MemberResultLabel: View {
             Label("Changed", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .unchangedAfterSuccess:
-            Label("Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
+            // No prompt is shown for an extension, so there's nothing the user could have declined.
+            Label(result.target.isFileExtension ? "Not changed" : "Not changed — the prompt was probably declined", systemImage: "hand.raised.fill")
                 .foregroundStyle(.secondary)
         case .declined:
             Label("Declined", systemImage: "hand.raised.fill")

@@ -99,6 +99,7 @@ I implemented this review on top of `ac90b10`, which already had the Application
   - The disclosure now reads “Not the preferred type for any extension (N)”.
   - Other claims were also narrowed to what was measured: the no-whole-type note, “On this Mac, .mkd resolves to a different type”, and the unsettable caption “Not declared as a file type (public.item), so macOS won’t accept a default app for it.”
   - The String Catalog is still empty (Xcode fills it on an IDE build), so I checked the Swift sources instead.
+- **Screenshots still unchecked:** I re-ran both snapshot modes after these fixes. Both finished with no crash and no reentrant warning, but the screen was still locked, so 48 of 51 sample images (and the live ones) are blank. None of the screens has been checked by eye yet.
 - **Other checks:** 211 tests pass, and the build has 0 warnings. The store's UndoManager is the window's (checked in the running app), so Edit ▸ Undo still undoes typing in search.
 
 **Manual QA for Chris** (things a person has to do)
