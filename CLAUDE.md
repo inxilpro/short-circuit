@@ -99,12 +99,16 @@ Developer ID + notarization. No CLI. The one Swift package is Sparkle (in-app up
 
 Project docs live in `Documentation/` (not `docs/`):
 
-- `plan.md` — design and the **Decisions** list, which is settled.
-- `initial-research.md` — Launch Services API background.
-- `write-path.md` — how writes work and what has been verified on a real system.
+- `design.md` — the Kind model, the architecture, the settled **Decisions**, and the known gaps.
+- `launch-services.md` — why the app parses `lsregister -dump`, the dump format, and every
+  behaviour measured on macOS 26.6 (consent prompts, both causes of error 256, the browser
+  role, generated `dyn.` types). Read it before touching the parser or the write path.
+- `write-path.md` — the write contract: planning, prompts, results, undo.
 - `catalog-notes.md` — why the catalog groups what it groups; read it before editing `Catalog.json`.
-- `spikes/` — consent-prompt and dump-format findings.
 - `RELEASING.md` — signing, notarization, secrets, and the tag-driven release.
+- `spikes/*.swift` — the scripts behind the measurements. **They call the real setters; never
+  run them.**
 
 UI work follows the project-local `mac-assed-mac-app` skill (`.claude/skills/`): full menu-bar command
-coverage, keyboard-first operation, standard Settings scene, drag/copy affordances, VoiceOver.
+coverage, keyboard-first operation, drag/copy affordances, VoiceOver. Its standard Settings scene is
+the one deliberate exception — see the decisions in `design.md`.

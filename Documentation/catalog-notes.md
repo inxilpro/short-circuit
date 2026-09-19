@@ -1,15 +1,43 @@
-# Curated catalog, version 1
+# Catalog notes
 
-Authored 2026-09-18. `Short Circuit/Resources/Catalog.json` contains **146 Kinds, 60 unique Common ranks, 162 explicit UTIs, and 16 URL schemes**. All 162 UTIs occur as declarations in the captured Launch Services dump and resolve through `UTType` on this Mac to declared types conforming to `public.item` or `public.data`. No invented or unverified UTI is included. This read-only check establishes content-type eligibility, not successful default-handler writes; no setter was called.
+Why `Short Circuit/Resources/Catalog.json` groups what it groups. **Read this before
+editing the catalog**, and add to it when you change an entry: the point is that a future
+reader can tell a deliberate grouping from an accident.
 
-## Sources and ranking judgment
+Every UTI in the catalog was seen as a real declaration in a Launch Services dump and
+resolves through `UTType` to a declared type conforming to `public.item` or `public.data`.
+No identifier here is guessed, and none is renamed to an invented `public.*` spelling.
+That check establishes *eligibility* — it is not evidence that a handler write succeeds.
 
-- The editorial brief in `.build/prompts/catalog-content.md` supplies the intended audience and format families. The order is an editorial choice, **not usage telemetry or a ranking inferred from installed app counts**. Browser and mail lead, followed by everyday documents and images, text and office work, structured data and source code, archives and media, then specialized link roles.
-- [The project plan](plan.md) supplies the human-level Kind model and the coupled browser role. The catalog calls that Kind **“Web browser”**, retains its stable `web-page` ID, and combines HTML, XHTML, `http`, and `https`. There is no second HTML Kind that could compete with it. “Email” is the `mailto` role; saved `.eml` messages remain separate.
-- [Dump format analysis](spikes/dump-format.md), the immutable `.build/dump-truth/dump.txt`, `.build/reports/codex-review-artifacts/parsed-snapshot.json`, and `.build/reports/codex-rereview-artifacts/kinds.json` supply declaration, conformance, extension, and alias evidence. The capture is macOS 26.6.2 (25G83), 2026-09-18T17:38:53.512863 UTC; dump SHA-256 `1153612d5fc59017273f51999dd7e86bed7b80a352131e08ccc78d530d5fdc88`. App names in that evidence identify declaration provenance; they do not select which applications the catalog promotes.
-- Apple's [Uniform Type Identifiers documentation](https://developer.apple.com/documentation/uniformtypeidentifiers/) and [file and data type declaration guidance](https://developer.apple.com/documentation/uniformtypeidentifiers/defining-file-and-data-types-for-your-app) provide the type/conformance background. Every selected identifier is independently evidenced by this dump; none depends on an inferred Apple identifier.
+## What the catalog decides, and on what basis
 
-Sixty ranks keep Common bounded. A format's presence in the catalog does not guarantee a row on every Mac: it must match claimed content or a registered scheme. DNG is the ranked RAW representative; twenty additional camera-specific RAW Kinds remain searchable without treating different camera formats as aliases. Standalone AAC, ISO images, fonts, FaceTime, SFTP, legacy Office formats, templates, and less frequent encodings are cataloged but unranked. Their omission from Common is a size-budget choice, not a claim that they are unsupported. Another installation can expose different members while retaining the same editorial order.
+- **Grouping.** Two UTIs are merged only when one explicitly declares conformance to the
+  other, or their declarations otherwise show they are the same format. A shared
+  extension or MIME tag is not enough; see the heuristic's failure modes in
+  [launch-services.md](launch-services.md#what-the-shared-tag-heuristic-actually-produces).
+- **Naming and category.** Human names over declaration strings.
+- **The Common rank.** An editorial order, **not** telemetry and not inferred from how
+  many apps are installed. Browser and mail lead, then everyday documents and images,
+  text and office work, structured data and source code, archives and media, then
+  specialized link roles. The ranks live in `Catalog.json`; they are bounded so Common
+  stays a short list, which means useful formats are deliberately left unranked (standalone
+  AAC, ISO images, fonts, legacy Office formats, templates, less common encodings). That
+  is a size budget, not a claim they are unsupported.
+- **Presence is per-Mac.** A catalog entry produces a Kind only if this Mac claims the
+  content or registers the scheme. Entries that match nothing are dormant, which is why
+  it is safe to add formats you have no app for.
+
+[The design doc](design.md) supplies the Kind model and the coupled browser role. The
+catalog names that Kind **"Web browser"**, keeps its stable `web-page` ID, and combines
+HTML, XHTML, `http` and `https`; there is no second HTML Kind that could compete with it.
+"Email" is the `mailto` role, and saved `.eml` messages stay separate.
+
+Apple's [Uniform Type Identifiers documentation](https://developer.apple.com/documentation/uniformtypeidentifiers/)
+and its [file and data type declaration guidance](https://developer.apple.com/documentation/uniformtypeidentifiers/defining-file-and-data-types-for-your-app)
+provide the conformance background.
+
+DNG is the ranked RAW representative; twenty-odd camera-specific RAW Kinds stay
+searchable rather than being treated as aliases of each other.
 
 ## Included aliases and format boundaries
 
@@ -38,7 +66,7 @@ The following table exhausts all multi-UTI entries, including every added vendor
 | EPUB folder | `org.idpf.epub-folder`, `com.apple.ibooks.epub` | Both declare an “Electronic Publication (EPUB)” package with `.epub`, `com.apple.package`, and composite-content conformance; the IDPF declaration additionally identifies the folder MIME type. This is the unpacked EPUB representation, separate from the zipped `org.idpf.epub-container`. |
 | TrueType font | `public.truetype-font`, `public.truetype-ttf-font` | The concrete TTF identifier explicitly conforms to TrueType and shares `.ttf`. OpenType `.otf` remains separate. |
 
-Vendor-prefixed **primary** format identifiers are also intentional: PDF, Photoshop/PSB, Illustrator, EPS, GIF, BMP, PICT, Markdown, JavaScript, TypeScript, Java, AppleScript, legacy Office, iWork, QuickTime/M4V, RTFD, disk images/XIP, RAR, OpenEXR, and camera RAW formats often have a vendor namespace rather than a `public.*` identifier. Each is verified, and none is renamed to an invented `public.*` spelling. The [complete UTI provenance table](../.build/reports/catalog-content-artifacts/uti-provenance.tsv) lists every exact identifier, including those primary identifiers, declaration counts, live conformance, and preferred extensions.
+Vendor-prefixed **primary** format identifiers are also intentional: PDF, Photoshop/PSB, Illustrator, EPS, GIF, BMP, PICT, Markdown, JavaScript, TypeScript, Java, AppleScript, legacy Office, iWork, QuickTime/M4V, RTFD, disk images/XIP, RAR, OpenEXR, and camera RAW formats often have a vendor namespace rather than a `public.*` identifier. Each was verified against a real declaration, and none is renamed to an invented `public.*` spelling.
 
 Additional explicit boundaries:
 
@@ -53,7 +81,7 @@ Additional explicit boundaries:
 
 | Identifier or family | Decision and evidence |
 |---|---|
-| `public.markdown` | Deliberately absent. The hand-test rejected it; the declaration has no supertypes, and the live type conforms to neither item nor data. Markdown uses `net.daringfireball.markdown`. |
+| `public.markdown` | Deliberately absent. A hand test showed macOS refuses to assign it; the declaration has no supertypes, and the live type conforms to neither item nor data. Markdown uses `net.daringfireball.markdown`. |
 | `com.microsoft.outlook15.icalendar` | Its `.ics` declaration identifies iCalendar and a calendar-event supertype, so it is a semantic alias, but its live type conforms to neither item nor data on this Mac. Do not rely on it as a catalog setter target; use `com.apple.ical.ics`. |
 | `com.microsoft.outlook15.email-message` | Its `.eml` declaration identifies email-message content, but its live type also fails item/data conformance. Use `com.apple.mail.email`. |
 | `com.araelium.querious.sqlite` | The declaration identifies SQLite, but the live type fails item/data conformance. Use `org.sqlite.sqlite`. |
@@ -62,85 +90,31 @@ Additional explicit boundaries:
 | `org.tukaani.xz-tar-archive` | Claimed spelling is not the verified declaration. The catalog uses the observed `org.tukaani.tar-xz-archive`. |
 | `com.olympus.sr-raw-image`, `com.olympus.or-raw-image` | Additional `.orf` variants are not forced into the ordinary ORF entry: exact format equivalence was not established. Runtime adoption remains governed by the loader. |
 | `public.tar-archive` versus `org.gnu.gnu-tar-archive` | Only the public TAR type is explicitly included. No forced assertion that every TAR dialect is the same format. |
-| `public.cpio-archive` versus `cx.c3.pax-archive` | Neither is included in this initial catalog. A shared `.pax` suffix is insufficient to assert an alias. |
+| `public.cpio-archive` versus `cx.c3.pax-archive` | Neither is included. A shared `.pax` suffix is insufficient to assert an alias. |
 | Apple Mail MBOX packages, Outlook MBOX, Outlook MSG/OLK types | Left to discovery. Folder layout, mailbox file layout, and proprietary Outlook messages must not be equated with EML or one another merely because they concern email. |
 | Office BIFF generations, macro templates, iWork `*-tef`/templates, font collections, WOFF/WOFF2, standalone Opus identifiers | Outside this first catalog's size budget or insufficiently verified. No guessed UTI is added. Ogg audio retains the dump's `.opus` tag without asserting a standalone Opus UTI. |
 | Broad base types and dynamic types | No `public.item`, `public.data`, generic image/audio/movie type, `com.apple.disk-image`, or `dyn.*` entry. The DMG entry uses concrete `com.apple.disk-image-udif`. |
 | `zoommtg`, `vscode`, and other app-owned launch links | Not included. The catalog favors general roles with plausible competing handlers. FaceTime is the specifically requested exception; its two call schemes form an unranked call role. |
 
-The excluded Markdown, Outlook, and Querious identifiers can still be rediscovered by the loader's extension-adoption rule. The integration check confirms that all four remain **`isSettable = false`** when adopted; none is an explicit catalog target. Content alone cannot suppress unknown aliases from discovery, and this task does not alter the loader. Their declarations may also change on another Mac. This distinction is why omission from `utis` is documented separately from runtime membership.
+URL scheme roles: `mailto`, `tel`, `sms`, `facetime`/`facetime-audio`, `ftp`/`ftps`, `sftp`, `ssh`, `magnet`, `feed`/`rss`, and `webcal`/`webcals`, plus the browser pair. Grouped schemes describe a human role; FTP and SFTP remain separate. A scheme without registered claimants is dormant, not proof of an installed handler. `magnet`, `feed`, `rss` and `webcals` were not claimed by anything on the Mac this was authored against; that is not a reason to replace them with app-private schemes.
 
-URL scheme roles follow the brief: `mailto`, `tel`, `sms`, `facetime`/`facetime-audio`, `ftp`/`ftps`, `sftp`, `ssh`, `magnet`, `feed`/`rss`, and `webcal`/`webcals`, plus the browser pair. Grouped schemes describe a human role; FTP and SFTP remain separate. A scheme without registered claimants is dormant, not proof of an installed handler. `magnet`, `feed`, `rss`, and `webcals` are not in this capture's claimed scheme list; this does not justify replacing them with app-private schemes.
+## Limits of these checks
 
-## Verification and limitations
+`CatalogTests` checks the bundled file on every run: valid JSON and categories, unique
+IDs, and no UTI or scheme owned by two entries. What it cannot check is whether a grouping
+is *right* — that is what this document is for.
 
-The production `Catalog.decode` and `KindBuilder` were compiled into a read-only harness with Swift 6, MainActor default isolation, and the project's concurrency setting. Compilation produced no warnings. It loaded all **146 entries** against the immutable parsed capture and produced **932 total Kinds, 135 catalog Kinds, and 56 Common Kinds**. The four ranked entries without a match were Numbers, Matroska, Magnet links, and Feed subscriptions. Other dormant entries were Numbers package, Canon CR3, Leica RAW, Panasonic RAW/RW2, and Sony ARW/SR2. These are valid generalized catalog content rather than promises about this Mac's apps.
+The original entries were validated by loading them against a captured dump with the
+production `Catalog.decode` and `KindBuilder`, plus live read-only `UTType` lookups. That
+confirmed declaration provenance, type eligibility, that no entry steals another's
+explicit members, and that ordinary TIFF no longer absorbs Canon's TIFF RAW. No default
+handler was changed and no setter was called, then or since.
 
-Validation checked JSON/schema fields, category values, unique IDs, unique UTI ownership, unique scheme ownership, exact ranks 1–60, declaration provenance, and live type eligibility. Integration assertions checked no stolen explicit members, one merged Kind per explicit alias family, the ambiguous-format boundaries above, and unsettable status for the four runtime-adopted unsupported aliases. It also confirmed that ordinary TIFF no longer absorbs Canon TIFF RAW. [Machine-readable results](../.build/reports/catalog-content-artifacts/validation.json), [merge output](../.build/reports/catalog-content-artifacts/merge.log), and [live type checks](../.build/reports/catalog-content-artifacts/live-types.json) retain the evidence.
+Two standing caveats:
 
-No default handler was changed, no live writer or app UI was run, and no claim is made about successful consent or handler writes. This task did not change the loader, shared Kind model, project file, or tests; other agents own those changes. The harness exercises the current in-progress data layer, so aggregate counts can change if that agent subsequently revises discovery. Validation used the saved dump plus live read-only `UTType` lookup, not a fresh inventory of all installed applications.
-
-## Common order
-
-| Rank | Kind |
-|---:|---|
-| 1 | Web browser |
-| 2 | Email |
-| 3 | PDF document |
-| 4 | JPEG image |
-| 5 | PNG image |
-| 6 | HEIC image |
-| 7 | GIF image |
-| 8 | SVG image |
-| 9 | WebP image |
-| 10 | TIFF image |
-| 11 | DNG raw photo |
-| 12 | Plain text |
-| 13 | Markdown |
-| 14 | Rich text |
-| 15 | Word document |
-| 16 | Excel spreadsheet |
-| 17 | PowerPoint presentation |
-| 18 | Pages document |
-| 19 | Numbers spreadsheet |
-| 20 | Keynote presentation |
-| 21 | CSV table |
-| 22 | JSON data |
-| 23 | XML document |
-| 24 | YAML data |
-| 25 | JavaScript source |
-| 26 | TypeScript source |
-| 27 | Python script |
-| 28 | Shell script |
-| 29 | PHP script |
-| 30 | Swift source |
-| 31 | C source |
-| 32 | C++ source |
-| 33 | CSS stylesheet |
-| 34 | SQL source |
-| 35 | ZIP archive |
-| 36 | TAR archive |
-| 37 | Gzip archive |
-| 38 | 7-Zip archive |
-| 39 | RAR archive |
-| 40 | Mac disk image |
-| 41 | MP3 audio |
-| 42 | MPEG-4 audio |
-| 43 | WAV audio |
-| 44 | FLAC audio |
-| 45 | AIFF audio |
-| 46 | MPEG-4 video |
-| 47 | QuickTime movie |
-| 48 | Matroska video |
-| 49 | AVI video |
-| 50 | WebM video |
-| 51 | EPUB ebook |
-| 52 | Calendar event |
-| 53 | Contact card |
-| 54 | Phone call |
-| 55 | Calendar subscription |
-| 56 | Magnet link |
-| 57 | Feed subscription |
-| 58 | SSH link |
-| 59 | FTP link |
-| 60 | Text message |
+- Declarations differ between Macs. An identifier that conforms correctly here may not
+  somewhere else, and vice versa.
+- The loader's extension-adoption rule can still surface an identifier this file
+  deliberately excludes. The excluded Markdown, Outlook and Querious types above are all
+  `isSettable = false` when adopted that way, so they can appear but never be written.
+  Omission from `utis` is therefore documented separately from runtime membership.

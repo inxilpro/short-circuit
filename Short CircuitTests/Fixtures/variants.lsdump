@@ -438,7 +438,7 @@ mount state:                mounted
 isOnRootVolume:             true 
 isSystemManaged:            true 
 isOnPrebootVolume:          false
-path:                       /Users/inxilpro/Development/misc/remotion-test/node_modules/puppeteer/.local-chromium/mac-756035/chrome-mac/Chromium.app (0x3314)
+path:                       /Users/me/Development/scratch/node_modules/puppeteer/.local-chromium/mac-756035/chrome-mac/Chromium.app (0x3314)
 directory:                  ~
 name:                       Chromium
 displayName:                Chromium

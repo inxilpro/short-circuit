@@ -128,7 +128,7 @@ struct AppNamingTests {
 
     @Test func twoInstallsOfOneAppNameTheirScheme() {
         let owners = [
-            AppRef(url: URL(fileURLWithPath: "/Users/someone/.Trash/Bartender 5.app"), bundleID: "com.surteesstudios.Bartender", name: "Bartender 5", version: "5"),
+            AppRef(url: URL(fileURLWithPath: "/Users/me/.Trash/Bartender 5.app"), bundleID: "com.surteesstudios.Bartender", name: "Bartender 5", version: "5"),
             AppRef(url: URL(fileURLWithPath: "/Volumes/Bartender 6/Bartender 6.app"), bundleID: "com.surteesstudios.Bartender", name: "Bartender 6", version: "6"),
             AppRef(url: URL(fileURLWithPath: "/Applications/Bartender 6.app"), bundleID: "com.surteesstudios.Bartender", name: "Bartender 6", version: "6"),
         ]

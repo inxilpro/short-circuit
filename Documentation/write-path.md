@@ -1,21 +1,23 @@
 # Write path
 
 How Short Circuit changes default apps, and which parts have been checked on a real system.
+The measurements the rules here rest on are in [launch-services.md](launch-services.md).
 
 ## Flow
 
-1. The inspector calls `KindStore.setDefault(_:for:)`, `setDefault(_:for:in:)` (one member), or `fixSplit(_:)`. Unsettable members (types macOS refuses to assign, such as `public.markdown` on the dev Mac) are never requested.
+1. The inspector calls `KindStore.setDefault(_:for:)`, `setDefault(_:for:in:)` (one member), or `fixSplit(_:)`. Unsettable members (types macOS refuses to assign, such as `public.markdown` on the development Mac) are never requested.
 2. The change applies **immediately**; there is no app-level confirmation (see below). `HandlerWriting.apply(app:targets:onProgress:)` builds a `WritePlan` from **live** handler reads, not from the displayed Kind, and runs that plan straight away. Each plan step is one setter call and one macOS consent prompt. Members already on the chosen app are reported as skipped. If every member is already correct, no call is made and the store says so.
 3. Calls run **one at a time**:
    - UTIs use `NSWorkspace.setDefaultApplication(at:toOpen:)`.
    - Schemes use `NSWorkspace.setDefaultApplication(at:toOpenURLsWithScheme:)`.
    - Before each call, the writer reports `WriteProgress` (step N of M and the call). The inspector shows "Waiting for macOS… change 1 of 2" with the type involved, so a run of system prompts is explained as it happens.
-   - After each call, the writer re-reads every covered target, retrying briefly. Each target is reported as `changed`, `unchangedAfterSuccess` (the user probably declined), `declined` (NSUserCancelledError), `failed`, or `skipped`.
+   - After each call, the writer re-reads every covered target, retrying briefly. Each target is reported as `changed`, `unchangedAfterSuccess` (the user probably declined), `declined`, `failed`, or `skipped`.
+   - **Telling a decline from a refusal:** macOS 26.6 reports both with `NSCocoaErrorDomain` 256, so the writer times each call. A 256 that comes back in under `HandlerWriter.promptThreshold` (500 ms) is a refusal, and is reported as a failure; a slower one means the prompt was on screen and was declined, so it is reported as `declined`. `NSUserCancelledError` is always a decline. Refusals were measured at 0.0 s and answered prompts at 3–4 s, so the threshold has wide margins on both sides. The clock is injected, so tests cover both without sleeping (`HandlerWriterOutcomeTests`).
 4. The store re-reads every requested and affected target and patches those handlers, by target, into every loaded Kind that contains them.
 
 ## Why there is no confirmation dialog
 
-Earlier versions asked "macOS will ask you to confirm each of N changes" before applying. Chris removed it (2026-09-18): macOS already asks the user to confirm every single handler change, so nothing can change without that system consent, and the app's own dialog only doubled the questions.
+Earlier versions asked "macOS will ask you to confirm each of N changes" before applying. That was removed (2026-09-18): macOS already asks the user to confirm every single handler change, so nothing can change without that system consent, and the app's own dialog only doubled the questions.
 
 The dialog also carried risk of its own: a SwiftUI ordering bug once made Continue apply nothing. With it gone, the approve/re-approve machinery went too. That included the check that re-asked when a plan grew between the dialog and execution. Planning now happens immediately before execution, so there is nothing stale to re-approve.
 
@@ -27,7 +29,7 @@ The dialog also carried risk of its own: a SwiftUI ordering bug once made Contin
 - The inspector says up front, for any Kind that contains these targets, that changing them changes the default browser. While the call runs, the progress line names it "Default browser (http, https, and HTML files)".
 - Browser-member menus are labeled "Default Browser" and their items read "Make X the Default Browser".
 
-**Measured by hand on 2026-09-18, macOS 26.6.2 (Chris):**
+**Measured by hand on 2026-09-18, macOS 26.6.2:**
 
 - Web browser → Chrome, then → Arc, one consent prompt each time.
 - `http`, `https`, and `public.html` changed every time. `public.xhtml` stayed on Sublime Text.
@@ -53,7 +55,7 @@ Several types can declare the same extension, but macOS resolves each extension 
 **Split and Fix Split:**
 - A Kind is split only when its effective members differ **and** some app could unify them (`Kind.unifyingCandidates`, the apps every effective member accepts).
 - Fix Split chooses from those, preferring the app most effective members already use, so it always fits every effective member.
-- If effective members differ but no app fits them all (for example `facetime:` and `facetime-audio:` on the dev Mac), the Kind shows "Mixed" with a neutral note. It gets no ⚠ and no Fix Split button, and it is not counted in the Split badge. The Split view still lists it, under a second heading, "Differ, no single app fits", so the mismatch stays visible (Codex review 2, R4).
+- If effective members differ but no app fits them all (for example `facetime:` and `facetime-audio:` on the development Mac), the Kind shows "Mixed" with a neutral note. It gets no ⚠ and no Fix Split button, and it is not counted in the Split badge. The Split view still lists it, under a second heading, "Differ, no single app fits", so the mismatch stays visible (Codex review 2, R4).
 - The Split list is fixed at load or explicit refresh; Kinds that become split during the session are added. **Resolved** (green check) marks only Kinds that were split when the session began and whose effective members now all agree. When nothing fixable remains, the empty state reads "No Fixable Splits".
 
 **Inspector:**
@@ -74,7 +76,7 @@ Every surface uses the same rule through `Kind.eligibility(of:for:)`:
 
 Results have exactly one row per target (`KindStore.finalResults`). A target covered by a performed step is never also listed as not supported.
 
-Examples, from the dev Mac's asymmetric lists:
+Examples, from the development Mac's asymmetric lists:
 - **ChatGPT**, listed for http and https only: it takes the browser role, so html follows, and XHTML is not supported. That's "3 of 4 types", one call.
 - **Sublime Text**, listed for HTML and XHTML only: it is never offered as the default browser. Only XHTML changes: "1 of 4 types", one call.
 
@@ -83,8 +85,8 @@ Examples, from the dev Mac's asymmetric lists:
 macOS only accepts an app it lists for that exact type. Setting any other app fails with `NSCocoaErrorDomain` 256 and no prompt.
 
 **How it was found (2026-09-18):**
-- Chris's hand test set MHTML to Google Chrome, and it failed with 256 on `com.microsoft.word.mhtml`.
-- The orchestrator's probe showed that `urlsForApplications(toOpen: com.microsoft.word.mhtml)` lists only Word and Chromium. Chrome was a candidate for the Kind only through the other member, `org.ietf.mhtml`.
+- A hand test set MHTML to Google Chrome, and it failed with 256 on `com.microsoft.word.mhtml`.
+- A probe showed that `urlsForApplications(toOpen: com.microsoft.word.mhtml)` lists only Word and Chromium. Chrome was a candidate for the Kind only through the other member, `org.ietf.mhtml`.
 - A Kind's candidates are the union of its members' lists, so not every candidate fits every member.
 
 **The rule:**
@@ -98,26 +100,27 @@ macOS only accepts an app it lists for that exact type. Setting any other app fa
 
 Some types, such as `public.markdown` on macOS 26.6, make the content-type setter fail with `NSCocoaErrorDomain` 256 and no prompt. That member is reported as failed: "macOS rejected changing the default app for this type without asking. Nothing was changed."
 
+The same 256 also comes back when the person declines the prompt, so the code alone can't tell the two apart; only the time the call took can. See the timing rule above.
+
 There is **no automatic fallback**. An earlier version retried through `setDefaultApplication(at:toOpenFileAt:)` with a `sample.<ext>` file. It was removed because a sample `.md` file resolves to `net.daringfireball.markdown`, not `public.markdown`, so the retry could have changed a type the user never approved. Any future experiment with that API needs a hands-on test and must account for the file's resolved type in the plan.
 
 ## Extension targets (`.fileExtension`)
 
-Some extensions resolve to a generated `dyn.` type rather than a declared one. On the dev Mac these are `.markdown`, `.mdown` and `.mkd`. No settable type governs them, so each keeps its own default: `.markdown` opens in Claude while `.md` opens in Sublime Text. They appear as extension rows (“.markdown files”) after the declared types.
+Some extensions resolve to a generated `dyn.` type rather than a declared one. On the development Mac these were `.markdown`, `.mdown` and `.mkd`. No settable type governs them, so each keeps its own default: `.markdown` opens in Claude while `.md` opens in Sublime Text. They appear as extension rows (“.markdown files”) after the declared types.
 
-- **Read and set through a file:**
-  - The live backend creates an empty `probe.<ext>` in a fresh folder in the user's temp directory. It reads with `urlForApplication(toOpen:)` and sets with `setDefaultApplication(at:toOpenFileAt:)`, then deletes the folder.
-  - Chris's spike: only that extension moves, it reverses cleanly, and **no macOS prompt appears** for either the change or the restore.
-- **Safety:** immediately before setting, `ExtensionTargetGuard` checks that the extension resolves to no declared type, as a flat file or as a package, and checks again on the probe file itself.
-  - If it does resolve to a declared type, the change is refused with a plain failure. Setting through a file would change that declared type for every extension it covers, which is why the error-256 fallback was removed.
-  - Names that aren't a plain extension are refused before any file is made.
-  - The simulated backend runs the same guard (`declaredExtensions`).
-- **No prompt, so only on purpose.** Extension targets change only through:
+- **Read and set through the generated type:** `UTType(filenameExtension: ext)` returns the `dyn.` type, and both `urlForApplication(toOpen:)` and `setDefaultApplication(at:toOpen:)` take it. No files are involved.
+  - The second extension spike corrected the first: `setDefaultApplication(at:toOpenFileAt:)` only pins **that one file**, writing a `com.apple.LaunchServices.OpenWith` xattr, which is why the app's extension rows reported success and changed nothing. Setting the generated type moves every file with the extension and **shows a consent prompt** like any other change. Nothing in the app calls `toOpenFileAt:`.
+- **Safety:** immediately before setting, `ExtensionTargetGuard` checks that the extension resolves to no declared type, as a flat file or as a package, and that the type it's about to assign really is dynamic.
+  - If a declared type claims the extension, the change is refused with a plain failure: `UTType(filenameExtension:)` would return that declared type and change its handler for every extension it covers, which is why the error-256 fallback was removed.
+  - Names that aren't a plain extension are refused before any lookup.
+  - The simulated backend runs the same guard (`declaredExtensions`), and `WorkspaceHandlerBackend.resolvedCall(for:)` exposes the mapping so tests can check it without setting anything.
+- **Changed only on purpose.** Extension targets change only through:
   - their own row's ⋯ menu;
   - a whole-type choice or Fix Split, where they are effective members;
   - a checked Applications row, whose Extensions column names them;
   - Undo.
   They never move as a side effect of another row; the browser role doesn't include them.
-- **Counting:** `WritePlan.promptCount` counts only calls macOS confirms; `changeCount` counts every call. For example, “3 changes; macOS will ask about 2”, or “1 change, made without a macOS prompt”. Progress for them reads “Setting .markdown files…”, never “Waiting for macOS”. An Undo of them says macOS didn't ask.
+- **Counting:** macOS confirms every call, so `promptCount` equals `changeCount`; both are kept in case some future call doesn't prompt. Progress reads “Waiting for macOS…” for them like any other call.
 - **Results:** results use the same live re-read as other targets. “Not changed” carries no “prompt was probably declined”.
 - **Read-only note:** extensions that resolve to some *other* declared type (for example `.ts`) have no row. They stay a read-only note under Extensions.
 
@@ -132,7 +135,7 @@ Every change registers one undo group with the window's `UndoManager`. That cove
   - It re-reads the type. If the type no longer has the app this change left it on (something changed it since, in this app or elsewhere), it is skipped: “PNG image was changed again since; left as is.”
   - The same eligibility as a normal change applies (R3): the type is still listed and can be set, the app is still installed, and macOS still lists it for that type. For the browser role, that means for `http`.
   - A type that fails is skipped with the reason, and no setter call is made.
-- **Calls:** each restore goes through the same writer, one target per call, so macOS asks again for each. A declined or failed restore stops the rest. The persistent banner lists what wasn't attempted and what was skipped.
+- **Calls:** each restore goes through the same writer, one target per call, so macOS asks again for each. A declined undo is classified by the same timing rule, so declining one reads as "Declined" rather than a failure. A declined or failed restore stops the rest. The persistent banner lists what wasn't attempted and what was skipped.
 - **Browser role:** it goes back as one `http` call with `http`'s previous app, since that's the only call that moves it.
   - If http, https and HTML weren't all on that app before the change, one call can't rebuild the mix. The undo item is named “… (Partly)”, and after the undo the banner says which of https and HTML now differ from before.
   - If `http` itself didn't move, there's nothing an `http` call could undo, so no restore is recorded for the role.

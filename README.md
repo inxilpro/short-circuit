@@ -128,8 +128,8 @@ tests; releases are cut by tag.
 
 ## Documentation
 
-- [Documentation/plan.md](Documentation/plan.md) — the design and its settled decisions
+- [Documentation/design.md](Documentation/design.md) — what the app is, how it's built, and its settled decisions
+- [Documentation/launch-services.md](Documentation/launch-services.md) — the APIs, the dump format, and what macOS 26.6 actually does
 - [Documentation/write-path.md](Documentation/write-path.md) — how default-app changes are made and verified
 - [Documentation/catalog-notes.md](Documentation/catalog-notes.md) — why the catalog groups what it groups
-- [Documentation/initial-research.md](Documentation/initial-research.md) — Launch Services API background
 - [Documentation/RELEASING.md](Documentation/RELEASING.md) — signing, notarization, and release steps
