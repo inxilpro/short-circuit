@@ -57,3 +57,15 @@ Chris set the Web browser Kind to Google Chrome and then back to Arc through the
 ## Resolved: why `public.markdown` fails with 256
 
 `UTType("public.markdown")` on this Mac has no supertypes. It is declared only by Word's imported declaration and conforms to neither `public.item` nor `public.data`. `.md` resolves to `net.daringfireball.markdown`, so no file is ever a `public.markdown`. macOS refuses to assign a handler to such a type, without prompting. The app now marks these members unsettable (`KindMember.isSettable`), leaves them out of split detection, and never calls the setter for them. Hypothesis 1 was close; hypotheses 2 and 3 are ruled out.
+
+## Extension spike: defaults for extensions no declared type governs (2026-09-18 evening, macOS 26.6.2)
+
+Run by Chris: `swift Documentation/spikes/extension-spike.swift`.
+
+- `.markdown`, `.mdown` and `.mkd` each resolve to their own generated `dyn.` type. Before the test `.markdown` → Claude, `.mdown` and `.mkd` → Cursor, `.md` → Sublime Text.
+- `setDefaultApplication(at: Cursor, toOpenFileAt: spike.markdown)` returned OK in **0.0 s**. Only `.markdown` changed (Claude → Cursor). `.md`, `.mdown`, `.mkd`, `.txt`, `net.daringfireball.markdown`, `public.plain-text`, `public.text` and `public.data` did not move.
+- Restoring to Claude the same way also returned OK in 0.0 s, and every tracked handler matched the starting state.
+- No new handler-pref record showed up in `lsregister -dump` for it (the script's filter looked for markdown/mdown/mkd and the `dyn.` identifiers). Where macOS stores the choice is unknown.
+- The 0.0 s return suggests **no consent prompt appeared**; type-based changes took 3–4 s because they waited for one. Chris's typed notes were not captured, so this needs his confirmation.
+
+Conclusion: setting a default through a file is isolated and reversible when the extension resolves to a `dyn.` type. It must not be used for an extension that resolves to a declared type, because that changes the declared type's handler (the reason the earlier fallback was removed).
