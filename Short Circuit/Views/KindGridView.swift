@@ -137,6 +137,12 @@ struct KindGridView: View {
                 guard let id else { return }
                 withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(id) }
             }
+            // Right-click acts on what it points at, as in Finder, so it selects first.
+            .onSecondaryClick {
+                guard let hovered, selection != hovered else { return }
+                selection = hovered
+                isFocused = true
+            }
             .onAppear {
                 // A selection made elsewhere (a dropped file, "Show in All Types") often lands in
                 // a freshly built grid, so it has to be brought into view once the tiles exist.
@@ -146,14 +152,6 @@ struct KindGridView: View {
                     proxy.scrollTo(selection, anchor: .center)
                 }
             }
-        }
-    }
-
-    private func selectForContextMenu(_ id: Kind.ID) {
-        guard hovered == id, selection != id else { return }
-        Task { @MainActor in
-            selection = id
-            isFocused = true
         }
     }
 
@@ -183,12 +181,7 @@ struct KindGridView: View {
             .draggable(kind) {
                 KindIconView(kind: kind, size: 48, showsBadge: false)
             }
-            .contextMenu {
-                // Right-click acts on what it points at, as in Finder, so it selects first. The
-                // selection is set after this build pass rather than during it.
-                let _ = selectForContextMenu(kind.id)
-                KindActions(kind: kind, store: store)
-            }
+            .contextMenu { KindActions(kind: kind, store: store) }
             .onTapGesture {
                 selection = kind.id
                 isFocused = true

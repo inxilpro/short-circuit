@@ -47,7 +47,7 @@ SC_SNAPSHOT_DIR=/tmp/sc-shots SC_SNAPSHOT_LIVE=1 ".../Short Circuit"
   the write UI, in light and dark mode, writes PNGs, and quits.
 - Adding `SC_SNAPSHOT_LIVE=1`: this Mac's real data with `RefusingHandlerWriter`. Read-only states
   only; files are prefixed `live-`.
-- `SC_SNAPSHOT_ONLY=menus,keyboard,apps,batch,undo` runs just those groups and quits. `menus` dumps the
+- `SC_SNAPSHOT_ONLY=menus,keyboard,apps,batch,undo` runs just those groups and quits. `apps` also writes `apps.txt`, which says whether the selected app stayed selected. `menus` dumps the
   real menu bar (shortcuts and enabled state) to `menus.txt`. `keyboard` sends real key events to the
   grid and logs the selection after each one to `keyboard.txt`.
 - Snapshot runs keep view state in a throwaway defaults suite, so they neither read nor overwrite yours.

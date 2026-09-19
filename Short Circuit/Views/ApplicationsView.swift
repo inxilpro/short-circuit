@@ -38,7 +38,8 @@ private struct AppListView: View {
         return query.isEmpty ? all : all.filter { $0.label.localizedStandardContains(query) }
     }
 
-    /// Right-click acts on the row it points at, so it selects that app first.
+    /// Right-click acts on the row it points at, so it selects that app first. Only safe from the
+    /// table-wide menu, which is built for the clicked row alone; per-row menus are built for all.
     private func selectForContextMenu(_ url: URL) {
         guard store.selectedAppURL != url else { return }
         Task { @MainActor in store.selectApp(url) }
@@ -61,10 +62,6 @@ private struct AppListView: View {
         } rows: {
             ForEach(declaring) { summary in
                 TableRow(summary)
-                    .contextMenu {
-                        let _ = selectForContextMenu(summary.app.url)
-                        AppActions(app: summary.app)
-                    }
             }
             if !others.isEmpty {
                 // Apps macOS only offers through broad conformance would bury the real choices.
@@ -72,15 +69,17 @@ private struct AppListView: View {
                     if store.showsOtherApps {
                         ForEach(others) { summary in
                             TableRow(summary)
-                                .contextMenu {
-                                    let _ = selectForContextMenu(summary.app.url)
-                                    AppActions(app: summary.app)
-                                }
                         }
                     }
                 } header: {
                     DisclosureHeader(title: "Other apps (\(others.count))", isExpanded: $store.showsOtherApps)
                 }
+            }
+        }
+        .contextMenu(forSelectionType: URL.self) { urls in
+            if urls.count == 1, let url = urls.first, let summary = summaries.first(where: { $0.id == url }) {
+                let _ = selectForContextMenu(url)
+                AppActions(app: summary.app)
             }
         }
         .tableColumnHeaders(.hidden)

@@ -55,6 +55,15 @@ enum DebugSnapshotter {
                     store.selectApp(first.app.url)
                     try? await Task.sleep(for: .milliseconds(1500))
                     await snapshot("apps-only", to: directory)
+                    // A selection that something else keeps stealing shows up as changes here.
+                    var seen: [String] = []
+                    for _ in 0..<20 {
+                        seen.append(store.selectedAppURL?.deletingPathExtension().lastPathComponent ?? "nil")
+                        try? await Task.sleep(for: .milliseconds(100))
+                    }
+                    let held = Set(seen) == [first.app.url.deletingPathExtension().lastPathComponent]
+                    try? "selected \(first.app.name); over 2 s saw \(Set(seen).sorted()); held=\(held)\n"
+                        .write(to: directory.appending(path: "apps.txt"), atomically: true, encoding: .utf8)
                 }
             }
             NSApp.terminate(nil)
