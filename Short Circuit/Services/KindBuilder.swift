@@ -628,7 +628,9 @@ nonisolated private struct Context {
         var appKeyByUnit: [String: String] = [:]
         for bundle in snapshot.bundles where bundle.isApplication {
             guard let path = bundle.path else { continue }
-            let url = URL(fileURLWithPath: path).standardizedFileURL
+            // A hint rather than a disk check, so an app that isn't installed is spelled the same way
+            // as one that is.
+            let url = URL(filePath: path, directoryHint: .isDirectory).standardizedFileURL
             let key = url.path
             if let unit = bundle.unitID { appKeyByUnit[unit] = key }
             if apps[key] == nil {
