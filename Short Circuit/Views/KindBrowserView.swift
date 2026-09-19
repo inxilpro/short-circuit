@@ -88,6 +88,14 @@ private struct EmptyKindsView: View {
                         store.sidebarSelection = .all
                     }
                 }
+                if store.hiddenAppPrivateMatches > 0 {
+                    Button(store.hiddenAppPrivateMatches == 1
+                           ? "Show 1 App-Specific Link Type"
+                           : "Show \(store.hiddenAppPrivateMatches) App-Specific Link Types") {
+                        store.showAppPrivateMatches()
+                    }
+                    .help("Link types only one app can open, such as sign-in callbacks. View ▸ Show App-Specific Link Types turns them on everywhere.")
+                }
             }
         }
     }

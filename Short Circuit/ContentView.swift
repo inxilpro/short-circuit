@@ -176,7 +176,8 @@ struct ContentView: View {
             .padding(.vertical, 8)
             .frame(maxWidth: 560)
             .glassEffect()
-            .padding(.bottom, 20)
+            // Applications has its own footer with the batch's progress; stay above it.
+            .padding(.bottom, store.sidebarSelection == .applications ? 70 : 20)
             .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
         }
     }

@@ -263,6 +263,22 @@ nonisolated extension SampleKindProvider {
             extensions: [], mimeTypes: [],
             candidates: [.faceTime, .messages]
         ),
+        // App-specific link types: one app registers each for its own use, so there's nothing to
+        // choose. Hidden unless View ▸ Show App-Specific Link Types is on.
+        Kind(
+            id: "notes-link", name: "Notes link (applenotes:)", category: .other,
+            members: [KindMember(target: .scheme("applenotes"), defaultApp: .notes)],
+            extensions: [], mimeTypes: [],
+            candidates: [.notes],
+            isAppPrivate: true
+        ),
+        Kind(
+            id: "books-link", name: "Books link (itms-books:)", category: .other,
+            members: [KindMember(target: .scheme("itms-books"), defaultApp: .books)],
+            extensions: [], mimeTypes: [],
+            candidates: [.books],
+            isAppPrivate: true
+        ),
         Kind(
             id: "vcard", name: "Contact card", category: .communication,
             members: [KindMember(target: .uti("public.vcard"), defaultApp: .contacts)],

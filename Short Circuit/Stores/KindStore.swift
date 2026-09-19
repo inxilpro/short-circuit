@@ -67,6 +67,7 @@ enum PreferenceKey {
     static let inspector = "inspectorPresented"
     static let shadowedMembers = "showsShadowedMembers"
     static let appFolder = "lastAppFolder"
+    static let appPrivate = "showsAppSpecificLinkTypes"
 }
 
 @Observable
@@ -123,6 +124,18 @@ final class KindStore {
     }
     var showsShadowedMembers = false {
         didSet { defaults?.set(showsShadowedMembers, forKey: PreferenceKey.shadowedMembers) }
+    }
+    /// Link types only one app can open (`onepassword:`, OAuth callbacks) number in the hundreds
+    /// and offer no choice, so lists leave them out unless this is on.
+    var showsAppPrivateKinds = false {
+        didSet {
+            defaults?.set(showsAppPrivateKinds, forKey: PreferenceKey.appPrivate)
+            appIndexCache = nil
+            if !showsAppPrivateKinds, let selectedKindID, selectedKind == nil,
+               kinds.first(where: { $0.id == selectedKindID })?.isAppPrivate == true {
+                self.selectedKindID = nil
+            }
+        }
     }
     private(set) var message: StatusMessage?
     /// Set while the "Other…" app sheet is up; cleared when it completes or is cancelled.
@@ -189,6 +202,7 @@ final class KindStore {
             isInspectorPresented = defaults.bool(forKey: PreferenceKey.inspector)
         }
         showsShadowedMembers = defaults.bool(forKey: PreferenceKey.shadowedMembers)
+        showsAppPrivateKinds = defaults.bool(forKey: PreferenceKey.appPrivate)
         lastAppFolder = defaults.string(forKey: PreferenceKey.appFolder).map { URL(filePath: $0, directoryHint: .isDirectory) }
     }
 
@@ -196,13 +210,23 @@ final class KindStore {
         if case .loaded(let kinds) = state { kinds } else { [] }
     }
 
+    /// Every Kind the lists may show: all of them, less app-specific link types unless those are
+    /// turned on. `kinds` stays complete, since writes and lookups by id need every Kind.
+    var listedKinds: [Kind] {
+        showsAppPrivateKinds ? kinds : kinds.filter { !$0.isAppPrivate }
+    }
+
     /// The catalog's curated list, in its own order, regardless of how many apps are installed.
     var commonKinds: [Kind] {
-        kinds.filter(\.isCommon).sorted(by: Self.catalogOrder)
+        listedKinds.filter(\.isCommon).sorted(by: Self.catalogOrder)
     }
 
     /// Types only one app can open offer nothing to choose, so the category views hide them.
     var choosableKinds: [Kind] {
+        Self.choosable(listedKinds)
+    }
+
+    private static func choosable(_ kinds: [Kind]) -> [Kind] {
         kinds.filter { $0.candidates.count >= 2 }
     }
 
@@ -241,8 +265,18 @@ final class KindStore {
         case .split: splitKinds + mixedWithoutFixKinds
         case .common, nil: commonKinds
         case .category(let category): choosableKinds.filter { $0.category == category }.sorted(by: Self.catalogOrder)
-        case .all: kinds
+        case .all: listedKinds
         case .applications: []
+        }
+    }
+
+    /// The same scopes over every Kind, hidden ones included, for finding what the option hides.
+    private func allKinds(in item: SidebarItem?) -> [Kind] {
+        switch item {
+        case .common, nil: kinds.filter(\.isCommon)
+        case .category(let category): Self.choosable(kinds).filter { $0.category == category }
+        case .all: kinds
+        case .split, .applications: kinds(in: item)
         }
     }
 
@@ -261,13 +295,36 @@ final class KindStore {
         kinds(in: sidebarSelection)
     }
 
+    /// A search for a scheme by its exact name (`slack:`) finds its type even while app-specific
+    /// link types are hidden: the user asked for it by name.
     var visibleKinds: [Kind] {
-        KindSearch(searchText).filter(scopedKinds)
+        let search = KindSearch(searchText)
+        return search.filter(scopedKinds) + namedHiddenKinds(search, in: allKinds(in: sidebarSelection))
+    }
+
+    private func namedHiddenKinds(_ search: KindSearch, in pool: [Kind]) -> [Kind] {
+        guard !showsAppPrivateKinds, let scheme = search.exactScheme else { return [] }
+        return pool.filter { $0.isAppPrivate && $0.schemes.contains { $0.lowercased() == scheme } }
     }
 
     var hiddenMatchesInAllTypes: Int {
-        guard sidebarSelection != .all, !KindSearch(searchText).isEmpty else { return 0 }
-        return KindSearch(searchText).filter(kinds).count - visibleKinds.count
+        let search = KindSearch(searchText)
+        guard sidebarSelection != .all, !search.isEmpty else { return 0 }
+        return search.filter(listedKinds).count + namedHiddenKinds(search, in: kinds).count - visibleKinds.count
+    }
+
+    /// App-specific link types the current search matches but the option hides. Zero while
+    /// they're shown, or when the search names them exactly (they're listed then).
+    var hiddenAppPrivateMatches: Int {
+        let search = KindSearch(searchText)
+        guard !showsAppPrivateKinds, !search.isEmpty else { return 0 }
+        return search.filter(kinds.filter(\.isAppPrivate)).count - namedHiddenKinds(search, in: kinds).count
+    }
+
+    /// The empty state's way out: show them, in a section where they appear.
+    func showAppPrivateMatches() {
+        showsAppPrivateKinds = true
+        if visibleKinds.isEmpty { sidebarSelection = .all }
     }
 
     var isWriting: Bool { activity != .idle }
@@ -321,7 +378,7 @@ final class KindStore {
 
     var appIndex: AppIndex {
         if let appIndexCache { return appIndexCache }
-        let index = AppIndex(kinds: kinds)
+        let index = AppIndex(kinds: listedKinds)
         appIndexCache = index
         return index
     }
@@ -980,6 +1037,9 @@ struct KindSearch {
 
     init(_ text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        exactScheme = query.count > 1 && query.hasSuffix(":") && query.firstIndex(of: ":") == query.index(before: query.endIndex)
+            ? String(query.dropLast())
+            : nil
         if query.isEmpty {
             mode = nil
         } else if query.hasPrefix("."), query.count > 1 {
@@ -992,6 +1052,9 @@ struct KindSearch {
     }
 
     var isEmpty: Bool { mode == nil }
+
+    /// "slack" for the query `slack:`, a scheme named in full. Nil for anything else.
+    let exactScheme: String?
 
     func filter(_ kinds: [Kind]) -> [Kind] {
         isEmpty ? kinds : kinds.filter(matches)

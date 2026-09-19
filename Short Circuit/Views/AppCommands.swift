@@ -53,6 +53,11 @@ struct AppCommands: Commands {
                 sectionButton("Applications", .applications, key: "4")
             }
             Divider()
+            Toggle("Show App-Specific Link Types", isOn: Binding(
+                get: { store.showsAppPrivateKinds },
+                set: { store.showsAppPrivateKinds = $0 }
+            ))
+            Divider()
         }
 
         CommandGroup(after: .toolbar) {

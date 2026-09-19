@@ -87,6 +87,14 @@ enum DebugSnapshotter {
             store.searchText = "epub"
             await snapshot("search-empty-\(suffix)", to: directory)
 
+            store.sidebarSelection = .all
+            store.searchText = "applenotes"
+            await snapshot("search-hidden-app-specific-\(suffix)", to: directory)
+            store.searchText = ""
+            store.showsAppPrivateKinds = true
+            await snapshot("all-types-app-specific-shown-\(suffix)", to: directory)
+            store.showsAppPrivateKinds = false
+
             store.sidebarSelection = .applications
             store.searchText = ""
             await snapshot("applications-\(suffix)", to: directory)
@@ -159,7 +167,8 @@ enum DebugSnapshotter {
         ]
         for (name, code, characters, flags) in steps {
             send(key: code, characters: characters, flags: flags, to: window)
-            try? await Task.sleep(for: .milliseconds(250))
+            // The inspector animates in and out; a key during that is a different test.
+            try? await Task.sleep(for: .milliseconds(name == "space" ? 900 : 250))
             record(name)
         }
         await snapshot("keyboard-focused-light", to: directory, settle: .milliseconds(300))
