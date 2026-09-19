@@ -24,7 +24,7 @@ Everything here came from your hands-on session or from a review.
 
 ## Current numbers on this Mac
 
-932 types, 56 in Common, 4 fixable splits (Web browser via XHTML, SQL source, Tab-separated table, MIME HTML), 202 apps. 211 unit tests pass; no build warnings. First load from cache under a second; a full `lsregister -dump` takes about 6 seconds. A stale cache is detected through the Launch Services sequence number (about 30 ms to read).
+932 types (617 shown by default), 56 in Common, 5 fixable splits (Markdown, Web browser via XHTML, SQL source, Tab-separated table, MIME HTML), 202 apps (129 shown). 242 unit tests pass; no build warnings. First load from cache under a second; a full `lsregister -dump` takes about 6 seconds. A stale cache is detected through the Launch Services sequence number (about 30 ms to read).
 
 ## New since checkpoint 1
 
@@ -56,9 +56,14 @@ Implemented from `Documentation/reviews/mac-assed-review-1.md`, which now has a 
 
 Not done, held for a decision: opening files dropped on the Dock icon and a Services entry. Both need document-type declarations, which could list Short Circuit in every "Open With" menu.
 
-## Waiting on you
+## Since the Mac-conventions pass
 
-- `swift Documentation/spikes/extension-spike.swift`: measures what `setDefaultApplication(at:toOpenFileAt:)` does for `.markdown`, which opens in Claude on this Mac and which no settable type governs (27 types have such extensions). Two macOS prompts; it restores the original.
+- **By-extension defaults** (40ea8b7). Your spike showed `setDefaultApplication(at:toOpenFileAt:)` changes only the one extension when it resolves to a generated `dyn.` type, reverses cleanly, and shows **no macOS prompt**. Such extensions are now rows of their own (".markdown files → Claude"). The writer refuses if the extension resolves to a declared type. Prompt counts leave these out ("3 changes; macOS will ask about 2"), and they only change through an explicit action. Markdown is split again on this Mac: `.md` → Sublime Text, `.markdown` → Claude, `.mdown` and `.mkd` → Cursor; only Cursor is listed for all four.
+- **Sparkle** (f7c6ff3), mirroring Chronicle: Check for Updates… after About, signed appcast in the release workflow, Sparkle's helpers re-signed. Automatic checks are off until there is a setting; Sparkle asks on the second launch. It reuses Chronicle's update key. No Release build has been run.
+- **App-specific link types hidden by default** (your decision): All Types shows 617 of 932 types and Applications 129 of 202 apps. View ▸ Show App-Specific Link Types brings them back; an exact scheme search still finds one.
+- **Skipped by your decision**: opening files dropped on the Dock icon and a Services entry, because the document-type declarations they need could list Short Circuit in every "Open With" menu.
+
+242 unit tests pass. With the screen unlocked I looked at the live All Types list, the Markdown inspector with its extension rows, and the Applications table; they render as intended. Undo, keyboard focus, menus and context menus still have not been seen by anyone.
 
 ## Hand tests still owed
 
@@ -70,4 +75,4 @@ Not done, held for a decision: opening files dropped on the Dock icon and a Serv
 
 ## Not started
 
-Sparkle updates (needs the package and updater code), a Homebrew cask, by-extension defaults (waiting on the spike), localization beyond English.
+A Homebrew cask, localization beyond English, a first push and release (needs you: repo, secrets, and a working runner label).
