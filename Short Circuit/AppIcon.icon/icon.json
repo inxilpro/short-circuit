@@ -1,9 +1,27 @@
 {
-  "fill" : "automatic",
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.17608,0.62117,1.00000,1.00000",
+      "display-p3:0.22756,0.45191,0.96783,1.00000"
+    ]
+  },
   "groups" : [
     {
+      "blur-material" : null,
       "layers" : [
-
+        {
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "Image 4.png",
+          "name" : "Image 4",
+          "position" : {
+            "scale" : 0.7,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
       ],
       "shadow" : {
         "kind" : "neutral",
