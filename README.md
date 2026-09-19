@@ -36,15 +36,21 @@ prompt is for. Nothing changes without your confirmation.
 
 Short Circuit only reads Launch Services data (`lsregister -dump` plus
 `NSWorkspace` lookups) and only writes through Apple's public default-handler
-APIs. It is not sandboxed — the sandbox blocks both — and it has no network
-access, analytics, or background process.
+APIs. It is not sandboxed — the sandbox blocks both. It has no analytics or
+background process, and its only network access is checking GitHub for updates,
+which it asks your permission for first.
 
 ## Install
 
 Download the DMG from the [latest release](https://github.com/inxilpro/short-circuit/releases/latest)
 and drag Short Circuit to Applications. It is signed with a Developer ID and
-notarized by Apple. There is no in-app updater yet; check the releases page for
-new versions.
+notarized by Apple.
+
+Short Circuit updates itself with [Sparkle](https://sparkle-project.org). On
+its second launch it asks whether to check for updates automatically; either
+way, **Short Circuit → Check for Updates…** checks on demand. Updates are
+downloaded from this repository's GitHub releases and verified against a
+signing key built into the app.
 
 ## How Kinds are built
 

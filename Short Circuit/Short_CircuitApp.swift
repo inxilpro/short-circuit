@@ -31,6 +31,7 @@ struct Short_CircuitApp: App {
         .defaultSize(width: 1100, height: 680)
         .commands {
             AppCommands(store: store)
+            UpdaterCommands()
         }
     }
 }

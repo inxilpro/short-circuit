@@ -2,8 +2,9 @@
 #
 # Runs the unit tests, builds and archives Short Circuit in Release, signs it
 # with the Developer ID certificate imported from secrets, notarizes and
-# staples, and uploads a DMG (for humans) and a zip (for a future Homebrew
-# cask) to the GitHub Release for the tag.
+# staples, produces a DMG (for humans) and a zip (served to Sparkle and a future
+# Homebrew cask), generates and signs appcast.xml, and uploads all three to the
+# GitHub Release for the tag.
 #
 # Required repository secrets (see Documentation/RELEASING.md for how to create each):
 #   MACOS_CERTIFICATE_P12       base64-encoded Developer ID Application .p12
@@ -13,6 +14,7 @@
 #   ASC_KEY_ID                  App Store Connect API key ID (for notarytool)
 #   ASC_ISSUER_ID               App Store Connect API issuer ID
 #   ASC_PRIVATE_KEY             contents of the App Store Connect API .p8 key
+#   SPARKLE_PRIVATE_KEY         Sparkle EdDSA private key (generate_keys -x output)
 #
 # Runner image / Xcode: see the note in ci.yml; bump `runs-on` and XCODE_APP
 # together, and keep them identical to ci.yml.
@@ -33,6 +35,9 @@ env:
   APP_NAME: Short Circuit
   # Release asset names avoid the space; GitHub would rewrite it to a dot.
   ASSET_BASENAME: Short-Circuit
+  # Must match the Sparkle version in Package.resolved; the first step checks.
+  # Used to download the matching generate_appcast.
+  SPARKLE_VERSION: "2.9.6"
 
 jobs:
   release:
@@ -55,6 +60,23 @@ jobs:
             exit 1
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      # A mismatched generate_appcast or feed URL would publish an appcast the
+      # shipped app can't use, and that only shows up after users are stranded.
+      - name: Check Sparkle version and feed URL
+        run: |
+          RESOLVED=$(jq -r '.pins[] | select(.identity == "sparkle") | .state.version' \
+            "Short Circuit.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved")
+          if [[ "$RESOLVED" != "$SPARKLE_VERSION" ]]; then
+            echo "::error::Package.resolved has Sparkle $RESOLVED but SPARKLE_VERSION is $SPARKLE_VERSION"
+            exit 1
+          fi
+          FEED=$(/usr/libexec/PlistBuddy -c "Print :SUFeedURL" "Short Circuit/Info.plist")
+          EXPECTED="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/appcast.xml"
+          if [[ "$FEED" != "$EXPECTED" ]]; then
+            echo "::error::SUFeedURL is $FEED but this repository serves $EXPECTED"
+            exit 1
+          fi
 
       # The tag is the release trigger, so gate on the unit tests here rather
       # than trusting that main was green when it was tagged.
@@ -107,6 +129,9 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -o pipefail
+          # Signing happens during the archive so the app and the Sparkle
+          # framework binary are signed inside-out. Sparkle's prebuilt nested
+          # executables are re-signed in a later step. No codesign --deep.
           xcodebuild archive \
             -project "Short Circuit.xcodeproj" \
             -scheme "Short Circuit" \
@@ -127,10 +152,49 @@ jobs:
           mkdir -p "$RUNNER_TEMP/dist"
           cp -R "$RUNNER_TEMP/$ASSET_BASENAME.xcarchive/Products/Applications/$APP_NAME.app" "$RUNNER_TEMP/dist/"
 
-      - name: Verify code signature
+      - name: Re-sign Sparkle nested components
         run: |
           APP="$RUNNER_TEMP/dist/$APP_NAME.app"
+          SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+
+          # Sparkle arrives as a prebuilt binary framework, and Xcode re-signs
+          # only the framework itself during the archive: the nested Updater,
+          # Autoupdate, and XPC services keep Sparkle's own ad-hoc signatures,
+          # which the notary service rejects. Re-sign them inside-out, then
+          # re-seal the framework and the app. The app isn't sandboxed so it
+          # never uses the XPC services, but they ship inside the framework
+          # and are notarized with everything else.
+          codesign -f -o runtime --timestamp --preserve-metadata=entitlements \
+            -s "Developer ID Application" \
+            "$SPARKLE/Versions/B/XPCServices/Downloader.xpc" \
+            "$SPARKLE/Versions/B/XPCServices/Installer.xpc" \
+            "$SPARKLE/Versions/B/Autoupdate" \
+            "$SPARKLE/Versions/B/Updater.app"
+          codesign -f -o runtime --timestamp \
+            -s "Developer ID Application" "$SPARKLE"
+          codesign -f -o runtime --timestamp --preserve-metadata=entitlements \
+            -s "Developer ID Application" "$APP"
+
+      - name: Verify code signatures
+        run: |
+          APP="$RUNNER_TEMP/dist/$APP_NAME.app"
+          SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
           codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign --verify --strict --verbose=2 "$SPARKLE"
+          # The notary service rejects any nested binary that lacks our
+          # Developer ID or a secure timestamp; catch that before uploading.
+          for NESTED in \
+            "$SPARKLE" \
+            "$SPARKLE/Versions/B/XPCServices/Downloader.xpc" \
+            "$SPARKLE/Versions/B/XPCServices/Installer.xpc" \
+            "$SPARKLE/Versions/B/Autoupdate" \
+            "$SPARKLE/Versions/B/Updater.app"
+          do
+            codesign --verify --strict --verbose=2 "$NESTED"
+            codesign --display --verbose=2 "$NESTED" 2>&1 | grep -q "Authority=Developer ID Application"
+            codesign --display --verbose=2 "$NESTED" 2>&1 | grep -q "Timestamp="
+            codesign --display --verbose=2 "$NESTED" 2>&1 | grep -q "runtime"
+          done
           codesign --display --verbose=2 "$APP" 2>&1 | grep -q "Authority=Developer ID Application"
           codesign --display --verbose=2 "$APP" 2>&1 | grep -q "Timestamp="
           codesign --display --verbose=2 "$APP" 2>&1 | grep -q "runtime"
@@ -191,8 +255,8 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/artifacts"
 
-          # Built from the stapled app so it installs offline without a
-          # Gatekeeper round-trip.
+          # The zip Sparkle serves. Built from the stapled app so it installs
+          # offline without a Gatekeeper round-trip.
           ditto -c -k --keepParent \
             "$RUNNER_TEMP/dist/$APP_NAME.app" \
             "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.zip"
@@ -218,6 +282,30 @@ jobs:
 
           shasum -a 256 "$RUNNER_TEMP/artifacts/"*
 
+      - name: Generate and sign appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p "$RUNNER_TEMP/sparkle"
+          tar -xJf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP/sparkle"
+
+          # The feed URL (…/releases/latest/download/appcast.xml) always serves
+          # the newest release's appcast, so this appcast only needs to
+          # describe the version being released.
+          UPDATES_DIR="$RUNNER_TEMP/updates"
+          mkdir -p "$UPDATES_DIR"
+          cp "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.zip" "$UPDATES_DIR/"
+
+          printf '%s\n' "$SPARKLE_PRIVATE_KEY" | "$RUNNER_TEMP/sparkle/bin/generate_appcast" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            "$UPDATES_DIR"
+
+          grep -q 'sparkle:edSignature=' "$UPDATES_DIR/appcast.xml"
+          cp "$UPDATES_DIR/appcast.xml" "$RUNNER_TEMP/artifacts/appcast.xml"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -226,7 +314,8 @@ jobs:
             --title "$APP_NAME $VERSION" \
             --generate-notes \
             "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.dmg" \
-            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.zip"
+            "$RUNNER_TEMP/artifacts/$ASSET_BASENAME-$VERSION.zip" \
+            "$RUNNER_TEMP/artifacts/appcast.xml"
 
       - name: Remove temporary keychain and API key
         if: always()

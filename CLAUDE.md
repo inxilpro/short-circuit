@@ -78,7 +78,8 @@ the handler writers. `LaunchServicesIndex` is an `actor`. Follow the header note
 ## Architecture
 
 macOS 26.6+, not sandboxed (the sandbox blocks `lsregister` and the setters), hardened runtime,
-Developer ID + notarization. No CLI, no Swift packages.
+Developer ID + notarization. No CLI. The one Swift package is Sparkle (in-app updates,
+`Updates/`); it only starts in Release builds, and `Documentation/RELEASING.md` covers the feed and key.
 
 - `Services/LaunchServicesIndex` runs `lsregister -dump` (about 4 s, 32 MB), caches the parsed result
   under `~/Library/Caches/com.cmorrell.Short-Circuit/`, and serves the cache first.

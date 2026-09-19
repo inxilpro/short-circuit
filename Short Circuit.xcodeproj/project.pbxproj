@@ -6,6 +6,10 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5C0000000000000000000005 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5C0000000000000000000004 /* Sparkle */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		6B9BFFE1305DA93300A08AB4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +33,22 @@
 		6B9BFFEA305DA93300A08AB4 /* Short CircuitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Short CircuitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5C0000000000000000000001 /* Exceptions for "Short Circuit" folder in "Short Circuit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6B9BFFD2305DA93200A08AB4 /* Short Circuit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6B9BFFD5305DA93200A08AB4 /* Short Circuit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5C0000000000000000000001 /* Exceptions for "Short Circuit" folder in "Short Circuit" target */,
+			);
 			path = "Short Circuit";
 			sourceTree = "<group>";
 		};
@@ -51,6 +68,7 @@
 		6B9BFFD0305DA93200A08AB4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				5C0000000000000000000005 /* Sparkle in Frameworks */,
 			);
 		};
 		6B9BFFDD305DA93300A08AB4 /* Frameworks */ = {
@@ -103,6 +121,9 @@
 				6B9BFFD5305DA93200A08AB4 /* Short Circuit */,
 			);
 			name = "Short Circuit";
+			packageProductDependencies = (
+				5C0000000000000000000004 /* Sparkle */,
+			);
 			productName = "Short Circuit";
 			productReference = 6B9BFFD3305DA93200A08AB4 /* Short Circuit.app */;
 			productType = "com.apple.product-type.application";
@@ -181,6 +202,9 @@
 			);
 			mainGroup = 6B9BFFCA305DA93200A08AB4;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5C0000000000000000000003 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6B9BFFD4305DA93200A08AB4 /* Products */;
 			projectDirPath = "";
@@ -376,6 +400,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Short Circuit/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -408,6 +433,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Short Circuit/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -543,6 +569,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5C0000000000000000000003 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.6;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5C0000000000000000000004 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C0000000000000000000003 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6B9BFFCB305DA93200A08AB4 /* Project object */;
 	validationLevel = 1;
