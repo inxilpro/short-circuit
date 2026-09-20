@@ -68,6 +68,7 @@ enum PreferenceKey {
     static let shadowedMembers = "showsShadowedMembers"
     static let appFolder = "lastAppFolder"
     static let appPrivate = "showsAppSpecificLinkTypes"
+    static let appSort = "appSortOrder"
 }
 
 @Observable
@@ -186,6 +187,9 @@ final class KindStore {
     var batchSelection: Set<Kind.ID> = []
     private(set) var batchRun: BatchRun?
     var showsOtherApps = false
+    var appSortOrder: AppSortOrder = .name {
+        didSet { defaults?.set(appSortOrder.rawValue, forKey: PreferenceKey.appSort) }
+    }
     var showsOfferedKinds = false
     @ObservationIgnored private var appIndexCache: AppIndex?
 
@@ -203,6 +207,9 @@ final class KindStore {
         }
         if defaults.object(forKey: PreferenceKey.inspector) != nil {
             isInspectorPresented = defaults.bool(forKey: PreferenceKey.inspector)
+        }
+        if let raw = defaults.string(forKey: PreferenceKey.appSort), let order = AppSortOrder(rawValue: raw) {
+            appSortOrder = order
         }
         showsShadowedMembers = defaults.bool(forKey: PreferenceKey.shadowedMembers)
         showsAppPrivateKinds = defaults.bool(forKey: PreferenceKey.appPrivate)

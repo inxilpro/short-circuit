@@ -65,6 +65,9 @@ enum DebugSnapshotter {
                     try? "selected \(first.app.name); over 2 s saw \(Set(seen).sorted()); held=\(held)\n"
                         .write(to: directory.appending(path: "apps.txt"), atomically: true, encoding: .utf8)
                 }
+                store.appSortOrder = .defaultCount
+                try? await Task.sleep(for: .milliseconds(800))
+                await snapshot("apps-by-defaults", to: directory)
             }
             NSApp.terminate(nil)
             return

@@ -34,7 +34,7 @@ private struct AppListView: View {
 
     private var filtered: [AppSummary] {
         let query = store.searchText.trimmingCharacters(in: .whitespaces)
-        let all = store.appIndex.summaries
+        let all = store.appIndex.summaries.sorted(by: store.appSortOrder)
         return query.isEmpty ? all : all.filter { $0.label.localizedStandardContains(query) }
     }
 

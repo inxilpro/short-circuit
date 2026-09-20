@@ -34,6 +34,30 @@ struct AppSummary: Identifiable, Hashable {
     var id: URL { app.url }
 }
 
+enum AppSortOrder: String, CaseIterable, Identifiable {
+    case name, defaultCount
+
+    var id: Self { self }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .name: "Name"
+        case .defaultCount: "Number of Defaults"
+        }
+    }
+}
+
+extension [AppSummary] {
+    func sorted(by order: AppSortOrder) -> [AppSummary] {
+        sorted { lhs, rhs in
+            if order == .defaultCount, lhs.defaultCount != rhs.defaultCount {
+                return lhs.defaultCount > rhs.defaultCount
+            }
+            return lhs.label.localizedStandardCompare(rhs.label) == .orderedAscending
+        }
+    }
+}
+
 /// Every app that appears as a candidate anywhere, and how it relates to each Kind. Built once
 /// per load, since the Applications view reads it constantly and Kinds number in the hundreds.
 struct AppIndex {
@@ -69,7 +93,7 @@ struct AppIndex {
                 offeredCount: relations.count { $0 == .offered }
             )
         }
-        .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+        .sorted(by: .name)
     }
 
     static func relation(of app: AppRef, to kind: Kind, declared: Bool) -> AppKindRelation {

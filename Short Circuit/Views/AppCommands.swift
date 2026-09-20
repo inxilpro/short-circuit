@@ -45,6 +45,15 @@ struct AppCommands: Commands {
             Toggle("as List", isOn: layoutBinding(.list))
                 .keyboardShortcut("2")
                 .disabled(!isBrowsingTypes)
+            Picker("Sort Apps By", selection: Binding(
+                get: { store.appSortOrder },
+                set: { store.appSortOrder = $0 }
+            )) {
+                ForEach(AppSortOrder.allCases) { order in
+                    Text(order.title).tag(order)
+                }
+            }
+            .disabled(isBrowsingTypes)
             Divider()
             Menu("Go To") {
                 sectionButton("Split", .split, key: "1")

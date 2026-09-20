@@ -141,6 +141,22 @@ struct ContentView: View {
             .disabled(store.sidebarSelection == .applications)
         }
 
+        if store.sidebarSelection == .applications {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Picker("Sort Apps By", selection: Bindable(store).appSortOrder) {
+                        ForEach(AppSortOrder.allCases) { order in
+                            Text(order.title).tag(order)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("Sort", systemImage: "arrow.up.arrow.down")
+                }
+                .help("Sort apps by name or by how many types they are the default for")
+            }
+        }
+
         if store.isRefreshing, case .loaded = store.state {
             ToolbarItem(placement: .primaryAction) {
                 ProgressView()
