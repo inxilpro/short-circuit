@@ -164,12 +164,48 @@ private struct AppListRow: View {
 }
 
 /// One row of the detail table: a type and which section it's in.
-private struct AppKindItem: Identifiable {
+nonisolated struct AppKindItem: Identifiable {
     var kind: Kind
     var relation: AppKindRelation
 
+    /// What the Extensions column shows, kept here so the column can sort by it.
+    var targetsText: String
+
     var id: Kind.ID { kind.id }
     var isCheckable: Bool { relation == .partlyDefault || relation == .canOpen }
+
+    var name: String { kind.name }
+    var opensWithSortName: String { kind.defaultAppSortName }
+    var appCount: Int { kind.declaringAppCount }
+}
+
+/// The detail table's sort, stored as "column:ascending" like the type list's.
+enum AppKindSort {
+    static let columnIDs = ["name", "opensWith", "apps", "targets"]
+
+    static func comparator(for id: String) -> KeyPathComparator<AppKindItem>? {
+        switch id {
+        case "name": KeyPathComparator(\AppKindItem.name, comparator: .localizedStandard)
+        case "opensWith": KeyPathComparator(\AppKindItem.opensWithSortName, comparator: .localizedStandard)
+        case "apps": KeyPathComparator(\AppKindItem.appCount)
+        case "targets": KeyPathComparator(\AppKindItem.targetsText, comparator: .localizedStandard)
+        default: nil
+        }
+    }
+
+    static func encode(_ order: [KeyPathComparator<AppKindItem>]) -> String {
+        guard let first = order.first,
+              let id = columnIDs.first(where: { comparator(for: $0)?.keyPath == first.keyPath })
+        else { return "" }
+        return "\(id):\(first.order == .forward ? "ascending" : "descending")"
+    }
+
+    static func decode(_ stored: String) -> [KeyPathComparator<AppKindItem>] {
+        let parts = stored.split(separator: ":").map(String.init)
+        guard parts.count == 2, var comparator = comparator(for: parts[0]) else { return [] }
+        comparator.order = parts[1] == "descending" ? .reverse : .forward
+        return [comparator]
+    }
 }
 
 private struct AppDetailView: View {
@@ -177,8 +213,16 @@ private struct AppDetailView: View {
     let app: AppRef
     @State private var rowSelection = Set<Kind.ID>()
 
+    /// Empty until a column header is clicked, so each section keeps the store's order.
+    @State private var sortOrder: [KeyPathComparator<AppKindItem>] = []
+    @AppStorage("appKindTableSort") private var storedSort = ""
+
+    /// Sorting happens inside each section: the sections are the point of the view.
     private func items(_ relation: AppKindRelation) -> [AppKindItem] {
-        store.kinds(for: app.url, relation: relation).map { AppKindItem(kind: $0, relation: relation) }
+        let items = store.kinds(for: app.url, relation: relation).map {
+            AppKindItem(kind: $0, relation: relation, targetsText: extensionsText($0, isCheckable: relation == .partlyDefault || relation == .canOpen))
+        }
+        return sortOrder.isEmpty ? items : items.sorted(using: sortOrder)
     }
 
     var body: some View {
@@ -193,7 +237,7 @@ private struct AppDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             Divider()
 
-            Table(of: AppKindItem.self, selection: $rowSelection) {
+            Table(of: AppKindItem.self, selection: $rowSelection, sortOrder: $sortOrder) {
                 TableColumn("") { item in
                     if item.isCheckable {
                         Toggle("Include \(item.kind.name)", isOn: checked(item.kind.id))
@@ -204,7 +248,7 @@ private struct AppDetailView: View {
                 }
                 .width(20)
 
-                TableColumn("Type") { item in
+                TableColumn("Type", value: \.name, comparator: .localizedStandard) { item in
                     HStack(spacing: 8) {
                         KindIconView(kind: item.kind, size: 32)
                         Text(item.kind.name)
@@ -213,7 +257,7 @@ private struct AppDetailView: View {
                 }
                 .width(min: 150, ideal: 200)
 
-                TableColumn("Opens With") { item in
+                TableColumn("Opens With", value: \.opensWithSortName, comparator: .localizedStandard) { item in
                     // In "Default for" this would only repeat the app's own name.
                     if item.relation != .defaultFor {
                         HStack(spacing: 4) {
@@ -226,12 +270,21 @@ private struct AppDetailView: View {
                 }
                 .width(min: 100, ideal: 140)
 
-                TableColumn("Extensions") { item in
-                    Text(extensionsText(item))
+                TableColumn("Apps", value: \.appCount) { item in
+                    Text(item.appCount, format: .number)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .help(appCountHelp(item.kind))
+                }
+                // Room for the header's sort arrow beside the title.
+                .width(60)
+
+                TableColumn("Extensions", value: \.targetsText, comparator: .localizedStandard) { item in
+                    Text(item.targetsText)
                         .font(.callout.monospaced())
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .help(extensionsText(item))
+                        .help(item.targetsText)
                 }
                 .width(min: 80, ideal: 140)
 
@@ -275,6 +328,8 @@ private struct AppDetailView: View {
                 toggleIncluded(rowSelection)
                 return .handled
             }
+            .task { sortOrder = AppKindSort.decode(storedSort) }
+            .onChange(of: sortOrder) { storedSort = AppKindSort.encode(sortOrder) }
 
             Divider()
             BatchFooter()
@@ -330,12 +385,21 @@ private struct AppDetailView: View {
 
     /// For rows that can be checked, the extensions the change would actually move; elsewhere,
     /// the type's extensions or schemes.
-    private func extensionsText(_ item: AppKindItem) -> String {
-        if item.isCheckable, let planned = AppBatchPlan(app: app, kinds: [item.kind]).items.first, !planned.changingExtensions.isEmpty {
+    private func extensionsText(_ kind: Kind, isCheckable: Bool) -> String {
+        if isCheckable, let planned = AppBatchPlan(app: app, kinds: [kind]).items.first, !planned.changingExtensions.isEmpty {
             return planned.changingExtensions.joined(separator: " ")
         }
-        let all = item.kind.extensions.map { ".\($0)" } + item.kind.schemes.map { "\($0):" }
+        let all = kind.extensions.map { ".\($0)" } + kind.schemes.map { "\($0):" }
         return all.joined(separator: " ")
+    }
+
+    private func appCountHelp(_ kind: Kind) -> String {
+        let offered = kind.candidates.count
+        let declaring = kind.declaringAppCount
+        if declaring == offered {
+            return String(localized: "\(offered) apps can open this type.")
+        }
+        return String(localized: "\(declaring) apps are made for this type. macOS offers \(offered) in all.")
     }
 }
 

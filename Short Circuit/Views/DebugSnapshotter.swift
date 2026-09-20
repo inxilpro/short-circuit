@@ -65,6 +65,13 @@ enum DebugSnapshotter {
                     try? "selected \(first.app.name); over 2 s saw \(Set(seen).sorted()); held=\(held)\n"
                         .write(to: directory.appending(path: "apps.txt"), atomically: true, encoding: .utf8)
                 }
+                // The detail table reads its sort when it appears, and each app gets a new table.
+                store.preferences?.set("apps:descending", forKey: "appKindTableSort")
+                if let second = store.appIndex.summaries.sorted(by: { $0.explicitCount > $1.explicitCount }).dropFirst().first {
+                    store.selectApp(second.app.url)
+                    try? await Task.sleep(for: .milliseconds(1500))
+                    await snapshot("apps-sorted-by-app-count", to: directory)
+                }
                 store.appSortOrder = .defaultCount
                 try? await Task.sleep(for: .milliseconds(800))
                 await snapshot("apps-by-defaults", to: directory)

@@ -160,7 +160,7 @@ struct KindTableView: View {
         .frame(width: 720, height: 480)
 }
 
-private extension Kind {
+extension Kind {
     /// Split Kinds sort after every app name rather than under an empty string.
     nonisolated var defaultAppSortName: String {
         defaultApp?.name ?? (isSplit ? "\u{10FFFF}Split" : "\u{10FFFF}")

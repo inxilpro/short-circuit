@@ -92,6 +92,13 @@ nonisolated struct Kind: Identifiable, Hashable, Codable, Sendable {
 
     var isCommon: Bool { commonRank != nil }
 
+    /// How many apps are a real alternative for this Kind. Broad conformance makes macOS offer every
+    /// text editor for every source file, which would make the counts all alike; when nothing is
+    /// known to declare the Kind, every candidate counts.
+    var declaringAppCount: Int {
+        explicitCandidateURLs.isEmpty ? candidates.count : explicitCandidateURLs.count
+    }
+
     var utis: [String] {
         members.compactMap { if case .uti(let identifier) = $0.target { identifier } else { nil } }
     }
