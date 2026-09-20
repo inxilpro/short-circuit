@@ -66,6 +66,22 @@ SC_SNAPSHOT_DIR=/tmp/sc-shots SC_SNAPSHOT_LIVE=1 ".../Short Circuit"
   Build-setting changes are the only exception, and should be rare.
 - Comments explain *why*, never *what*. No boilerplate comments.
 - Never hard-code output to make a test pass.
+- Read "SwiftUI traps this project has hit" in `Documentation/design.md` before UI work, and keep
+  unit tests independent of the machine (installed apps, files on disk).
+
+## Releasing and `gh`
+
+Pushing a `vX.Y.Z` tag runs the whole release (`Documentation/RELEASING.md`); the tag is the
+version. The owner commits straight to `main`. `gh` here is a shim that pages and emits escape
+codes, so run it outside the sandbox, with a pseudo-TTY, no pager, and a marker to grep for:
+
+```sh
+GH_PAGER=cat script -q /dev/null gh run list --workflow release.yml --limit 1 \
+  --json databaseId --jq '"RUNID=\(.[0].databaseId)"' </dev/null | grep -o "RUNID=.*"
+```
+
+Poll `gh run view <id> --json status,conclusion` in a loop rather than `gh run watch`. A release
+takes about five minutes.
 
 ## Language and concurrency
 
@@ -106,6 +122,8 @@ Project docs live in `Documentation/` (not `docs/`):
 - `write-path.md` — the write contract: planning, prompts, results, undo.
 - `catalog-notes.md` — why the catalog groups what it groups; read it before editing `Catalog.json`.
 - `RELEASING.md` — signing, notarization, secrets, and the tag-driven release.
+- `hand-tests.md` — what only a person at the Mac can test, what has been tested, and the
+  current release state. Update it when a fix needs a human retest.
 - `spikes/*.swift` — the scripts behind the measurements. **They call the real setters; never
   run them.**
 

@@ -69,6 +69,13 @@ and an inspector.
 - **Applications** starts from an app instead: pick one, see everything it can open, check
   a set, and apply it as a reviewed batch — never a blind loop, because every change costs
   a system prompt.
+  - The app list sorts by name or by how many types each app is the default for
+    (`View ▸ Sort Apps By`, and a toolbar menu).
+  - An app's type table sorts by any column header, inside each section, and its **Apps**
+    column counts the apps *made for* the type (`Kind.declaringAppCount`). Broad conformance
+    makes macOS offer every text editor for every source file, so counting every candidate
+    would make the numbers all alike; the tooltip gives both. The main type list's Apps
+    column still counts every candidate.
 - App-specific link types (single-app URL schemes, the bulk of what a real Mac registers)
   are hidden by default; `View ▸ Show App-Specific Link Types` brings them back, and an
   exact scheme search finds one anyway.
@@ -137,6 +144,31 @@ These are decided. Reopen them only with a reason, not by drift.
     a machine nobody is sitting at. Tests and automated runs use the simulated or refusing
     backend; only a person at the Mac exercises the live write path.
 
+## SwiftUI traps this project has hit
+
+Each of these shipped a bug or cost a release. Check new UI code against them.
+
+- **A per-row `.contextMenu { }` is built for every row, up front**, not for the row that
+  was clicked. A side effect in the builder ("select this row") therefore runs for all rows,
+  and they fight over the selection: 0.0.2 and 0.0.3 shipped an Applications list that
+  flipped between its last two apps. Put selection-on-right-click in a table-wide
+  `.contextMenu(forSelectionType:)`, which is built on demand for the clicked ids, or in
+  `Views/SecondaryClickMonitor` for views that are not tables (the grid). The `apps`
+  snapshot group writes `apps.txt`, which fails loudly if the selection does not hold.
+- **A presentation binding is cleared before the button's action runs**, so state read
+  inside the action is already gone. This is what made the old confirmation dialog's
+  Continue apply nothing.
+- **A self-sizing `List` of a few hundred rows** re-enters AppKit's row-height cache
+  ("reentrant operation in its NSTableView delegate"). The app list is a `Table`.
+- **Table cells and section headers can be hosted outside the environment chain**, where an
+  `@Environment` lookup crashes. Pass the store in.
+- **Key paths to MainActor-isolated properties are not `Sendable`**, so a row type used
+  with `KeyPathComparator` must be `nonisolated`.
+- **Tests must not depend on the machine.** `URL(fileURLWithPath:)` checks the disk to
+  decide on a trailing slash, and whether an extension resolves to a declared type or a
+  generated `dyn.` type depends on which apps are installed. Both passed locally and failed
+  on CI. Use `URL(filePath:directoryHint:)` and extensions no app could declare.
+
 ## Known gaps
 
 Current, as far as anyone has checked. Fixed findings are not listed.
@@ -153,10 +185,22 @@ Current, as far as anyone has checked. Fixed findings are not listed.
 - `Localizable.xcstrings` exists but stays empty until an Xcode IDE build syncs it;
   `xcodebuild` extracts strings without writing the catalog. English only.
 - No Homebrew cask.
+- Sparkle's automatic checks stay off until there is a setting to turn them off again (see
+  decision 7); `Check for Updates…` works on demand.
+
+**Open questions for the owner**
+
+- The app icon (`Short Circuit/AppIcon.icon`, made in Icon Composer) includes Apple's App
+  Store, Safari and Photos icons. Fine for 0.0.x; a trademark question before a public 1.0.
+- Whether the main type list's Apps column should count declaring apps too, to match the
+  Applications view.
+- Two early commits (`ff18d08`, `d109df1`) still contain `/Users/<name>/…` paths. The tree
+  is clean; removing them from history means a rewrite and force-push.
 
 **Not yet verified by a person**
 
 The write path can only be finished by hand, since every call needs a human answer.
+[hand-tests.md](hand-tests.md) is the checklist and records what has been done.
 
 - Declining a prompt mid-batch: Stop during the first prompt of a longer Applications
   batch should leave nothing else prompting.

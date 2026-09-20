@@ -28,7 +28,9 @@ fixes them in one step.
   "why does this open in X?"
 - **Split** lists Kinds whose members point at different apps.
 - **Applications** starts from an app instead: pick one, see everything it can
-  open, and make it the default for a reviewed set of Kinds.
+  open, and make it the default for a reviewed set of Kinds. Sort the apps by
+  how many defaults they hold, and sort an app's types by how many other apps
+  could open them, to find defaults worth moving.
 
 macOS asks you to confirm every default-app change. Changing a Kind with three
 members means three system prompts; Short Circuit shows which change each
@@ -133,3 +135,4 @@ tests; releases are cut by tag.
 - [Documentation/write-path.md](Documentation/write-path.md) — how default-app changes are made and verified
 - [Documentation/catalog-notes.md](Documentation/catalog-notes.md) — why the catalog groups what it groups
 - [Documentation/RELEASING.md](Documentation/RELEASING.md) — signing, notarization, and release steps
+- [Documentation/hand-tests.md](Documentation/hand-tests.md) — the checks only a person at the Mac can run, and their status
